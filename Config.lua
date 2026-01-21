@@ -243,8 +243,8 @@ local function CreateConfigFrame()
         end
     end)
     
-    frame.TitleText:SetText("BetterRaidFrames")
-
+    frame.TitleText:SetText("Better Raid Frames")
+    
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 16, -32)
     scrollFrame:SetPoint("BOTTOMRIGHT", -32, 8)
@@ -330,10 +330,7 @@ local function CreateConfigFrame()
     frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
     UpdateProfileButtonsVisibility()
 
-    y = y - 50 - SECTION_PADDING
-
-    CreateDivider(content, y)
-    y = y - SECTION_PADDING
+    y = y - 50
 
     -- Test Mode
     local testHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -351,10 +348,7 @@ local function CreateConfigFrame()
         Addon:SetTestMode(self:GetChecked())
     end)
     frame.testCheckbox = testCheckbox
-    y = y - 25 - SECTION_PADDING
-    
-    CreateDivider(content, y)
-    y = y - SECTION_PADDING
+    y = y - 25
 
     local roleIconDropdown = CreateDropdown(
         content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
@@ -410,18 +404,9 @@ local function CreateConfigFrame()
     y = y - 25
 
     local selectionBorderCheckbox = CreateCheckbox(content, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
-    y = y - 25 - SECTION_PADDING
-
-    CreateDivider(content, y)
-    y = y - SECTION_PADDING
+    y = y - 25
     
     -- Name
-    local nameHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    nameHeader:SetPoint("TOPLEFT", 16, y)
-    nameHeader:SetText("Name")
-    nameHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
-
     local UpdateNameOptionsEnabled
 
     local customizeNamesCheckbox = CreateCheckbox(content, "Customize names", "customizeNames", y, function(checked)
@@ -459,24 +444,15 @@ local function CreateConfigFrame()
 
     local classColorCheckbox = CreateSubCheckbox(content, "Class color", "nameClassColor", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, classColorCheckbox)
-    y = y - 25 - SECTION_PADDING
+    y = y - 25
 
     UpdateNameOptionsEnabled = function(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end
     frame.nameOptionsContainer = nameOptionsContainer
     UpdateNameOptionsEnabled(Addon:GetSetting("customizeNames"))
-    
-    CreateDivider(content, y)
-    y = y - SECTION_PADDING
 
     -- Threat Indicator
-    local threatHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    threatHeader:SetPoint("TOPLEFT", 16, y)
-    threatHeader:SetText("Threat Indicator")
-    threatHeader:SetTextColor(1, 0.82, 0)
-    y = y - 15
-
     local UpdateThreatOptionsEnabled
 
     local threatCheckbox = CreateCheckbox(content, "Show threat indicator", "showThreatIndicator", y, function(checked)
