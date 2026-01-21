@@ -135,37 +135,52 @@ local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOf
 end
 
 local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange)
-    local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    labelText:SetPoint("TOPLEFT", 32, yOffset)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetPoint("TOPLEFT", 32, yOffset)
+    container:SetPoint("TOPRIGHT", -12, yOffset)
+    container:SetHeight(20)
+
+    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    labelText:SetPoint("LEFT", 0, 0)
     labelText:SetText(label)
 
-    local plusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    plusBtn:SetSize(22, 22)
-    plusBtn:SetPoint("TOPRIGHT", -12, yOffset + 2)
+    local currentValue = Addon:GetSetting(settingKey) or minVal
+
+    local valueText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    valueText:SetPoint("LEFT", labelText, "RIGHT", 4, 0)
+    valueText:SetText(currentValue)
+    valueText:SetWidth(25)
+    valueText:SetJustifyH("LEFT")
+
+    local plusBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+    plusBtn:SetSize(20, 18)
+    plusBtn:SetPoint("RIGHT", 0, 0)
     plusBtn:SetText("+")
+    plusBtn:GetFontString():SetFont(plusBtn:GetFontString():GetFont(), 10)
 
-    local minusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    minusBtn:SetSize(22, 22)
-    minusBtn:SetPoint("RIGHT", plusBtn, "LEFT", -2, 0)
+    local minusBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+    minusBtn:SetSize(20, 18)
+    minusBtn:SetPoint("RIGHT", plusBtn, "LEFT", -1, 0)
     minusBtn:SetText("-")
+    minusBtn:GetFontString():SetFont(minusBtn:GetFontString():GetFont(), 10)
 
-    local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
-    slider:SetPoint("LEFT", labelText, "RIGHT", 4, 0)
+    local slider = CreateFrame("Slider", nil, container, "OptionsSliderTemplate")
+    slider:SetPoint("LEFT", valueText, "RIGHT", 4, 0)
     slider:SetPoint("RIGHT", minusBtn, "LEFT", -8, 0)
+    slider:SetHeight(16)
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
     slider:SetObeyStepOnDrag(true)
 
-    slider.Low:SetText("")
-    slider.High:SetText("")
+    slider.Low:Hide()
+    slider.High:Hide()
+    slider.Text:Hide()
 
-    local currentValue = Addon:GetSetting(settingKey) or minVal
     slider:SetValue(currentValue)
-    slider.Text:SetText(currentValue)
 
     slider:SetScript("OnValueChanged", function(self, value)
         value = math.floor(value / step + 0.5) * step
-        self.Text:SetText(value)
+        valueText:SetText(value)
         Addon:SetSetting(settingKey, value)
         if onChange then onChange(value) end
     end)
@@ -188,6 +203,8 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
     slider.plusBtn = plusBtn
     slider.settingKey = settingKey
     slider.label = labelText
+    slider.valueText = valueText
+    slider.container = container
     return slider
 end
 
@@ -296,25 +313,16 @@ local function CreateConfigFrame()
     local nameOptionsContainer = {}
 
     local nameXSlider = CreateHorizontalSlider(frame, "X:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end)
-    table.insert(nameOptionsContainer, nameXSlider)
-    table.insert(nameOptionsContainer, nameXSlider.label)
-    table.insert(nameOptionsContainer, nameXSlider.minusBtn)
-    table.insert(nameOptionsContainer, nameXSlider.plusBtn)
-    y = y - 33
+    table.insert(nameOptionsContainer, nameXSlider.container)
+    y = y - 26
 
     local nameYSlider = CreateHorizontalSlider(frame, "Y:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end)
-    table.insert(nameOptionsContainer, nameYSlider)
-    table.insert(nameOptionsContainer, nameYSlider.label)
-    table.insert(nameOptionsContainer, nameYSlider.minusBtn)
-    table.insert(nameOptionsContainer, nameYSlider.plusBtn)
-    y = y - 33
+    table.insert(nameOptionsContainer, nameYSlider.container)
+    y = y - 26
 
     local nameSizeSlider = CreateHorizontalSlider(frame, "Size:", "nameSize", 6, 20, 1, y, function() Addon:RefreshNames() end)
-    table.insert(nameOptionsContainer, nameSizeSlider)
-    table.insert(nameOptionsContainer, nameSizeSlider.label)
-    table.insert(nameOptionsContainer, nameSizeSlider.minusBtn)
-    table.insert(nameOptionsContainer, nameSizeSlider.plusBtn)
-    y = y - 33
+    table.insert(nameOptionsContainer, nameSizeSlider.container)
+    y = y - 30
 
     local hideServerCheckbox = CreateSubCheckbox(frame, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, hideServerCheckbox)
@@ -322,14 +330,11 @@ local function CreateConfigFrame()
 
     local truncateCheckbox = CreateSubCheckbox(frame, "Truncate long names", "nameTruncate", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, truncateCheckbox)
-    y = y - 35
+    y = y - 30
 
     local truncateSlider = CreateHorizontalSlider(frame, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
-    table.insert(nameOptionsContainer, truncateSlider)
-    table.insert(nameOptionsContainer, truncateSlider.label)
-    table.insert(nameOptionsContainer, truncateSlider.minusBtn)
-    table.insert(nameOptionsContainer, truncateSlider.plusBtn)
-    y = y - 33
+    table.insert(nameOptionsContainer, truncateSlider.container)
+    y = y - 30
 
     local classColorCheckbox = CreateSubCheckbox(frame, "Class color", "nameClassColor", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, classColorCheckbox)
@@ -368,28 +373,19 @@ local function CreateConfigFrame()
 
     local threatHideInRaidCheckbox = CreateSubCheckbox(frame, "Hide in raids", "threatIndicatorHideInRaid", y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatHideInRaidCheckbox)
-    y = y - 35
+    y = y - 30
 
     local threatXSlider = CreateHorizontalSlider(frame, "X:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
-    table.insert(threatOptionsContainer, threatXSlider)
-    table.insert(threatOptionsContainer, threatXSlider.label)
-    table.insert(threatOptionsContainer, threatXSlider.minusBtn)
-    table.insert(threatOptionsContainer, threatXSlider.plusBtn)
-    y = y - 33
+    table.insert(threatOptionsContainer, threatXSlider.container)
+    y = y - 26
 
     local threatYSlider = CreateHorizontalSlider(frame, "Y:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
-    table.insert(threatOptionsContainer, threatYSlider)
-    table.insert(threatOptionsContainer, threatYSlider.label)
-    table.insert(threatOptionsContainer, threatYSlider.minusBtn)
-    table.insert(threatOptionsContainer, threatYSlider.plusBtn)
-    y = y - 33
+    table.insert(threatOptionsContainer, threatYSlider.container)
+    y = y - 26
 
     local threatSizeSlider = CreateHorizontalSlider(frame, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
-    table.insert(threatOptionsContainer, threatSizeSlider)
-    table.insert(threatOptionsContainer, threatSizeSlider.label)
-    table.insert(threatOptionsContainer, threatSizeSlider.minusBtn)
-    table.insert(threatOptionsContainer, threatSizeSlider.plusBtn)
-    y = y - 33
+    table.insert(threatOptionsContainer, threatSizeSlider.container)
+    y = y - 26
     
     UpdateThreatOptionsEnabled = function(enabled)
         SetControlsEnabled(threatOptionsContainer, enabled)
