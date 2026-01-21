@@ -22,22 +22,17 @@ local function HideAuraFrameBorder(auraFrame)
     for _, region in ipairs({ auraFrame:GetRegions() }) do
         if region:IsObjectType("Texture") then
             local name = region:GetName() or ""
-            local texture = region:GetTexture() or ""
-            local drawLayer = region:GetDrawLayer()
+            local texture = region:GetTexture()
             local isBorder = false
-            
+
             if name:lower():find("border") or name:lower():find("overlay") then
                 isBorder = true
             end
-            
+
             if type(texture) == "string" and (texture:lower():find("border") or texture:lower():find("overlay")) then
                 isBorder = true
             end
-            
-            if drawLayer == "OVERLAY" and not name:lower():find("icon") then
-                isBorder = true
-            end
-            
+
             if isBorder then
                 region:Hide()
                 region:SetAlpha(0)
@@ -78,8 +73,8 @@ local function ShowAuraFrameBorder(auraFrame)
     
     for _, region in ipairs({ auraFrame:GetRegions() }) do
         if region:IsObjectType("Texture") then
-            local drawLayer = region:GetDrawLayer()
-            if drawLayer == "OVERLAY" then
+            local name = region:GetName() or ""
+            if name:lower():find("border") or name:lower():find("overlay") then
                 region:Show()
                 region:SetAlpha(1)
             end
@@ -97,9 +92,9 @@ end
 
 local function ProcessFrameAuras(frame)
     if not frame then return end
-    
+
     local shouldHide = BetterRaidFramesDB.hideAuraBorders
-    
+
     if frame.buffFrames then
         for _, buffFrame in ipairs(frame.buffFrames) do
             if shouldHide then
@@ -109,7 +104,7 @@ local function ProcessFrameAuras(frame)
             end
         end
     end
-    
+
     if frame.debuffFrames then
         for _, debuffFrame in ipairs(frame.debuffFrames) do
             if shouldHide then
@@ -119,7 +114,7 @@ local function ProcessFrameAuras(frame)
             end
         end
     end
-    
+
     if frame.dispelDebuffFrames then
         for _, dispelFrame in ipairs(frame.dispelDebuffFrames) do
             if shouldHide then

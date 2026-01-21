@@ -9,6 +9,7 @@ local defaults = {
     threatIndicatorY = 0,
     threatIndicatorSize = 8,
     hideAuraBorders = false,
+    hideDispelIndicator = false,
     hideIncomingHeals = true,
     customizeNames = false,
     nameX = 0,
@@ -62,6 +63,7 @@ local function HookRaidFrames()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
     Addon:HookAuraBorders()
+    Addon:HookDispelIndicator()
     Addon:HookIncomingHeals()
     Addon:HookName()
     Addon:HookFriendlyAbsorb()

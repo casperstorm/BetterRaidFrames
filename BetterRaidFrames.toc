@@ -13,6 +13,7 @@ Utils.lua
 RoleIcons.lua
 ThreatIndicator.lua
 AuraBorders.lua
+DispelIndicator.lua
 IncomingHeals.lua
 Name.lua
 FriendlyAbsorb.lua

@@ -268,6 +268,9 @@ local function CreateConfigFrame()
     local auraBordersCheckbox = CreateCheckbox(frame, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
     y = y - 25
 
+    local dispelIndicatorCheckbox = CreateCheckbox(frame, "Hide dispel indicator", "hideDispelIndicator", y, function() Addon:RefreshDispelIndicator() end)
+    y = y - 25
+
     local selectionBorderCheckbox = CreateCheckbox(frame, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
     y = y - 25 - SECTION_PADDING
 
