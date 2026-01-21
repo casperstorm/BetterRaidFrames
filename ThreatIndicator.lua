@@ -68,7 +68,7 @@ local function UpdateThreatIndicator(frame)
 
     local shouldBlink = Addon:GetSetting("threatIndicatorBlink")
 
-    if Addon.testMode then
+    if Addon:IsConfigOpen() then
         indicator:Show()
         if shouldBlink then
             if not indicator.animGroup:IsPlaying() then

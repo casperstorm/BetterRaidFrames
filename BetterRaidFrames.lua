@@ -28,7 +28,9 @@ local defaults = {
     partyLeaderHideInCombat = false,
 }
 
-Addon.testMode = false
+function Addon:IsConfigOpen()
+    return _G["BetterRaidFramesConfigFrame"] and _G["BetterRaidFramesConfigFrame"]:IsShown()
+end
 
 local function CopyDefaults()
     local copy = {}
@@ -209,19 +211,6 @@ function Addon:CopyToProfile(targetName)
     return true
 end
 
-function Addon:SetTestMode(enabled)
-    self.testMode = enabled
-    if enabled then
-        print("|cff00ff00BetterRaidFrames:|r Test mode |cff00ff00ENABLED|r")
-    else
-        print("|cff00ff00BetterRaidFrames:|r Test mode |cffff0000DISABLED|r")
-    end
-    self:UpdateAllFrames()
-end
-
-function Addon:ToggleTestMode()
-    self:SetTestMode(not self.testMode)
-end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
@@ -240,11 +229,7 @@ SLASH_BETTERRAIDFRAMES1 = "/brf"
 SLASH_BETTERRAIDFRAMES2 = "/betterraidframes"
 
 SlashCmdList["BETTERRAIDFRAMES"] = function(msg)
-    if msg == "test" then
-        Addon:ToggleTestMode()
-    else
-        Addon:OpenConfig()
-    end
+    Addon:OpenConfig()
 end
 
 _G["BetterRaidFrames"] = Addon

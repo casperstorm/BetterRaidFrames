@@ -236,11 +236,12 @@ local function CreateConfigFrame()
     frame:SetFrameStrata("DIALOG")
     frame:Hide()
     
+    frame:SetScript("OnShow", function()
+        Addon:UpdateAllFrames()
+    end)
+    
     frame:SetScript("OnHide", function()
-        if Addon.testMode then
-            Addon:SetTestMode(false)
-            print("|cff00ff00BetterRaidFrames:|r Test mode auto-disabled (config closed)")
-        end
+        Addon:UpdateAllFrames()
     end)
     
     frame.TitleText:SetText("Better Raid Frames")
@@ -330,30 +331,12 @@ local function CreateConfigFrame()
     frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
     UpdateProfileButtonsVisibility()
 
-    y = y - 50
-
-    -- Test Mode
-    local testHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    testHeader:SetPoint("TOPLEFT", 16, y)
-    testHeader:SetText("Test Mode")
-    testHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
-    
-    local testCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-    testCheckbox:SetPoint("TOPLEFT", 16, y)
-    testCheckbox.Text:SetText("Enable test mode")
-    testCheckbox.Text:SetFontObject("GameFontHighlight")
-    testCheckbox:SetChecked(Addon.testMode)
-    testCheckbox:SetScript("OnClick", function(self)
-        Addon:SetTestMode(self:GetChecked())
-    end)
-    frame.testCheckbox = testCheckbox
-    y = y - 25
+    y = y - 65
 
     local roleIconDropdown = CreateDropdown(
         content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
-    y = y - 55
+    y = y - 60
 
     local UpdatePartyLeaderOptionsEnabled
 
@@ -502,10 +485,6 @@ function Addon:OpenConfig()
         ConfigFrame = CreateConfigFrame()
     end
 
-    if ConfigFrame.testCheckbox then
-        ConfigFrame.testCheckbox:SetChecked(self.testMode)
-    end
-
     if ConfigFrame.UpdateProfileButtonsVisibility then
         ConfigFrame.UpdateProfileButtonsVisibility()
     end
@@ -519,10 +498,6 @@ end
 
 function Addon:RefreshConfig()
     if not ConfigFrame then return end
-
-    if ConfigFrame.testCheckbox then
-        ConfigFrame.testCheckbox:SetChecked(self.testMode)
-    end
 
     if ConfigFrame.RefreshProfileDropdown then
         ConfigFrame.RefreshProfileDropdown()

@@ -30,7 +30,7 @@ local function UpdateHostileAbsorb(frame)
     local maxHealth = UnitHealthMax(unit)
     local healAbsorb = UnitGetTotalHealAbsorbs(unit)
     
-    if Addon.testMode then
+    if Addon:IsConfigOpen() then
         healAbsorb = maxHealth * 0.25
     end
     

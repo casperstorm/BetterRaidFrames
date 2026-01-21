@@ -29,7 +29,7 @@ local function UpdateFriendlyAbsorb(frame)
     local maxHealth = UnitHealthMax(unit)
     local absorbs = UnitGetTotalAbsorbs(unit)
     
-    if Addon.testMode then
+    if Addon:IsConfigOpen() then
         absorbs = maxHealth * 0.5
     end
     
