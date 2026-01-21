@@ -140,33 +140,43 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
     container:SetPoint("TOPRIGHT", -12, yOffset)
     container:SetHeight(20)
 
+    local currentValue = Addon:GetSetting(settingKey) or minVal
+
+    -- Label on left
     local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     labelText:SetPoint("LEFT", 0, 0)
     labelText:SetText(label)
 
-    local currentValue = Addon:GetSetting(settingKey) or minVal
+    -- Left arrow button (decrement)
+    local leftBtn = CreateFrame("Button", nil, container)
+    leftBtn:SetSize(20, 20)
+    leftBtn:SetPoint("LEFT", labelText, "RIGHT", 2, 0)
+    leftBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    leftBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
+    leftBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
 
-    local valueText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    valueText:SetPoint("LEFT", labelText, "RIGHT", 4, 0)
-    valueText:SetText(currentValue)
-    valueText:SetWidth(25)
-    valueText:SetJustifyH("LEFT")
+    -- Value input on right (editable)
+    local valueBox = CreateFrame("EditBox", nil, container, "InputBoxTemplate")
+    valueBox:SetSize(40, 18)
+    valueBox:SetPoint("RIGHT", 0, 0)
+    valueBox:SetAutoFocus(false)
+    valueBox:SetNumeric(false)
+    valueBox:SetText(currentValue)
+    valueBox:SetJustifyH("CENTER")
+    valueBox:SetFontObject("GameFontHighlightSmall")
 
-    local plusBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-    plusBtn:SetSize(20, 18)
-    plusBtn:SetPoint("RIGHT", 0, 0)
-    plusBtn:SetText("+")
-    plusBtn:GetFontString():SetFont(plusBtn:GetFontString():GetFont(), 10)
+    -- Right arrow button (increment)
+    local rightBtn = CreateFrame("Button", nil, container)
+    rightBtn:SetSize(20, 20)
+    rightBtn:SetPoint("RIGHT", valueBox, "LEFT", -8, 0)
+    rightBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    rightBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
+    rightBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
 
-    local minusBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-    minusBtn:SetSize(20, 18)
-    minusBtn:SetPoint("RIGHT", plusBtn, "LEFT", -1, 0)
-    minusBtn:SetText("-")
-    minusBtn:GetFontString():SetFont(minusBtn:GetFontString():GetFont(), 10)
-
+    -- Slider in middle
     local slider = CreateFrame("Slider", nil, container, "OptionsSliderTemplate")
-    slider:SetPoint("LEFT", valueText, "RIGHT", 4, 0)
-    slider:SetPoint("RIGHT", minusBtn, "LEFT", -8, 0)
+    slider:SetPoint("LEFT", leftBtn, "RIGHT", 4, 0)
+    slider:SetPoint("RIGHT", rightBtn, "LEFT", -4, 0)
     slider:SetHeight(16)
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
@@ -180,30 +190,47 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
 
     slider:SetScript("OnValueChanged", function(self, value)
         value = math.floor(value / step + 0.5) * step
-        valueText:SetText(value)
+        valueBox:SetText(value)
         Addon:SetSetting(settingKey, value)
         if onChange then onChange(value) end
     end)
 
-    minusBtn:SetScript("OnClick", function()
+    valueBox:SetScript("OnEnterPressed", function(self)
+        local val = tonumber(self:GetText())
+        if val then
+            val = math.max(minVal, math.min(maxVal, val))
+            val = math.floor(val / step + 0.5) * step
+            slider:SetValue(val)
+        else
+            self:SetText(slider:GetValue())
+        end
+        self:ClearFocus()
+    end)
+
+    valueBox:SetScript("OnEscapePressed", function(self)
+        self:SetText(slider:GetValue())
+        self:ClearFocus()
+    end)
+
+    leftBtn:SetScript("OnClick", function()
         local val = slider:GetValue() - step
         if val >= minVal then
             slider:SetValue(val)
         end
     end)
 
-    plusBtn:SetScript("OnClick", function()
+    rightBtn:SetScript("OnClick", function()
         local val = slider:GetValue() + step
         if val <= maxVal then
             slider:SetValue(val)
         end
     end)
 
-    slider.minusBtn = minusBtn
-    slider.plusBtn = plusBtn
+    slider.leftBtn = leftBtn
+    slider.rightBtn = rightBtn
     slider.settingKey = settingKey
     slider.label = labelText
-    slider.valueText = valueText
+    slider.valueBox = valueBox
     slider.container = container
     return slider
 end
@@ -226,7 +253,7 @@ end
 
 local function CreateConfigFrame()
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(320, 600)
+    frame:SetSize(340, 600)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -246,8 +273,13 @@ local function CreateConfigFrame()
     
     frame.TitleText:SetText("Better Raid Frames")
     
+    local disclaimer = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    disclaimer:SetPoint("TOP", 0, -34)
+    disclaimer:SetText("Tip: Join a Follower Dungeon to test and adjust")
+    disclaimer:SetTextColor(0.7, 0.7, 0.7)
+    
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 16, -32)
+    scrollFrame:SetPoint("TOPLEFT", 16, -52)
     scrollFrame:SetPoint("BOTTOMRIGHT", -32, 8)
     
     local content = CreateFrame("Frame", nil, scrollFrame)
