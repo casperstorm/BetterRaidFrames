@@ -1,17 +1,25 @@
 local ADDON_NAME, Addon = ...
 
+local function IsEditMode()
+    return EditModeManagerFrame and EditModeManagerFrame:IsShown()
+end
+
 local function UpdateDispelIndicator(frame)
     if not frame or not frame.dispelDebuffFrames then return end
-
     if not Addon:GetSetting("hideDispelIndicator") then return end
 
-    for _, dispelFrame in ipairs(frame.dispelDebuffFrames) do
-        dispelFrame:Hide()
+    for i = 1, #frame.dispelDebuffFrames do
+        local dispelFrame = frame.dispelDebuffFrames[i]
+        if dispelFrame then
+            dispelFrame:Hide()
+        end
     end
 end
 
 function Addon:HookDispelIndicator()
     hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
+        if IsEditMode() then return end
+        if not frame or not frame.dispelDebuffFrames then return end
         if Addon:GetSetting("hideDispelIndicator") then
             UpdateDispelIndicator(frame)
         end
@@ -19,6 +27,7 @@ function Addon:HookDispelIndicator()
 
     if CompactUnitFrame_UtilSetDispelDebuff then
         hooksecurefunc("CompactUnitFrame_UtilSetDispelDebuff", function(dispelFrame)
+            if IsEditMode() then return end
             if Addon:GetSetting("hideDispelIndicator") then
                 dispelFrame:Hide()
             end
@@ -27,5 +36,6 @@ function Addon:HookDispelIndicator()
 end
 
 function Addon:RefreshDispelIndicator()
+    if IsEditMode() then return end
     Addon:ForEachFrame(UpdateDispelIndicator)
 end

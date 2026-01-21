@@ -32,6 +32,10 @@ function Addon:IsConfigOpen()
     return _G["BetterRaidFramesConfigFrame"] and _G["BetterRaidFramesConfigFrame"]:IsShown()
 end
 
+function Addon:IsEditModeActive()
+    return EditModeManagerFrame and EditModeManagerFrame:IsShown()
+end
+
 local function CopyDefaults()
     local copy = {}
     for key, value in pairs(defaults) do
@@ -121,6 +125,7 @@ function Addon:UpdateAllFrames()
         Addon:UpdateSelectionBorder(frame)
         Addon:UpdatePartyLeader(frame)
     end)
+    
 end
 
 function Addon:GetSetting(key)
@@ -220,6 +225,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         InitializeDB()
         HookRaidFrames()
+        Addon:HookEditMode()
     elseif event == "PLAYER_ENTERING_WORLD" then
         Addon:UpdateAllFrames()
     end

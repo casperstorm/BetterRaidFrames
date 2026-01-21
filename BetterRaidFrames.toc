@@ -20,4 +20,5 @@ FriendlyAbsorb.lua
 HostileAbsorb.lua
 SelectionBorder.lua
 PartyLeader.lua
+EditModeButton.lua
 Config.lua
