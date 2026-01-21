@@ -110,35 +110,10 @@ function Addon:UpdateThreatIndicator(frame)
 end
 
 function Addon:RefreshThreatIndicators()
-    for i = 1, 5 do
-        local frame = _G["CompactPartyFrameMember" .. i]
-        if frame then
-            if frame.BRFThreatIndicator then
-                ApplyIndicatorSettings(frame.BRFThreatIndicator, frame)
-            end
-            UpdateThreatIndicator(frame)
+    Addon:ForEachFrame(function(frame)
+        if frame.BRFThreatIndicator then
+            ApplyIndicatorSettings(frame.BRFThreatIndicator, frame)
         end
-    end
-    
-    for i = 1, 40 do
-        local frame = _G["CompactRaidFrame" .. i]
-        if frame then
-            if frame.BRFThreatIndicator then
-                ApplyIndicatorSettings(frame.BRFThreatIndicator, frame)
-            end
-            UpdateThreatIndicator(frame)
-        end
-    end
-    
-    for group = 1, 8 do
-        for member = 1, 5 do
-            local frame = _G["CompactRaidGroup" .. group .. "Member" .. member]
-            if frame then
-                if frame.BRFThreatIndicator then
-                    ApplyIndicatorSettings(frame.BRFThreatIndicator, frame)
-                end
-                UpdateThreatIndicator(frame)
-            end
-        end
-    end
+        UpdateThreatIndicator(frame)
+    end)
 end

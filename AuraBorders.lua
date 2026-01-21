@@ -191,26 +191,5 @@ function Addon:UpdateAuraBorders(frame)
 end
 
 function Addon:RefreshAuraBorders()
-    for i = 1, 5 do
-        local frame = _G["CompactPartyFrameMember" .. i]
-        if frame then
-            ProcessFrameAuras(frame)
-        end
-    end
-    
-    for i = 1, 40 do
-        local frame = _G["CompactRaidFrame" .. i]
-        if frame then
-            ProcessFrameAuras(frame)
-        end
-    end
-    
-    for group = 1, 8 do
-        for member = 1, 5 do
-            local frame = _G["CompactRaidGroup" .. group .. "Member" .. member]
-            if frame then
-                ProcessFrameAuras(frame)
-            end
-        end
-    end
+    Addon:ForEachFrame(ProcessFrameAuras)
 end

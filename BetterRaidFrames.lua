@@ -65,46 +65,15 @@ local function HookRaidFrames()
 end
 
 function Addon:UpdateAllFrames()
-    for i = 1, 5 do
-        local frame = _G["CompactPartyFrameMember" .. i]
-        if frame then
-            Addon:UpdateRoleIcon(frame)
-            Addon:UpdateThreatIndicator(frame)
-            Addon:UpdateAuraBorders(frame)
-            Addon:UpdateIncomingHeals(frame)
-            Addon:UpdateName(frame)
-            Addon:UpdateFriendlyAbsorb(frame)
-            Addon:UpdateHostileAbsorb(frame)
-        end
-    end
-    
-    for i = 1, 40 do
-        local frame = _G["CompactRaidFrame" .. i]
-        if frame then
-            Addon:UpdateRoleIcon(frame)
-            Addon:UpdateThreatIndicator(frame)
-            Addon:UpdateAuraBorders(frame)
-            Addon:UpdateIncomingHeals(frame)
-            Addon:UpdateName(frame)
-            Addon:UpdateFriendlyAbsorb(frame)
-            Addon:UpdateHostileAbsorb(frame)
-        end
-    end
-    
-    for group = 1, 8 do
-        for member = 1, 5 do
-            local frame = _G["CompactRaidGroup" .. group .. "Member" .. member]
-            if frame then
-                Addon:UpdateRoleIcon(frame)
-                Addon:UpdateThreatIndicator(frame)
-                Addon:UpdateAuraBorders(frame)
-                Addon:UpdateIncomingHeals(frame)
-                Addon:UpdateName(frame)
-                Addon:UpdateFriendlyAbsorb(frame)
-                Addon:UpdateHostileAbsorb(frame)
-            end
-        end
-    end
+    Addon:ForEachFrame(function(frame)
+        Addon:UpdateRoleIcon(frame)
+        Addon:UpdateThreatIndicator(frame)
+        Addon:UpdateAuraBorders(frame)
+        Addon:UpdateIncomingHeals(frame)
+        Addon:UpdateName(frame)
+        Addon:UpdateFriendlyAbsorb(frame)
+        Addon:UpdateHostileAbsorb(frame)
+    end)
 end
 
 function Addon:GetSetting(key)

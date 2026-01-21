@@ -1,7 +1,33 @@
 local ADDON_NAME, Addon = ...
 
--- Config frame
 local ConfigFrame = nil
+
+local SECTION_PADDING = 12
+local HEADER_TO_CONTENT = 20
+
+local function SetControlsEnabled(controls, enabled)
+    local alpha = enabled and 1.0 or 0.5
+    for _, control in ipairs(controls) do
+        if control.SetEnabled then
+            control:SetEnabled(enabled)
+        end
+        if control.SetAlpha then
+            control:SetAlpha(alpha)
+        end
+        if control.EnableMouse then
+            control:EnableMouse(enabled)
+        end
+    end
+end
+
+local function CreateDivider(parent, yOffset)
+    local divider = parent:CreateTexture(nil, "ARTWORK")
+    divider:SetPoint("TOPLEFT", 12, yOffset)
+    divider:SetPoint("TOPRIGHT", -12, yOffset)
+    divider:SetHeight(1)
+    divider:SetColorTexture(0.4, 0.4, 0.4, 0.8)
+    return divider
+end
 
 local function CreateCheckbox(parent, label, settingKey, yOffset, onChange)
     local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
@@ -22,12 +48,10 @@ local function CreateCheckbox(parent, label, settingKey, yOffset, onChange)
 end
 
 local function CreateDropdown(parent, label, settingKey, options, yOffset, onChange)
-    -- Label
     local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     labelText:SetPoint("TOPLEFT", 16, yOffset)
     labelText:SetText(label)
     
-    -- Dropdown button
     local dropdown = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("TOPLEFT", 16, yOffset - 18)
     dropdown:SetWidth(200)
@@ -38,9 +62,7 @@ local function CreateDropdown(parent, label, settingKey, options, yOffset, onCha
     
     local function SetSelected(value)
         Addon:SetSetting(settingKey, value)
-        if onChange then
-            onChange(value)
-        end
+        if onChange then onChange(value) end
         dropdown:GenerateMenu()
     end
     
@@ -51,19 +73,18 @@ local function CreateDropdown(parent, label, settingKey, options, yOffset, onCha
     end)
     
     dropdown.settingKey = settingKey
+    dropdown.label = labelText
     return dropdown
 end
 
-local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange)
-    -- Label
+local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange, showButtons)
     local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    labelText:SetPoint("TOPLEFT", 16, yOffset)
+    labelText:SetPoint("TOPLEFT", 32, yOffset)
     labelText:SetText(label)
     
-    -- Slider
     local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
-    slider:SetPoint("TOPLEFT", 16, yOffset - 28)
-    slider:SetWidth(200)
+    slider:SetPoint("TOPLEFT", 32, yOffset - 28)
+    slider:SetWidth(showButtons and 140 or 180)
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
     slider:SetObeyStepOnDrag(true)
@@ -79,131 +100,59 @@ local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOf
         value = math.floor(value / step + 0.5) * step
         self.Text:SetText(value)
         Addon:SetSetting(settingKey, value)
-        if onChange then
-            onChange(value)
-        end
+        if onChange then onChange(value) end
     end)
     
+    if showButtons then
+        local minusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        minusBtn:SetSize(22, 22)
+        minusBtn:SetPoint("LEFT", slider, "RIGHT", 8, 0)
+        minusBtn:SetText("-")
+        minusBtn:SetScript("OnClick", function()
+            local val = slider:GetValue() - step
+            if val >= minVal then
+                slider:SetValue(val)
+            end
+        end)
+        slider.minusBtn = minusBtn
+        
+        local plusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        plusBtn:SetSize(22, 22)
+        plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
+        plusBtn:SetText("+")
+        plusBtn:SetScript("OnClick", function()
+            local val = slider:GetValue() + step
+            if val <= maxVal then
+                slider:SetValue(val)
+            end
+        end)
+        slider.plusBtn = plusBtn
+    end
+    
     slider.settingKey = settingKey
+    slider.label = labelText
     return slider
 end
 
-local function CreateColorPicker(parent, label, settingKey, yOffset, onChange)
-    -- Label
-    local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    labelText:SetPoint("TOPLEFT", 16, yOffset)
-    labelText:SetText(label)
+local function CreateSubCheckbox(parent, label, settingKey, yOffset, onChange)
+    local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
+    checkbox:SetPoint("TOPLEFT", 32, yOffset)
+    checkbox.Text:SetText(label)
+    checkbox.Text:SetFontObject("GameFontHighlight")
     
-    -- Color swatch button
-    local colorButton = CreateFrame("Button", nil, parent)
-    colorButton:SetPoint("TOPLEFT", 16, yOffset - 18)
-    colorButton:SetSize(24, 24)
-    
-    -- Border
-    local border = colorButton:CreateTexture(nil, "OVERLAY")
-    border:SetAllPoints()
-    border:SetColorTexture(0.3, 0.3, 0.3, 1)
-    
-    local innerBorder = colorButton:CreateTexture(nil, "OVERLAY", nil, 1)
-    innerBorder:SetPoint("TOPLEFT", 1, -1)
-    innerBorder:SetPoint("BOTTOMRIGHT", -1, 1)
-    innerBorder:SetColorTexture(0, 0, 0, 1)
-    
-    local innerSwatch = colorButton:CreateTexture(nil, "OVERLAY", nil, 2)
-    innerSwatch:SetPoint("TOPLEFT", 2, -2)
-    innerSwatch:SetPoint("BOTTOMRIGHT", -2, 2)
-    colorButton.innerSwatch = innerSwatch
-    
-    -- Update the color display
-    local function UpdateColorSwatch()
-        local color = Addon:GetSetting(settingKey) or { r = 1, g = 0, b = 0, a = 1 }
-        colorButton.innerSwatch:SetColorTexture(color.r, color.g, color.b, color.a)
-    end
-    
-    UpdateColorSwatch()
-    colorButton.UpdateColorSwatch = UpdateColorSwatch
-    
-    -- Color label showing hex value
-    local hexLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    hexLabel:SetPoint("LEFT", colorButton, "RIGHT", 8, 0)
-    colorButton.hexLabel = hexLabel
-    
-    local function UpdateHexLabel()
-        local color = Addon:GetSetting(settingKey) or { r = 1, g = 0, b = 0, a = 1 }
-        local hex = string.format("#%02X%02X%02X", 
-            math.floor(color.r * 255), 
-            math.floor(color.g * 255), 
-            math.floor(color.b * 255))
-        hexLabel:SetText(hex)
-    end
-    
-    UpdateHexLabel()
-    colorButton.UpdateHexLabel = UpdateHexLabel
-    
-    -- Click handler to open color picker
-    colorButton:SetScript("OnClick", function()
-        local color = Addon:GetSetting(settingKey) or { r = 1, g = 0, b = 0, a = 1 }
-        
-        local info = {
-            swatchFunc = function()
-                local r, g, b = ColorPickerFrame:GetColorRGB()
-                local a = ColorPickerFrame:GetColorAlpha()
-                Addon:SetSetting(settingKey, { r = r, g = g, b = b, a = a })
-                UpdateColorSwatch()
-                UpdateHexLabel()
-                if onChange then
-                    onChange()
-                end
-            end,
-            hasOpacity = true,
-            opacityFunc = function()
-                local r, g, b = ColorPickerFrame:GetColorRGB()
-                local a = ColorPickerFrame:GetColorAlpha()
-                Addon:SetSetting(settingKey, { r = r, g = g, b = b, a = a })
-                UpdateColorSwatch()
-                UpdateHexLabel()
-                if onChange then
-                    onChange()
-                end
-            end,
-            cancelFunc = function(previousValues)
-                Addon:SetSetting(settingKey, {
-                    r = previousValues.r,
-                    g = previousValues.g,
-                    b = previousValues.b,
-                    a = previousValues.a or 1
-                })
-                UpdateColorSwatch()
-                UpdateHexLabel()
-                if onChange then
-                    onChange()
-                end
-            end,
-            r = color.r,
-            g = color.g,
-            b = color.b,
-            opacity = color.a,
-        }
-        
-        ColorPickerFrame:SetupColorPickerAndShow(info)
+    checkbox:SetChecked(Addon:GetSetting(settingKey))
+    checkbox:SetScript("OnClick", function(self)
+        Addon:SetSetting(settingKey, self:GetChecked())
+        if onChange then onChange(self:GetChecked()) end
     end)
     
-    -- Highlight on hover
-    colorButton:SetScript("OnEnter", function(self)
-        self.innerSwatch:SetAlpha(0.8)
-    end)
-    
-    colorButton:SetScript("OnLeave", function(self)
-        self.innerSwatch:SetAlpha(1)
-    end)
-    
-    colorButton.settingKey = settingKey
-    return colorButton
+    checkbox.settingKey = settingKey
+    return checkbox
 end
 
 local function CreateConfigFrame()
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(320, 620)
+    frame:SetSize(320, 800)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -213,159 +162,185 @@ local function CreateConfigFrame()
     frame:SetFrameStrata("DIALOG")
     frame:Hide()
     
-    -- Title
+    frame:SetScript("OnHide", function()
+        if Addon.testMode then
+            Addon:SetTestMode(false)
+            print("|cff00ff00BetterRaidFrames:|r Test mode auto-disabled (config closed)")
+        end
+    end)
+    
     frame.TitleText:SetText("BetterRaidFrames")
     
-    -- Description
     local desc = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     desc:SetPoint("TOPLEFT", 16, -32)
     desc:SetWidth(288)
     desc:SetJustifyH("LEFT")
-    desc:SetText("Customize the appearance of the default raid frames.")
+    desc:SetText("Customize default raid frames.")
     
-    -- =====================
-    -- Role Icons Section
-    -- =====================
+    local y = -55
+    
+    -- Test Mode
+    local testHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    testHeader:SetPoint("TOPLEFT", 16, y)
+    testHeader:SetText("Test Mode")
+    testHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
+    
+    local testCheckbox = CreateFrame("CheckButton", nil, frame, "InterfaceOptionsCheckButtonTemplate")
+    testCheckbox:SetPoint("TOPLEFT", 16, y)
+    testCheckbox.Text:SetText("Enable test mode")
+    testCheckbox.Text:SetFontObject("GameFontHighlight")
+    testCheckbox:SetChecked(Addon.testMode)
+    testCheckbox:SetScript("OnClick", function(self)
+        Addon:SetTestMode(self:GetChecked())
+    end)
+    frame.testCheckbox = testCheckbox
+    y = y - 25 - SECTION_PADDING
+    
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+    
+    -- Role Icons
     local roleHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    roleHeader:SetPoint("TOPLEFT", 16, -60)
+    roleHeader:SetPoint("TOPLEFT", 16, y)
     roleHeader:SetText("Role Icons")
     roleHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
     
     local roleIconDropdown = CreateDropdown(
-        frame,
-        "Show role icons:",
-        "showRoleIcons",
-        Addon.RoleIconOptions,
-        -80
+        frame, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
-    frame.roleIconDropdown = roleIconDropdown
+    y = y - 55 - SECTION_PADDING
     
-    -- =====================
-    -- Name Section
-    -- =====================
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+    
+    -- Name
     local nameHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    nameHeader:SetPoint("TOPLEFT", 16, -150)
+    nameHeader:SetPoint("TOPLEFT", 16, y)
     nameHeader:SetText("Name")
     nameHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
     
-    local namePositionDropdown = CreateDropdown(
-        frame,
-        "Position:",
-        "namePosition",
-        Addon.NamePositionOptions,
-        -170,
-        function()
-            Addon:RefreshNames()
-        end
-    )
-    frame.namePositionDropdown = namePositionDropdown
+    local customizeNamesCheckbox = CreateCheckbox(frame, "Customize names", "customizeNames", y, function(checked)
+        UpdateNameOptionsEnabled(checked)
+        Addon:RefreshNames()
+    end)
+    frame.customizeNamesCheckbox = customizeNamesCheckbox
+    y = y - 25
     
-    -- Truncate checkbox
-    local truncateCheckbox = CreateCheckbox(
-        frame,
-        "Truncate long names",
-        "nameTruncate",
-        -230,
-        function()
-            Addon:RefreshNames()
-        end
-    )
-    frame.truncateCheckbox = truncateCheckbox
+    local nameOptionsContainer = {}
     
-    -- Truncate length slider
-    local truncateSlider = CreateSlider(
-        frame,
-        "Max name length:",
-        "nameTruncateLength",
-        3, 12, 1,
-        -260,
-        function()
-            Addon:RefreshNames()
-        end
-    )
-    frame.truncateSlider = truncateSlider
+    local nameXSlider = CreateSlider(frame, "X Offset:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end, true)
+    table.insert(nameOptionsContainer, nameXSlider)
+    table.insert(nameOptionsContainer, nameXSlider.label)
+    if nameXSlider.minusBtn then table.insert(nameOptionsContainer, nameXSlider.minusBtn) end
+    if nameXSlider.plusBtn then table.insert(nameOptionsContainer, nameXSlider.plusBtn) end
+    y = y - 55
     
-    -- =====================
-    -- Absorb Shield Section
-    -- =====================
+    local nameYSlider = CreateSlider(frame, "Y Offset:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end, true)
+    table.insert(nameOptionsContainer, nameYSlider)
+    table.insert(nameOptionsContainer, nameYSlider.label)
+    if nameYSlider.minusBtn then table.insert(nameOptionsContainer, nameYSlider.minusBtn) end
+    if nameYSlider.plusBtn then table.insert(nameOptionsContainer, nameYSlider.plusBtn) end
+    y = y - 55
+    
+    local hideServerCheckbox = CreateSubCheckbox(frame, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, hideServerCheckbox)
+    y = y - 25
+    
+    local truncateCheckbox = CreateSubCheckbox(frame, "Truncate long names", "nameTruncate", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, truncateCheckbox)
+    y = y - 25
+    
+    local truncateSlider = CreateSlider(frame, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, truncateSlider)
+    table.insert(nameOptionsContainer, truncateSlider.label)
+    y = y - 55 - SECTION_PADDING
+    
+    local function UpdateNameOptionsEnabled(enabled)
+        SetControlsEnabled(nameOptionsContainer, enabled)
+    end
+    frame.nameOptionsContainer = nameOptionsContainer
+    UpdateNameOptionsEnabled(Addon:GetSetting("customizeNames"))
+    
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+    
+    -- Absorbs
     local absorbHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    absorbHeader:SetPoint("TOPLEFT", 16, -320)
-    absorbHeader:SetText("Absorb Shield")
+    absorbHeader:SetPoint("TOPLEFT", 16, y)
+    absorbHeader:SetText("Absorbs")
     absorbHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
     
-    -- Enable checkbox
-    local absorbCheckbox = CreateCheckbox(
-        frame,
-        "Show absorb shield overlay",
-        "showAbsorbShield",
-        -345,
-        function()
-            Addon:RefreshAbsorbShields()
-        end
-    )
-    frame.absorbCheckbox = absorbCheckbox
+    local friendlyAbsorbCheckbox = CreateCheckbox(frame, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
+    y = y - 25
     
-    -- =====================
-    -- Threat Display Section
-    -- =====================
+    local hostileAbsorbCheckbox = CreateCheckbox(frame, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
+    y = y - 25
+    
+    local hideIncomingHealsCheckbox = CreateCheckbox(frame, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
+    y = y - 25 - SECTION_PADDING
+    
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+    
+    -- Threat Indicator
     local threatHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    threatHeader:SetPoint("TOPLEFT", 16, -380)
-    threatHeader:SetText("Threat Display")
+    threatHeader:SetPoint("TOPLEFT", 16, y)
+    threatHeader:SetText("Threat Indicator")
     threatHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
     
-    -- Enable checkbox
-    local threatCheckbox = CreateCheckbox(
-        frame,
-        "Enable custom threat border",
-        "customThreatBorder",
-        -405
-    )
+    local threatCheckbox = CreateCheckbox(frame, "Show blinking threat indicator", "showThreatIndicator", y, function(checked)
+        UpdateThreatOptionsEnabled(checked)
+        Addon:RefreshThreatIndicators()
+    end)
     frame.threatCheckbox = threatCheckbox
+    y = y - 25
     
-    -- Border size slider
-    local sizeSlider = CreateSlider(
-        frame,
-        "Border size:",
-        "threatBorderSize",
-        1, 5, 1,
-        -440,
-        function()
-            Addon:RefreshThreatBorders()
-        end
-    )
-    frame.sizeSlider = sizeSlider
+    local threatOptionsContainer = {}
     
-    -- Color picker
-    local colorPicker = CreateColorPicker(
-        frame,
-        "Border color:",
-        "threatBorderColor",
-        -500,
-        function()
-            Addon:RefreshThreatBorders()
-        end
-    )
-    frame.colorPicker = colorPicker
+    local threatXSlider = CreateSlider(frame, "X Offset:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end, true)
+    table.insert(threatOptionsContainer, threatXSlider)
+    table.insert(threatOptionsContainer, threatXSlider.label)
+    if threatXSlider.minusBtn then table.insert(threatOptionsContainer, threatXSlider.minusBtn) end
+    if threatXSlider.plusBtn then table.insert(threatOptionsContainer, threatXSlider.plusBtn) end
+    y = y - 55
     
-    -- =====================
-    -- Aura Display Section
-    -- =====================
+    local threatYSlider = CreateSlider(frame, "Y Offset:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end, true)
+    table.insert(threatOptionsContainer, threatYSlider)
+    table.insert(threatOptionsContainer, threatYSlider.label)
+    if threatYSlider.minusBtn then table.insert(threatOptionsContainer, threatYSlider.minusBtn) end
+    if threatYSlider.plusBtn then table.insert(threatOptionsContainer, threatYSlider.plusBtn) end
+    y = y - 55
+    
+    local threatSizeSlider = CreateSlider(frame, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
+    table.insert(threatOptionsContainer, threatSizeSlider)
+    table.insert(threatOptionsContainer, threatSizeSlider.label)
+    y = y - 55 - SECTION_PADDING
+    
+    local function UpdateThreatOptionsEnabled(enabled)
+        SetControlsEnabled(threatOptionsContainer, enabled)
+    end
+    frame.threatOptionsContainer = threatOptionsContainer
+    UpdateThreatOptionsEnabled(Addon:GetSetting("showThreatIndicator"))
+    
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+    
+    -- Auras
     local auraHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    auraHeader:SetPoint("TOPLEFT", 16, -550)
-    auraHeader:SetText("Aura Display")
+    auraHeader:SetPoint("TOPLEFT", 16, y)
+    auraHeader:SetText("Auras")
     auraHeader:SetTextColor(1, 0.82, 0)
+    y = y - HEADER_TO_CONTENT
     
-    -- Hide aura borders checkbox
-    local auraBordersCheckbox = CreateCheckbox(
-        frame,
-        "Hide borders on buff/debuff icons",
-        "hideAuraBorders",
-        -575,
-        function()
-            Addon:RefreshAuraBorders()
-        end
-    )
-    frame.auraBordersCheckbox = auraBordersCheckbox
+    local auraBordersCheckbox = CreateCheckbox(frame, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
+    y = y - 25 - SECTION_PADDING
+    
+    frame:SetSize(320, math.abs(y) + 30)
     
     return frame
 end
@@ -375,10 +350,15 @@ function Addon:OpenConfig()
         ConfigFrame = CreateConfigFrame()
     end
     
-    -- Refresh color picker displays when opening
-    if ConfigFrame.colorPicker then
-        ConfigFrame.colorPicker:UpdateColorSwatch()
-        ConfigFrame.colorPicker:UpdateHexLabel()
+    if ConfigFrame.testCheckbox then
+        ConfigFrame.testCheckbox:SetChecked(self.testMode)
+    end
+    
+    if ConfigFrame.nameOptionsContainer then
+        SetControlsEnabled(ConfigFrame.nameOptionsContainer, self:GetSetting("customizeNames"))
+    end
+    if ConfigFrame.threatOptionsContainer then
+        SetControlsEnabled(ConfigFrame.threatOptionsContainer, self:GetSetting("showThreatIndicator"))
     end
     
     if ConfigFrame:IsShown() then
