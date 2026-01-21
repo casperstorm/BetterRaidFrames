@@ -246,7 +246,84 @@ local function CreateConfigFrame()
     frame.TitleText:SetText("BetterRaidFrames")
 
     local y = -35
-    
+
+    -- Profile Section
+    local profileLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    profileLabel:SetPoint("TOPLEFT", 16, y)
+    profileLabel:SetText("Profile:")
+
+    local profileDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+    profileDropdown:SetPoint("LEFT", profileLabel, "RIGHT", 8, 0)
+    profileDropdown:SetWidth(120)
+
+    local function RefreshProfileDropdown()
+        profileDropdown:SetupMenu(function(dropdown, rootDescription)
+            local profiles = Addon:GetProfileList()
+            local currentProfile = Addon:GetCurrentProfileName()
+            for _, name in ipairs(profiles) do
+                rootDescription:CreateRadio(name,
+                    function() return Addon:GetCurrentProfileName() == name end,
+                    function()
+                        Addon:SwitchProfile(name)
+                        Addon:RefreshConfig()
+                    end,
+                    name
+                )
+            end
+        end)
+    end
+    RefreshProfileDropdown()
+    frame.profileDropdown = profileDropdown
+    frame.RefreshProfileDropdown = RefreshProfileDropdown
+
+    local newBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    newBtn:SetSize(45, 20)
+    newBtn:SetPoint("TOPLEFT", profileDropdown, "BOTTOMLEFT", 0, -8)
+    newBtn:SetText("New")
+    newBtn:GetFontString():SetFont(newBtn:GetFontString():GetFont(), 10)
+    newBtn:SetScript("OnClick", function()
+        StaticPopup_Show("BRF_NEW_PROFILE")
+    end)
+
+    local renameBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    renameBtn:SetSize(55, 20)
+    renameBtn:SetPoint("LEFT", newBtn, "RIGHT", 2, 0)
+    renameBtn:SetText("Rename")
+    renameBtn:GetFontString():SetFont(renameBtn:GetFontString():GetFont(), 10)
+    renameBtn:SetScript("OnClick", function()
+        StaticPopup_Show("BRF_RENAME_PROFILE")
+    end)
+
+    local deleteBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    deleteBtn:SetSize(50, 20)
+    deleteBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
+    deleteBtn:SetText("Delete")
+    deleteBtn:GetFontString():SetFont(deleteBtn:GetFontString():GetFont(), 10)
+    deleteBtn:SetScript("OnClick", function()
+        local current = Addon:GetCurrentProfileName()
+        StaticPopup_Show("BRF_DELETE_PROFILE", current)
+    end)
+
+    local function UpdateProfileButtonsVisibility()
+        local isDefault = Addon:GetCurrentProfileName() == "Default"
+        if renameBtn then
+            renameBtn:SetEnabled(not isDefault)
+        end
+        if deleteBtn then
+            deleteBtn:SetEnabled(not isDefault)
+        end
+    end
+
+    frame.renameBtn = renameBtn
+    frame.deleteBtn = deleteBtn
+    frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
+    UpdateProfileButtonsVisibility()
+
+    y = y - 50 - SECTION_PADDING
+
+    CreateDivider(frame, y)
+    y = y - SECTION_PADDING
+
     -- Test Mode
     local testHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     testHeader:SetPoint("TOPLEFT", 16, y)
@@ -354,7 +431,7 @@ local function CreateConfigFrame()
     threatHeader:SetPoint("TOPLEFT", 16, y)
     threatHeader:SetText("Threat Indicator")
     threatHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
+    y = y - 15
 
     local UpdateThreatOptionsEnabled
 
@@ -363,17 +440,13 @@ local function CreateConfigFrame()
         Addon:RefreshThreatIndicators()
     end)
     frame.threatCheckbox = threatCheckbox
-    y = y - 35
+    y = y - 28
 
     local threatOptionsContainer = {}
 
     local threatBlinkCheckbox = CreateSubCheckbox(frame, "Blinking", "threatIndicatorBlink", y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatBlinkCheckbox)
     y = y - 25
-
-    local threatHideInRaidCheckbox = CreateSubCheckbox(frame, "Hide in raids", "threatIndicatorHideInRaid", y, function() Addon:RefreshThreatIndicators() end)
-    table.insert(threatOptionsContainer, threatHideInRaidCheckbox)
-    y = y - 30
 
     local threatXSlider = CreateHorizontalSlider(frame, "X:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatXSlider.container)
@@ -408,21 +481,133 @@ function Addon:OpenConfig()
     if not ConfigFrame then
         ConfigFrame = CreateConfigFrame()
     end
-    
+
     if ConfigFrame.testCheckbox then
         ConfigFrame.testCheckbox:SetChecked(self.testMode)
     end
-    
-    if ConfigFrame.nameOptionsContainer then
-        SetControlsEnabled(ConfigFrame.nameOptionsContainer, self:GetSetting("customizeNames"))
+
+    if ConfigFrame.UpdateProfileButtonsVisibility then
+        ConfigFrame.UpdateProfileButtonsVisibility()
     end
-    if ConfigFrame.threatOptionsContainer then
-        SetControlsEnabled(ConfigFrame.threatOptionsContainer, self:GetSetting("showThreatIndicator"))
-    end
-    
+
     if ConfigFrame:IsShown() then
         ConfigFrame:Hide()
     else
         ConfigFrame:Show()
     end
 end
+
+function Addon:RefreshConfig()
+    if not ConfigFrame then return end
+
+    if ConfigFrame.testCheckbox then
+        ConfigFrame.testCheckbox:SetChecked(self.testMode)
+    end
+
+    if ConfigFrame.RefreshProfileDropdown then
+        ConfigFrame.RefreshProfileDropdown()
+    end
+
+    if ConfigFrame.UpdateProfileButtonsVisibility then
+        ConfigFrame.UpdateProfileButtonsVisibility()
+    end
+
+    if ConfigFrame.nameOptionsContainer then
+        SetControlsEnabled(ConfigFrame.nameOptionsContainer, self:GetSetting("customizeNames"))
+    end
+    if ConfigFrame.threatOptionsContainer then
+        SetControlsEnabled(ConfigFrame.threatOptionsContainer, self:GetSetting("showThreatIndicator"))
+    end
+
+    -- Recreate the config frame to reflect new profile settings
+    if ConfigFrame:IsShown() then
+        ConfigFrame:Hide()
+        ConfigFrame = nil
+        ConfigFrame = CreateConfigFrame()
+        ConfigFrame:Show()
+    else
+        ConfigFrame = nil
+    end
+end
+
+StaticPopupDialogs["BRF_NEW_PROFILE"] = {
+    text = "Enter new profile name:",
+    button1 = "Create",
+    button2 = "Cancel",
+    hasEditBox = true,
+    OnAccept = function(self)
+        local name = self.EditBox:GetText()
+        if BetterRaidFrames:CreateProfile(name) then
+            BetterRaidFrames:SwitchProfile(name)
+            BetterRaidFrames:RefreshConfig()
+        else
+            print("|cff00ff00BetterRaidFrames:|r Could not create profile (name empty or already exists)")
+        end
+    end,
+    OnShow = function(self)
+        self.EditBox:SetText("")
+        self.EditBox:SetFocus()
+    end,
+    EditBoxOnEnterPressed = function(self)
+        local parent = self:GetParent()
+        local name = parent.EditBox:GetText()
+        if BetterRaidFrames:CreateProfile(name) then
+            BetterRaidFrames:SwitchProfile(name)
+            BetterRaidFrames:RefreshConfig()
+        end
+        parent:Hide()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["BRF_RENAME_PROFILE"] = {
+    text = "Enter new name for profile:",
+    button1 = "Rename",
+    button2 = "Cancel",
+    hasEditBox = true,
+    OnAccept = function(self)
+        local newName = self.EditBox:GetText()
+        local oldName = BetterRaidFrames:GetCurrentProfileName()
+        if BetterRaidFrames:RenameProfile(oldName, newName) then
+            BetterRaidFrames:RefreshConfig()
+        else
+            print("|cff00ff00BetterRaidFrames:|r Could not rename profile")
+        end
+    end,
+    OnShow = function(self)
+        self.EditBox:SetText(BetterRaidFrames:GetCurrentProfileName())
+        self.EditBox:HighlightText()
+        self.EditBox:SetFocus()
+    end,
+    EditBoxOnEnterPressed = function(self)
+        local parent = self:GetParent()
+        local newName = parent.EditBox:GetText()
+        local oldName = BetterRaidFrames:GetCurrentProfileName()
+        if BetterRaidFrames:RenameProfile(oldName, newName) then
+            BetterRaidFrames:RefreshConfig()
+        end
+        parent:Hide()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["BRF_DELETE_PROFILE"] = {
+    text = "Delete profile '%s'?",
+    button1 = "Delete",
+    button2 = "Cancel",
+    OnAccept = function(self)
+        if BetterRaidFrames:DeleteProfile(BetterRaidFrames:GetCurrentProfileName()) then
+            BetterRaidFrames:RefreshConfig()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}

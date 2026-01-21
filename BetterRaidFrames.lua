@@ -4,7 +4,6 @@ local defaults = {
     showRoleIcons = "ALL",
     showThreatIndicator = false,
     threatIndicatorBlink = true,
-    threatIndicatorHideInRaid = false,
     threatIndicatorX = 0,
     threatIndicatorY = 0,
     threatIndicatorSize = 8,
@@ -26,37 +25,67 @@ local defaults = {
 
 Addon.testMode = false
 
+local function CopyDefaults()
+    local copy = {}
+    for key, value in pairs(defaults) do
+        copy[key] = value
+    end
+    return copy
+end
+
+local function GetCurrentProfile()
+    return BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile]
+end
+
 local function InitializeDB()
     if not BetterRaidFramesDB then
         BetterRaidFramesDB = {}
     end
-    for key, value in pairs(defaults) do
-        if BetterRaidFramesDB[key] == nil then
-            if type(value) == "table" then
-                BetterRaidFramesDB[key] = {}
-                for k, v in pairs(value) do
-                    BetterRaidFramesDB[key][k] = v
-                end
-            else
-                BetterRaidFramesDB[key] = value
+
+    -- Migrate from old flat structure to profiles
+    if not BetterRaidFramesDB.profiles then
+        local oldSettings = {}
+        local hasOldSettings = false
+
+        for key, value in pairs(defaults) do
+            if BetterRaidFramesDB[key] ~= nil then
+                oldSettings[key] = BetterRaidFramesDB[key]
+                hasOldSettings = true
+                BetterRaidFramesDB[key] = nil
             end
         end
-    end
-    
-    -- Migration
-    if BetterRaidFramesDB.showAbsorbShield ~= nil then
-        BetterRaidFramesDB.showFriendlyAbsorb = BetterRaidFramesDB.showAbsorbShield
+
+        -- Clean up old migration keys
         BetterRaidFramesDB.showAbsorbShield = nil
-    end
-    if BetterRaidFramesDB.customThreatBorder ~= nil then
-        BetterRaidFramesDB.showThreatIndicator = BetterRaidFramesDB.customThreatBorder
         BetterRaidFramesDB.customThreatBorder = nil
-    end
-    if BetterRaidFramesDB.namePosition ~= nil then
         BetterRaidFramesDB.namePosition = nil
-    end
-    if BetterRaidFramesDB.threatIndicatorPosition ~= nil then
         BetterRaidFramesDB.threatIndicatorPosition = nil
+
+        BetterRaidFramesDB.profiles = {}
+        BetterRaidFramesDB.currentProfile = "Default"
+
+        if hasOldSettings then
+            BetterRaidFramesDB.profiles["Default"] = oldSettings
+        else
+            BetterRaidFramesDB.profiles["Default"] = CopyDefaults()
+        end
+    end
+
+    -- Ensure current profile exists
+    if not BetterRaidFramesDB.currentProfile then
+        BetterRaidFramesDB.currentProfile = "Default"
+    end
+    if not BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile] then
+        BetterRaidFramesDB.profiles["Default"] = CopyDefaults()
+        BetterRaidFramesDB.currentProfile = "Default"
+    end
+
+    -- Fill in missing defaults for current profile
+    local profile = GetCurrentProfile()
+    for key, value in pairs(defaults) do
+        if profile[key] == nil then
+            profile[key] = value
+        end
     end
 end
 
@@ -86,12 +115,91 @@ function Addon:UpdateAllFrames()
 end
 
 function Addon:GetSetting(key)
-    return BetterRaidFramesDB[key]
+    local profile = GetCurrentProfile()
+    return profile and profile[key]
 end
 
 function Addon:SetSetting(key, value)
-    BetterRaidFramesDB[key] = value
+    local profile = GetCurrentProfile()
+    if profile then
+        profile[key] = value
+    end
     self:UpdateAllFrames()
+end
+
+function Addon:GetCurrentProfileName()
+    return BetterRaidFramesDB.currentProfile
+end
+
+function Addon:GetProfileList()
+    local list = {}
+    for name in pairs(BetterRaidFramesDB.profiles) do
+        table.insert(list, name)
+    end
+    table.sort(list)
+    return list
+end
+
+function Addon:SwitchProfile(name)
+    if BetterRaidFramesDB.profiles[name] then
+        BetterRaidFramesDB.currentProfile = name
+        -- Fill in missing defaults
+        local profile = GetCurrentProfile()
+        for key, value in pairs(defaults) do
+            if profile[key] == nil then
+                profile[key] = value
+            end
+        end
+        self:UpdateAllFrames()
+        return true
+    end
+    return false
+end
+
+function Addon:CreateProfile(name)
+    if not name or name == "" or BetterRaidFramesDB.profiles[name] then
+        return false
+    end
+    BetterRaidFramesDB.profiles[name] = CopyDefaults()
+    return true
+end
+
+function Addon:DeleteProfile(name)
+    if name == "Default" or not BetterRaidFramesDB.profiles[name] then
+        return false
+    end
+    BetterRaidFramesDB.profiles[name] = nil
+    if BetterRaidFramesDB.currentProfile == name then
+        BetterRaidFramesDB.currentProfile = "Default"
+        self:UpdateAllFrames()
+    end
+    return true
+end
+
+function Addon:RenameProfile(oldName, newName)
+    if oldName == "Default" or not newName or newName == "" then
+        return false
+    end
+    if not BetterRaidFramesDB.profiles[oldName] or BetterRaidFramesDB.profiles[newName] then
+        return false
+    end
+    BetterRaidFramesDB.profiles[newName] = BetterRaidFramesDB.profiles[oldName]
+    BetterRaidFramesDB.profiles[oldName] = nil
+    if BetterRaidFramesDB.currentProfile == oldName then
+        BetterRaidFramesDB.currentProfile = newName
+    end
+    return true
+end
+
+function Addon:CopyToProfile(targetName)
+    if not BetterRaidFramesDB.profiles[targetName] then
+        return false
+    end
+    local currentProfile = GetCurrentProfile()
+    for key, value in pairs(currentProfile) do
+        BetterRaidFramesDB.profiles[targetName][key] = value
+    end
+    return true
 end
 
 function Addon:SetTestMode(enabled)

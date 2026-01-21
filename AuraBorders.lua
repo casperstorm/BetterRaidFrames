@@ -93,7 +93,7 @@ end
 local function ProcessFrameAuras(frame)
     if not frame then return end
 
-    local shouldHide = BetterRaidFramesDB.hideAuraBorders
+    local shouldHide = Addon:GetSetting("hideAuraBorders")
 
     if frame.buffFrames then
         for _, buffFrame in ipairs(frame.buffFrames) do
@@ -151,30 +151,30 @@ end
 
 function Addon:HookAuraBorders()
     hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-        if BetterRaidFramesDB.hideAuraBorders then
+        if Addon:GetSetting("hideAuraBorders") then
             ProcessFrameAuras(frame)
         end
     end)
-    
+
     if CompactUnitFrame_UtilSetBuff then
         hooksecurefunc("CompactUnitFrame_UtilSetBuff", function(buffFrame)
-            if BetterRaidFramesDB.hideAuraBorders then
+            if Addon:GetSetting("hideAuraBorders") then
                 HideAuraFrameBorder(buffFrame)
             end
         end)
     end
-    
+
     if CompactUnitFrame_UtilSetDebuff then
         hooksecurefunc("CompactUnitFrame_UtilSetDebuff", function(debuffFrame)
-            if BetterRaidFramesDB.hideAuraBorders then
+            if Addon:GetSetting("hideAuraBorders") then
                 HideAuraFrameBorder(debuffFrame)
             end
         end)
     end
-    
+
     if CompactUnitFrame_UtilSetDispelDebuff then
         hooksecurefunc("CompactUnitFrame_UtilSetDispelDebuff", function(dispelFrame)
-            if BetterRaidFramesDB.hideAuraBorders then
+            if Addon:GetSetting("hideAuraBorders") then
                 HideAuraFrameBorder(dispelFrame)
             end
         end)

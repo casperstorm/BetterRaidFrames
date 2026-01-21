@@ -11,7 +11,7 @@ end
 
 local function UpdateFriendlyAbsorb(frame)
     if not frame or not frame.healthBar then return end
-    if not BetterRaidFramesDB.showFriendlyAbsorb then
+    if not Addon:GetSetting("showFriendlyAbsorb") then
         if frame.BRFFriendlyAbsorbBar then
             frame.BRFFriendlyAbsorbBar:Hide()
         end

@@ -9,7 +9,7 @@ local function UpdateIncomingHeals(frame)
         return
     end
     
-    if BetterRaidFramesDB.hideIncomingHeals then
+    if Addon:GetSetting("hideIncomingHeals") then
         if frame.myHealPrediction then frame.myHealPrediction:Hide() end
         if frame.otherHealPrediction then frame.otherHealPrediction:Hide() end
         if frame.myHealAbsorb then frame.myHealAbsorb:Hide() end

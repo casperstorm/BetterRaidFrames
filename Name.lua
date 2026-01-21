@@ -79,19 +79,17 @@ local function UpdateName(frame)
         return
     end
     
-    local db = BetterRaidFramesDB
-    
-    if not db.customizeNames then
+    if not Addon:GetSetting("customizeNames") then
         RestoreDefaultName(frame)
         return
     end
-    
-    local offsetX = db.nameX or 0
-    local offsetY = db.nameY or 0
-    local fontSize = db.nameSize or 11
-    local hideServer = db.nameHideServer
-    local truncateEnabled = db.nameTruncate
-    local maxLength = db.nameTruncateLength or 8
+
+    local offsetX = Addon:GetSetting("nameX") or 0
+    local offsetY = Addon:GetSetting("nameY") or 0
+    local fontSize = Addon:GetSetting("nameSize") or 11
+    local hideServer = Addon:GetSetting("nameHideServer")
+    local truncateEnabled = Addon:GetSetting("nameTruncate")
+    local maxLength = Addon:GetSetting("nameTruncateLength") or 8
 
     frame.name:ClearAllPoints()
     frame.name:SetPoint("CENTER", frame, "CENTER", offsetX, offsetY)
@@ -119,7 +117,7 @@ local function UpdateName(frame)
 
         frame.name:SetText(displayName)
 
-        if db.nameClassColor then
+        if Addon:GetSetting("nameClassColor") then
             local color = GetClassColor(frame.unit)
             if color then
                 frame.name:SetTextColor(color.r, color.g, color.b)

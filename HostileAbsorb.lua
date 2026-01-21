@@ -12,7 +12,7 @@ end
 
 local function UpdateHostileAbsorb(frame)
     if not frame or not frame.healthBar then return end
-    if not BetterRaidFramesDB.showHostileAbsorb then
+    if not Addon:GetSetting("showHostileAbsorb") then
         if frame.BRFHostileAbsorbBar then
             frame.BRFHostileAbsorbBar:Hide()
         end

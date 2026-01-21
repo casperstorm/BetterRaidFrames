@@ -44,11 +44,10 @@ local function GetOrCreateThreatIndicator(frame)
 end
 
 local function ApplyIndicatorSettings(indicator, parentFrame)
-    local db = BetterRaidFramesDB
-    local offsetX = db.threatIndicatorX or 0
-    local offsetY = db.threatIndicatorY or 0
-    local size = db.threatIndicatorSize or 8
-    
+    local offsetX = Addon:GetSetting("threatIndicatorX") or 0
+    local offsetY = Addon:GetSetting("threatIndicatorY") or 0
+    local size = Addon:GetSetting("threatIndicatorSize") or 8
+
     indicator:SetSize(size, size)
     indicator:ClearAllPoints()
     indicator:SetPoint("CENTER", parentFrame, "CENTER", offsetX, offsetY)
@@ -56,24 +55,18 @@ end
 
 local function UpdateThreatIndicator(frame)
     if not frame or not frame.unit then return end
-    
+
     local indicator = GetOrCreateThreatIndicator(frame)
-    
-    if not BetterRaidFramesDB.showThreatIndicator then
+
+    if not Addon:GetSetting("showThreatIndicator") then
         indicator:Hide()
         indicator.animGroup:Stop()
         return
     end
 
-    if BetterRaidFramesDB.threatIndicatorHideInRaid and IsInRaid() then
-        indicator:Hide()
-        indicator.animGroup:Stop()
-        return
-    end
-    
     ApplyIndicatorSettings(indicator, frame)
-    
-    local shouldBlink = BetterRaidFramesDB.threatIndicatorBlink
+
+    local shouldBlink = Addon:GetSetting("threatIndicatorBlink")
 
     if Addon.testMode then
         indicator:Show()
@@ -109,7 +102,7 @@ function Addon:HookThreatIndicator()
     hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", function(frame)
         if not frame or not frame.unit then return end
         
-        if BetterRaidFramesDB.showThreatIndicator then
+        if Addon:GetSetting("showThreatIndicator") then
             if frame.aggroHighlight then
                 frame.aggroHighlight:Hide()
             end

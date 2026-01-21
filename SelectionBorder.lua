@@ -30,14 +30,14 @@ end
 
 function Addon:HookSelectionBorder()
     hooksecurefunc("CompactUnitFrame_UpdateSelectionHighlight", function(frame)
-        if BetterRaidFramesDB.hideSelectionBorder then
+        if Addon:GetSetting("hideSelectionBorder") then
             HideSelectionHighlight(frame)
         end
     end)
 end
 
 function Addon:UpdateSelectionBorder(frame)
-    if BetterRaidFramesDB.hideSelectionBorder then
+    if Addon:GetSetting("hideSelectionBorder") then
         HideSelectionHighlight(frame)
     else
         ShowSelectionHighlight(frame)

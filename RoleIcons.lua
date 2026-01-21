@@ -15,7 +15,7 @@ local function UpdateRoleIcon(frame)
     if not unit then return end
     
     local role = UnitGroupRolesAssigned(unit)
-    local setting = BetterRaidFramesDB.showRoleIcons
+    local setting = Addon:GetSetting("showRoleIcons")
     local shouldShow = false
     
     if setting == "ALL" then
