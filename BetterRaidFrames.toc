@@ -1,0 +1,11 @@
+## Interface: 120001, 120000
+## Interface-Retail: 120001, 120000
+## Title: BetterRaidFrames
+## Notes: Customize the default raid frames
+## Author: casperstorm
+## Version: 0.0.1
+## SavedVariables: BetterRaidFramesDB
+## IconTexture: Interface\Icons\Spell_Holy_SealOfSacrifice
+
+BetterRaidFrames.lua
+Config.lua
