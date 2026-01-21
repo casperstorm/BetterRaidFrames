@@ -25,6 +25,7 @@ local defaults = {
     partyLeaderX = 2,
     partyLeaderY = -2,
     partyLeaderSize = 16,
+    partyLeaderHideInCombat = false,
 }
 
 Addon.testMode = false

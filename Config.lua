@@ -372,6 +372,10 @@ local function CreateConfigFrame()
 
     local partyLeaderOptionsContainer = {}
 
+    local partyLeaderHideInCombatCheckbox = CreateSubCheckbox(content, "Hide in combat", "partyLeaderHideInCombat", y, function() Addon:RefreshPartyLeaders() end)
+    table.insert(partyLeaderOptionsContainer, partyLeaderHideInCombatCheckbox)
+    y = y - 26
+
     local partyLeaderXSlider = CreateHorizontalSlider(content, "X:", "partyLeaderX", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
     table.insert(partyLeaderOptionsContainer, partyLeaderXSlider.container)
     y = y - 26

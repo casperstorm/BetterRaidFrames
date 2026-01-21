@@ -39,7 +39,10 @@ local function UpdatePartyLeader(frame)
     local indicator = GetOrCreateLeaderIndicator(frame)
     ApplyLeaderIndicatorSettings(indicator, frame)
     
-    if UnitIsGroupLeader(unit) then
+    local hideInCombat = Addon:GetSetting("partyLeaderHideInCombat")
+    local inCombat = UnitAffectingCombat("player")
+    
+    if UnitIsGroupLeader(unit) and not (hideInCombat and inCombat) then
         indicator:Show()
     else
         indicator:Hide()
@@ -49,6 +52,13 @@ end
 function Addon:HookPartyLeader()
     hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
         UpdatePartyLeader(frame)
+    end)
+    
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    eventFrame:SetScript("OnEvent", function()
+        Addon:RefreshPartyLeaders()
     end)
 end
 
