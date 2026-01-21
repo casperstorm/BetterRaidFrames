@@ -14,6 +14,7 @@ local defaults = {
     customizeNames = false,
     nameX = 0,
     nameY = 0,
+    nameSize = 11,
     nameHideServer = false,
     nameTruncate = false,
     nameTruncateLength = 8,

@@ -7,12 +7,14 @@ A World of Warcraft addon that lets you customize the default raid frames.
 ## Features
 
 - Role icon display options
-- Custom name positioning and truncation
+- Custom name size, positioning and truncation
+- Class color names
 - Friendly absorb shield overlay
 - Hostile absorb (heal debuff) overlay
 - Blinking threat indicator
 - Hide aura borders
 - Hide incoming heal indicator
+- Hide dispel debuff indicator
 
 ## Usage
 

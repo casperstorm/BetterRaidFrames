@@ -61,6 +61,11 @@ local function RestoreDefaultName(frame)
     frame.name:SetJustifyH("LEFT")
     frame.name:SetTextColor(1, 1, 1)
 
+    local fontPath, _, fontFlags = frame.name:GetFont()
+    if fontPath then
+        frame.name:SetFont(fontPath, 11, fontFlags)
+    end
+
     local fullName = GetUnitName(unit, false) or ""
     frame.name:SetText(fullName)
 end
@@ -83,13 +88,19 @@ local function UpdateName(frame)
     
     local offsetX = db.nameX or 0
     local offsetY = db.nameY or 0
+    local fontSize = db.nameSize or 11
     local hideServer = db.nameHideServer
     local truncateEnabled = db.nameTruncate
     local maxLength = db.nameTruncateLength or 8
-    
+
     frame.name:ClearAllPoints()
     frame.name:SetPoint("CENTER", frame, "CENTER", offsetX, offsetY)
     frame.name:SetJustifyH("CENTER")
+
+    local fontPath, _, fontFlags = frame.name:GetFont()
+    if fontPath then
+        frame.name:SetFont(fontPath, fontSize, fontFlags)
+    end
     
     if frame.unit then
         local displayName = GetUnitName(frame.unit, false) or ""

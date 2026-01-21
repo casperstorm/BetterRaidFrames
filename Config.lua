@@ -283,7 +283,9 @@ local function CreateConfigFrame()
     nameHeader:SetText("Name")
     nameHeader:SetTextColor(1, 0.82, 0)
     y = y - HEADER_TO_CONTENT
-    
+
+    local UpdateNameOptionsEnabled
+
     local customizeNamesCheckbox = CreateCheckbox(frame, "Customize names", "customizeNames", y, function(checked)
         UpdateNameOptionsEnabled(checked)
         Addon:RefreshNames()
@@ -307,6 +309,13 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, nameYSlider.plusBtn)
     y = y - 33
 
+    local nameSizeSlider = CreateHorizontalSlider(frame, "Size:", "nameSize", 6, 20, 1, y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, nameSizeSlider)
+    table.insert(nameOptionsContainer, nameSizeSlider.label)
+    table.insert(nameOptionsContainer, nameSizeSlider.minusBtn)
+    table.insert(nameOptionsContainer, nameSizeSlider.plusBtn)
+    y = y - 33
+
     local hideServerCheckbox = CreateSubCheckbox(frame, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, hideServerCheckbox)
     y = y - 25
@@ -326,7 +335,7 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, classColorCheckbox)
     y = y - 25 - SECTION_PADDING
 
-    local function UpdateNameOptionsEnabled(enabled)
+    UpdateNameOptionsEnabled = function(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end
     frame.nameOptionsContainer = nameOptionsContainer
@@ -341,7 +350,9 @@ local function CreateConfigFrame()
     threatHeader:SetText("Threat Indicator")
     threatHeader:SetTextColor(1, 0.82, 0)
     y = y - HEADER_TO_CONTENT
-    
+
+    local UpdateThreatOptionsEnabled
+
     local threatCheckbox = CreateCheckbox(frame, "Show threat indicator", "showThreatIndicator", y, function(checked)
         UpdateThreatOptionsEnabled(checked)
         Addon:RefreshThreatIndicators()
@@ -380,7 +391,7 @@ local function CreateConfigFrame()
     table.insert(threatOptionsContainer, threatSizeSlider.plusBtn)
     y = y - 33
     
-    local function UpdateThreatOptionsEnabled(enabled)
+    UpdateThreatOptionsEnabled = function(enabled)
         SetControlsEnabled(threatOptionsContainer, enabled)
     end
     frame.threatOptionsContainer = threatOptionsContainer
