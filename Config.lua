@@ -226,7 +226,7 @@ end
 
 local function CreateConfigFrame()
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(320, 800)
+    frame:SetSize(320, 600)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -245,14 +245,25 @@ local function CreateConfigFrame()
     
     frame.TitleText:SetText("BetterRaidFrames")
 
-    local y = -42
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", 16, -32)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -32, 8)
+    
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetWidth(288)
+    scrollFrame:SetScrollChild(content)
+    
+    frame.scrollFrame = scrollFrame
+    frame.content = content
+
+    local y = -10
 
     -- Profile Section
-    local profileDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
-    profileDropdown:SetPoint("TOP", frame, "TOP", 0, y)
+    local profileDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+    profileDropdown:SetPoint("TOP", content, "TOP", 0, y)
     profileDropdown:SetWidth(120)
 
-    local profileLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local profileLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     profileLabel:SetPoint("RIGHT", profileDropdown, "LEFT", -8, 0)
     profileLabel:SetText("Profile:")
 
@@ -276,7 +287,7 @@ local function CreateConfigFrame()
     frame.profileDropdown = profileDropdown
     frame.RefreshProfileDropdown = RefreshProfileDropdown
 
-    local newBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    local newBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     newBtn:SetSize(45, 20)
     newBtn:SetPoint("TOPLEFT", profileDropdown, "BOTTOMLEFT", 0, -8)
     newBtn:SetText("New")
@@ -285,7 +296,7 @@ local function CreateConfigFrame()
         StaticPopup_Show("BRF_NEW_PROFILE")
     end)
 
-    local renameBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    local renameBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     renameBtn:SetSize(55, 20)
     renameBtn:SetPoint("LEFT", newBtn, "RIGHT", 2, 0)
     renameBtn:SetText("Rename")
@@ -294,7 +305,7 @@ local function CreateConfigFrame()
         StaticPopup_Show("BRF_RENAME_PROFILE")
     end)
 
-    local deleteBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    local deleteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     deleteBtn:SetSize(50, 20)
     deleteBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
     deleteBtn:SetText("Delete")
@@ -321,17 +332,17 @@ local function CreateConfigFrame()
 
     y = y - 50 - SECTION_PADDING
 
-    CreateDivider(frame, y)
+    CreateDivider(content, y)
     y = y - SECTION_PADDING
 
     -- Test Mode
-    local testHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local testHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     testHeader:SetPoint("TOPLEFT", 16, y)
     testHeader:SetText("Test Mode")
     testHeader:SetTextColor(1, 0.82, 0)
     y = y - HEADER_TO_CONTENT
     
-    local testCheckbox = CreateFrame("CheckButton", nil, frame, "InterfaceOptionsCheckButtonTemplate")
+    local testCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
     testCheckbox:SetPoint("TOPLEFT", 16, y)
     testCheckbox.Text:SetText("Enable test mode")
     testCheckbox.Text:SetFontObject("GameFontHighlight")
@@ -342,17 +353,17 @@ local function CreateConfigFrame()
     frame.testCheckbox = testCheckbox
     y = y - 25 - SECTION_PADDING
     
-    CreateDivider(frame, y)
+    CreateDivider(content, y)
     y = y - SECTION_PADDING
 
     local roleIconDropdown = CreateDropdown(
-        frame, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
+        content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
     y = y - 55
 
     local UpdatePartyLeaderOptionsEnabled
 
-    local partyLeaderCheckbox = CreateCheckbox(frame, "Show party leader icon", "showPartyLeader", y, function(checked)
+    local partyLeaderCheckbox = CreateCheckbox(content, "Show party leader icon", "showPartyLeader", y, function(checked)
         UpdatePartyLeaderOptionsEnabled(checked)
         Addon:RefreshPartyLeaders()
     end)
@@ -361,15 +372,15 @@ local function CreateConfigFrame()
 
     local partyLeaderOptionsContainer = {}
 
-    local partyLeaderXSlider = CreateHorizontalSlider(frame, "X:", "partyLeaderX", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
+    local partyLeaderXSlider = CreateHorizontalSlider(content, "X:", "partyLeaderX", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
     table.insert(partyLeaderOptionsContainer, partyLeaderXSlider.container)
     y = y - 26
 
-    local partyLeaderYSlider = CreateHorizontalSlider(frame, "Y:", "partyLeaderY", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
+    local partyLeaderYSlider = CreateHorizontalSlider(content, "Y:", "partyLeaderY", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
     table.insert(partyLeaderOptionsContainer, partyLeaderYSlider.container)
     y = y - 26
 
-    local partyLeaderSizeSlider = CreateHorizontalSlider(frame, "Size:", "partyLeaderSize", 8, 32, 1, y, function() Addon:RefreshPartyLeaders() end)
+    local partyLeaderSizeSlider = CreateHorizontalSlider(content, "Size:", "partyLeaderSize", 8, 32, 1, y, function() Addon:RefreshPartyLeaders() end)
     table.insert(partyLeaderOptionsContainer, partyLeaderSizeSlider.container)
     y = y - 26
 
@@ -379,29 +390,29 @@ local function CreateConfigFrame()
     frame.partyLeaderOptionsContainer = partyLeaderOptionsContainer
     UpdatePartyLeaderOptionsEnabled(Addon:GetSetting("showPartyLeader"))
 
-    local friendlyAbsorbCheckbox = CreateCheckbox(frame, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
+    local friendlyAbsorbCheckbox = CreateCheckbox(content, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
     y = y - 25
 
-    local hostileAbsorbCheckbox = CreateCheckbox(frame, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
+    local hostileAbsorbCheckbox = CreateCheckbox(content, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
     y = y - 25
 
-    local hideIncomingHealsCheckbox = CreateCheckbox(frame, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
+    local hideIncomingHealsCheckbox = CreateCheckbox(content, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
     y = y - 25
 
-    local auraBordersCheckbox = CreateCheckbox(frame, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
+    local auraBordersCheckbox = CreateCheckbox(content, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
     y = y - 25
 
-    local dispelIndicatorCheckbox = CreateCheckbox(frame, "Hide dispel indicator", "hideDispelIndicator", y, function() Addon:RefreshDispelIndicator() end)
+    local dispelIndicatorCheckbox = CreateCheckbox(content, "Hide dispel indicator", "hideDispelIndicator", y, function() Addon:RefreshDispelIndicator() end)
     y = y - 25
 
-    local selectionBorderCheckbox = CreateCheckbox(frame, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
+    local selectionBorderCheckbox = CreateCheckbox(content, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
     y = y - 25 - SECTION_PADDING
 
-    CreateDivider(frame, y)
+    CreateDivider(content, y)
     y = y - SECTION_PADDING
     
     -- Name
-    local nameHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local nameHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     nameHeader:SetPoint("TOPLEFT", 16, y)
     nameHeader:SetText("Name")
     nameHeader:SetTextColor(1, 0.82, 0)
@@ -409,7 +420,7 @@ local function CreateConfigFrame()
 
     local UpdateNameOptionsEnabled
 
-    local customizeNamesCheckbox = CreateCheckbox(frame, "Customize names", "customizeNames", y, function(checked)
+    local customizeNamesCheckbox = CreateCheckbox(content, "Customize names", "customizeNames", y, function(checked)
         UpdateNameOptionsEnabled(checked)
         Addon:RefreshNames()
     end)
@@ -418,31 +429,31 @@ local function CreateConfigFrame()
 
     local nameOptionsContainer = {}
 
-    local nameXSlider = CreateHorizontalSlider(frame, "X:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end)
+    local nameXSlider = CreateHorizontalSlider(content, "X:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, nameXSlider.container)
     y = y - 26
 
-    local nameYSlider = CreateHorizontalSlider(frame, "Y:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end)
+    local nameYSlider = CreateHorizontalSlider(content, "Y:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, nameYSlider.container)
     y = y - 26
 
-    local nameSizeSlider = CreateHorizontalSlider(frame, "Size:", "nameSize", 6, 20, 1, y, function() Addon:RefreshNames() end)
+    local nameSizeSlider = CreateHorizontalSlider(content, "Size:", "nameSize", 6, 20, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, nameSizeSlider.container)
     y = y - 30
 
-    local hideServerCheckbox = CreateSubCheckbox(frame, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
+    local hideServerCheckbox = CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, hideServerCheckbox)
     y = y - 25
 
-    local truncateCheckbox = CreateSubCheckbox(frame, "Truncate long names", "nameTruncate", y, function() Addon:RefreshNames() end)
+    local truncateCheckbox = CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, truncateCheckbox)
     y = y - 30
 
-    local truncateSlider = CreateHorizontalSlider(frame, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
+    local truncateSlider = CreateHorizontalSlider(content, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, truncateSlider.container)
     y = y - 30
 
-    local classColorCheckbox = CreateSubCheckbox(frame, "Class color", "nameClassColor", y, function() Addon:RefreshNames() end)
+    local classColorCheckbox = CreateSubCheckbox(content, "Class color", "nameClassColor", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, classColorCheckbox)
     y = y - 25 - SECTION_PADDING
 
@@ -452,11 +463,11 @@ local function CreateConfigFrame()
     frame.nameOptionsContainer = nameOptionsContainer
     UpdateNameOptionsEnabled(Addon:GetSetting("customizeNames"))
     
-    CreateDivider(frame, y)
+    CreateDivider(content, y)
     y = y - SECTION_PADDING
 
     -- Threat Indicator
-    local threatHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local threatHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     threatHeader:SetPoint("TOPLEFT", 16, y)
     threatHeader:SetText("Threat Indicator")
     threatHeader:SetTextColor(1, 0.82, 0)
@@ -464,7 +475,7 @@ local function CreateConfigFrame()
 
     local UpdateThreatOptionsEnabled
 
-    local threatCheckbox = CreateCheckbox(frame, "Show threat indicator", "showThreatIndicator", y, function(checked)
+    local threatCheckbox = CreateCheckbox(content, "Show threat indicator", "showThreatIndicator", y, function(checked)
         UpdateThreatOptionsEnabled(checked)
         Addon:RefreshThreatIndicators()
     end)
@@ -473,19 +484,19 @@ local function CreateConfigFrame()
 
     local threatOptionsContainer = {}
 
-    local threatBlinkCheckbox = CreateSubCheckbox(frame, "Blinking", "threatIndicatorBlink", y, function() Addon:RefreshThreatIndicators() end)
+    local threatBlinkCheckbox = CreateSubCheckbox(content, "Blinking", "threatIndicatorBlink", y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatBlinkCheckbox)
     y = y - 25
 
-    local threatXSlider = CreateHorizontalSlider(frame, "X:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
+    local threatXSlider = CreateHorizontalSlider(content, "X:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatXSlider.container)
     y = y - 26
 
-    local threatYSlider = CreateHorizontalSlider(frame, "Y:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
+    local threatYSlider = CreateHorizontalSlider(content, "Y:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatYSlider.container)
     y = y - 26
 
-    local threatSizeSlider = CreateHorizontalSlider(frame, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
+    local threatSizeSlider = CreateHorizontalSlider(content, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatSizeSlider.container)
     y = y - 26
     
@@ -497,11 +508,11 @@ local function CreateConfigFrame()
 
     y = y - 10
     local version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
-    local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    versionText:SetPoint("TOPLEFT", 16, y)
+    local versionText = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    versionText:SetPoint("TOPLEFT", 0, y)
     versionText:SetText("v" .. (version or "?"))
 
-    frame:SetSize(320, math.abs(y) + 30)
+    content:SetHeight(math.abs(y) + 30)
 
     return frame
 end
