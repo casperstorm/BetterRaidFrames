@@ -8,4 +8,11 @@
 ## IconTexture: Interface\Icons\Spell_Holy_SealOfSacrifice
 
 BetterRaidFrames.lua
+RoleIcons.lua
+ThreatIndicator.lua
+AuraBorders.lua
+IncomingHeals.lua
+Name.lua
+FriendlyAbsorb.lua
+HostileAbsorb.lua
 Config.lua

@@ -1,97 +1,112 @@
 local ADDON_NAME, Addon = ...
 
--- Role icon display options
-Addon.RoleIconOptions = {
-    { value = "ALL", label = "All" },
-    { value = "TANK", label = "Tank" },
-    { value = "HEALER", label = "Healer" },
-    { value = "TANK_HEALER", label = "Tank & Healer" },
-    { value = "NONE", label = "None" },
-}
-
--- Default settings
 local defaults = {
     showRoleIcons = "ALL",
+    showThreatIndicator = false,
+    threatIndicatorX = 0,
+    threatIndicatorY = 0,
+    threatIndicatorSize = 8,
+    hideAuraBorders = false,
+    hideIncomingHeals = true,
+    customizeNames = false,
+    nameX = 0,
+    nameY = 0,
+    nameHideServer = false,
+    nameTruncate = false,
+    nameTruncateLength = 8,
+    showFriendlyAbsorb = false,
+    showHostileAbsorb = false,
 }
 
--- Initialize saved variables
+Addon.testMode = false
+
 local function InitializeDB()
     if not BetterRaidFramesDB then
         BetterRaidFramesDB = {}
     end
     for key, value in pairs(defaults) do
         if BetterRaidFramesDB[key] == nil then
-            BetterRaidFramesDB[key] = value
+            if type(value) == "table" then
+                BetterRaidFramesDB[key] = {}
+                for k, v in pairs(value) do
+                    BetterRaidFramesDB[key][k] = v
+                end
+            else
+                BetterRaidFramesDB[key] = value
+            end
         end
     end
-end
-
--- Hook into CompactUnitFrame to hide role icons based on setting
-local function UpdateRoleIcon(frame)
-    if not frame or not frame.roleIcon then return end
     
-    local unit = frame.unit
-    if not unit then return end
-    
-    local role = UnitGroupRolesAssigned(unit)
-    local setting = BetterRaidFramesDB.showRoleIcons
-    
-    local shouldShow = false
-    
-    if setting == "ALL" then
-        shouldShow = true
-    elseif setting == "TANK" then
-        shouldShow = (role == "TANK")
-    elseif setting == "HEALER" then
-        shouldShow = (role == "HEALER")
-    elseif setting == "TANK_HEALER" then
-        shouldShow = (role == "TANK" or role == "HEALER")
+    -- Migration
+    if BetterRaidFramesDB.showAbsorbShield ~= nil then
+        BetterRaidFramesDB.showFriendlyAbsorb = BetterRaidFramesDB.showAbsorbShield
+        BetterRaidFramesDB.showAbsorbShield = nil
     end
-    
-    if shouldShow and role and role ~= "NONE" then
-        frame.roleIcon:Show()
-    else
-        frame.roleIcon:Hide()
+    if BetterRaidFramesDB.customThreatBorder ~= nil then
+        BetterRaidFramesDB.showThreatIndicator = BetterRaidFramesDB.customThreatBorder
+        BetterRaidFramesDB.customThreatBorder = nil
+    end
+    if BetterRaidFramesDB.namePosition ~= nil then
+        BetterRaidFramesDB.namePosition = nil
+    end
+    if BetterRaidFramesDB.threatIndicatorPosition ~= nil then
+        BetterRaidFramesDB.threatIndicatorPosition = nil
     end
 end
 
--- Hook the default raid frame role icon update
 local function HookRaidFrames()
-    hooksecurefunc("CompactUnitFrame_UpdateRoleIcon", function(frame)
-        UpdateRoleIcon(frame)
-    end)
+    Addon:HookRoleIcons()
+    Addon:HookThreatIndicator()
+    Addon:HookAuraBorders()
+    Addon:HookIncomingHeals()
+    Addon:HookName()
+    Addon:HookFriendlyAbsorb()
+    Addon:HookHostileAbsorb()
 end
 
--- Update all existing raid frames
 function Addon:UpdateAllFrames()
-    -- Update party frames
-    for i = 1, 4 do
+    for i = 1, 5 do
         local frame = _G["CompactPartyFrameMember" .. i]
         if frame then
-            UpdateRoleIcon(frame)
+            Addon:UpdateRoleIcon(frame)
+            Addon:UpdateThreatIndicator(frame)
+            Addon:UpdateAuraBorders(frame)
+            Addon:UpdateIncomingHeals(frame)
+            Addon:UpdateName(frame)
+            Addon:UpdateFriendlyAbsorb(frame)
+            Addon:UpdateHostileAbsorb(frame)
         end
     end
     
-    -- Update raid frames
     for i = 1, 40 do
         local frame = _G["CompactRaidFrame" .. i]
         if frame then
-            UpdateRoleIcon(frame)
+            Addon:UpdateRoleIcon(frame)
+            Addon:UpdateThreatIndicator(frame)
+            Addon:UpdateAuraBorders(frame)
+            Addon:UpdateIncomingHeals(frame)
+            Addon:UpdateName(frame)
+            Addon:UpdateFriendlyAbsorb(frame)
+            Addon:UpdateHostileAbsorb(frame)
         end
     end
     
-    -- Update raid group frames
     for group = 1, 8 do
         for member = 1, 5 do
             local frame = _G["CompactRaidGroup" .. group .. "Member" .. member]
             if frame then
-                UpdateRoleIcon(frame)
+                Addon:UpdateRoleIcon(frame)
+                Addon:UpdateThreatIndicator(frame)
+                Addon:UpdateAuraBorders(frame)
+                Addon:UpdateIncomingHeals(frame)
+                Addon:UpdateName(frame)
+                Addon:UpdateFriendlyAbsorb(frame)
+                Addon:UpdateHostileAbsorb(frame)
             end
         end
     end
 end
 
--- Getter/Setter for settings
 function Addon:GetSetting(key)
     return BetterRaidFramesDB[key]
 end
@@ -101,7 +116,20 @@ function Addon:SetSetting(key, value)
     self:UpdateAllFrames()
 end
 
--- Event handler
+function Addon:SetTestMode(enabled)
+    self.testMode = enabled
+    if enabled then
+        print("|cff00ff00BetterRaidFrames:|r Test mode |cff00ff00ENABLED|r")
+    else
+        print("|cff00ff00BetterRaidFrames:|r Test mode |cffff0000DISABLED|r")
+    end
+    self:UpdateAllFrames()
+end
+
+function Addon:ToggleTestMode()
+    self:SetTestMode(not self.testMode)
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -115,13 +143,15 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     end
 end)
 
--- Slash commands
 SLASH_BETTERRAIDFRAMES1 = "/brf"
 SLASH_BETTERRAIDFRAMES2 = "/betterraidframes"
 
 SlashCmdList["BETTERRAIDFRAMES"] = function(msg)
-    Addon:OpenConfig()
+    if msg == "test" then
+        Addon:ToggleTestMode()
+    else
+        Addon:OpenConfig()
+    end
 end
 
--- Export addon table
 _G["BetterRaidFrames"] = Addon

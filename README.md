@@ -2,9 +2,21 @@
 
 A World of Warcraft addon that lets you customize the default raid frames.
 
-## How to Use
+![BetterRaidFrames](asset.png)
 
-1. Type `/brf` to open the configuration window
+## Features
+
+- Role icon display options
+- Custom name positioning and truncation
+- Friendly absorb shield overlay
+- Hostile absorb (heal debuff) overlay
+- Blinking threat indicator
+- Hide aura borders
+- Hide incoming heal indicator
+
+## Usage
+
+Type `/brf` to open the configuration window.
 
 ## Installation
 
