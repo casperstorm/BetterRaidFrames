@@ -6,6 +6,7 @@
 ## Version: 0.0.1
 ## SavedVariables: BetterRaidFramesDB
 ## IconTexture: Interface\Icons\Spell_Holy_SealOfSacrifice
+## X-Curse-Project-ID: 1439737
 
 BetterRaidFrames.lua
 RoleIcons.lua
