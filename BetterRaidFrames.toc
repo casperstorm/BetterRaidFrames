@@ -17,4 +17,5 @@ IncomingHeals.lua
 Name.lua
 FriendlyAbsorb.lua
 HostileAbsorb.lua
+SelectionBorder.lua
 Config.lua

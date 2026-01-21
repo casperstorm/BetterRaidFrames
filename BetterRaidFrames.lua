@@ -3,6 +3,8 @@ local ADDON_NAME, Addon = ...
 local defaults = {
     showRoleIcons = "ALL",
     showThreatIndicator = false,
+    threatIndicatorBlink = true,
+    threatIndicatorHideInRaid = false,
     threatIndicatorX = 0,
     threatIndicatorY = 0,
     threatIndicatorSize = 8,
@@ -14,8 +16,10 @@ local defaults = {
     nameHideServer = false,
     nameTruncate = false,
     nameTruncateLength = 8,
+    nameClassColor = false,
     showFriendlyAbsorb = false,
     showHostileAbsorb = false,
+    hideSelectionBorder = false,
 }
 
 Addon.testMode = false
@@ -62,6 +66,7 @@ local function HookRaidFrames()
     Addon:HookName()
     Addon:HookFriendlyAbsorb()
     Addon:HookHostileAbsorb()
+    Addon:HookSelectionBorder()
 end
 
 function Addon:UpdateAllFrames()
@@ -73,6 +78,7 @@ function Addon:UpdateAllFrames()
         Addon:UpdateName(frame)
         Addon:UpdateFriendlyAbsorb(frame)
         Addon:UpdateHostileAbsorb(frame)
+        Addon:UpdateSelectionBorder(frame)
     end)
 end
 

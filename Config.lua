@@ -81,28 +81,28 @@ local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOf
     local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     labelText:SetPoint("TOPLEFT", 32, yOffset)
     labelText:SetText(label)
-    
+
     local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
     slider:SetPoint("TOPLEFT", 32, yOffset - 28)
     slider:SetWidth(showButtons and 140 or 180)
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
     slider:SetObeyStepOnDrag(true)
-    
+
     slider.Low:SetText(minVal)
     slider.High:SetText(maxVal)
-    
+
     local currentValue = Addon:GetSetting(settingKey) or minVal
     slider:SetValue(currentValue)
     slider.Text:SetText(currentValue)
-    
+
     slider:SetScript("OnValueChanged", function(self, value)
         value = math.floor(value / step + 0.5) * step
         self.Text:SetText(value)
         Addon:SetSetting(settingKey, value)
         if onChange then onChange(value) end
     end)
-    
+
     if showButtons then
         local minusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
         minusBtn:SetSize(22, 22)
@@ -115,7 +115,7 @@ local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOf
             end
         end)
         slider.minusBtn = minusBtn
-        
+
         local plusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
         plusBtn:SetSize(22, 22)
         plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
@@ -128,7 +128,64 @@ local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOf
         end)
         slider.plusBtn = plusBtn
     end
-    
+
+    slider.settingKey = settingKey
+    slider.label = labelText
+    return slider
+end
+
+local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange)
+    local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    labelText:SetPoint("TOPLEFT", 32, yOffset)
+    labelText:SetText(label)
+
+    local plusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    plusBtn:SetSize(22, 22)
+    plusBtn:SetPoint("TOPRIGHT", -12, yOffset + 2)
+    plusBtn:SetText("+")
+
+    local minusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    minusBtn:SetSize(22, 22)
+    minusBtn:SetPoint("RIGHT", plusBtn, "LEFT", -2, 0)
+    minusBtn:SetText("-")
+
+    local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
+    slider:SetPoint("LEFT", labelText, "RIGHT", 4, 0)
+    slider:SetPoint("RIGHT", minusBtn, "LEFT", -8, 0)
+    slider:SetMinMaxValues(minVal, maxVal)
+    slider:SetValueStep(step)
+    slider:SetObeyStepOnDrag(true)
+
+    slider.Low:SetText("")
+    slider.High:SetText("")
+
+    local currentValue = Addon:GetSetting(settingKey) or minVal
+    slider:SetValue(currentValue)
+    slider.Text:SetText(currentValue)
+
+    slider:SetScript("OnValueChanged", function(self, value)
+        value = math.floor(value / step + 0.5) * step
+        self.Text:SetText(value)
+        Addon:SetSetting(settingKey, value)
+        if onChange then onChange(value) end
+    end)
+
+    minusBtn:SetScript("OnClick", function()
+        local val = slider:GetValue() - step
+        if val >= minVal then
+            slider:SetValue(val)
+        end
+    end)
+
+    plusBtn:SetScript("OnClick", function()
+        local val = slider:GetValue() + step
+        if val <= maxVal then
+            slider:SetValue(val)
+        end
+    end)
+
+    slider.minusBtn = minusBtn
+    slider.plusBtn = plusBtn
     slider.settingKey = settingKey
     slider.label = labelText
     return slider
@@ -170,14 +227,8 @@ local function CreateConfigFrame()
     end)
     
     frame.TitleText:SetText("BetterRaidFrames")
-    
-    local desc = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    desc:SetPoint("TOPLEFT", 16, -32)
-    desc:SetWidth(288)
-    desc:SetJustifyH("LEFT")
-    desc:SetText("Customize default raid frames.")
-    
-    local y = -55
+
+    local y = -35
     
     -- Test Mode
     local testHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -199,19 +250,27 @@ local function CreateConfigFrame()
     
     CreateDivider(frame, y)
     y = y - SECTION_PADDING
-    
-    -- Role Icons
-    local roleHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    roleHeader:SetPoint("TOPLEFT", 16, y)
-    roleHeader:SetText("Role Icons")
-    roleHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
-    
+
     local roleIconDropdown = CreateDropdown(
         frame, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
-    y = y - 55 - SECTION_PADDING
-    
+    y = y - 55
+
+    local friendlyAbsorbCheckbox = CreateCheckbox(frame, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
+    y = y - 25
+
+    local hostileAbsorbCheckbox = CreateCheckbox(frame, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
+    y = y - 25
+
+    local hideIncomingHealsCheckbox = CreateCheckbox(frame, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
+    y = y - 25
+
+    local auraBordersCheckbox = CreateCheckbox(frame, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
+    y = y - 25
+
+    local selectionBorderCheckbox = CreateCheckbox(frame, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
+    y = y - 25 - SECTION_PADDING
+
     CreateDivider(frame, y)
     y = y - SECTION_PADDING
     
@@ -227,37 +286,43 @@ local function CreateConfigFrame()
         Addon:RefreshNames()
     end)
     frame.customizeNamesCheckbox = customizeNamesCheckbox
-    y = y - 25
-    
+    y = y - 35
+
     local nameOptionsContainer = {}
-    
-    local nameXSlider = CreateSlider(frame, "X Offset:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end, true)
+
+    local nameXSlider = CreateHorizontalSlider(frame, "X:", "nameX", -250, 250, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, nameXSlider)
     table.insert(nameOptionsContainer, nameXSlider.label)
-    if nameXSlider.minusBtn then table.insert(nameOptionsContainer, nameXSlider.minusBtn) end
-    if nameXSlider.plusBtn then table.insert(nameOptionsContainer, nameXSlider.plusBtn) end
-    y = y - 55
-    
-    local nameYSlider = CreateSlider(frame, "Y Offset:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end, true)
+    table.insert(nameOptionsContainer, nameXSlider.minusBtn)
+    table.insert(nameOptionsContainer, nameXSlider.plusBtn)
+    y = y - 33
+
+    local nameYSlider = CreateHorizontalSlider(frame, "Y:", "nameY", -250, 250, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, nameYSlider)
     table.insert(nameOptionsContainer, nameYSlider.label)
-    if nameYSlider.minusBtn then table.insert(nameOptionsContainer, nameYSlider.minusBtn) end
-    if nameYSlider.plusBtn then table.insert(nameOptionsContainer, nameYSlider.plusBtn) end
-    y = y - 55
-    
+    table.insert(nameOptionsContainer, nameYSlider.minusBtn)
+    table.insert(nameOptionsContainer, nameYSlider.plusBtn)
+    y = y - 33
+
     local hideServerCheckbox = CreateSubCheckbox(frame, "Hide server name", "nameHideServer", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, hideServerCheckbox)
     y = y - 25
-    
+
     local truncateCheckbox = CreateSubCheckbox(frame, "Truncate long names", "nameTruncate", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, truncateCheckbox)
-    y = y - 25
-    
-    local truncateSlider = CreateSlider(frame, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
+    y = y - 35
+
+    local truncateSlider = CreateHorizontalSlider(frame, "Max length:", "nameTruncateLength", 3, 12, 1, y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, truncateSlider)
     table.insert(nameOptionsContainer, truncateSlider.label)
-    y = y - 55 - SECTION_PADDING
-    
+    table.insert(nameOptionsContainer, truncateSlider.minusBtn)
+    table.insert(nameOptionsContainer, truncateSlider.plusBtn)
+    y = y - 33
+
+    local classColorCheckbox = CreateSubCheckbox(frame, "Class color", "nameClassColor", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, classColorCheckbox)
+    y = y - 25 - SECTION_PADDING
+
     local function UpdateNameOptionsEnabled(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end
@@ -266,26 +331,7 @@ local function CreateConfigFrame()
     
     CreateDivider(frame, y)
     y = y - SECTION_PADDING
-    
-    -- Absorbs
-    local absorbHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    absorbHeader:SetPoint("TOPLEFT", 16, y)
-    absorbHeader:SetText("Absorbs")
-    absorbHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
-    
-    local friendlyAbsorbCheckbox = CreateCheckbox(frame, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
-    y = y - 25
-    
-    local hostileAbsorbCheckbox = CreateCheckbox(frame, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
-    y = y - 25
-    
-    local hideIncomingHealsCheckbox = CreateCheckbox(frame, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
-    y = y - 25 - SECTION_PADDING
-    
-    CreateDivider(frame, y)
-    y = y - SECTION_PADDING
-    
+
     -- Threat Indicator
     local threatHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     threatHeader:SetPoint("TOPLEFT", 16, y)
@@ -293,55 +339,58 @@ local function CreateConfigFrame()
     threatHeader:SetTextColor(1, 0.82, 0)
     y = y - HEADER_TO_CONTENT
     
-    local threatCheckbox = CreateCheckbox(frame, "Show blinking threat indicator", "showThreatIndicator", y, function(checked)
+    local threatCheckbox = CreateCheckbox(frame, "Show threat indicator", "showThreatIndicator", y, function(checked)
         UpdateThreatOptionsEnabled(checked)
         Addon:RefreshThreatIndicators()
     end)
     frame.threatCheckbox = threatCheckbox
-    y = y - 25
-    
+    y = y - 35
+
     local threatOptionsContainer = {}
-    
-    local threatXSlider = CreateSlider(frame, "X Offset:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end, true)
+
+    local threatBlinkCheckbox = CreateSubCheckbox(frame, "Blinking", "threatIndicatorBlink", y, function() Addon:RefreshThreatIndicators() end)
+    table.insert(threatOptionsContainer, threatBlinkCheckbox)
+    y = y - 25
+
+    local threatHideInRaidCheckbox = CreateSubCheckbox(frame, "Hide in raids", "threatIndicatorHideInRaid", y, function() Addon:RefreshThreatIndicators() end)
+    table.insert(threatOptionsContainer, threatHideInRaidCheckbox)
+    y = y - 35
+
+    local threatXSlider = CreateHorizontalSlider(frame, "X:", "threatIndicatorX", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatXSlider)
     table.insert(threatOptionsContainer, threatXSlider.label)
-    if threatXSlider.minusBtn then table.insert(threatOptionsContainer, threatXSlider.minusBtn) end
-    if threatXSlider.plusBtn then table.insert(threatOptionsContainer, threatXSlider.plusBtn) end
-    y = y - 55
-    
-    local threatYSlider = CreateSlider(frame, "Y Offset:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end, true)
+    table.insert(threatOptionsContainer, threatXSlider.minusBtn)
+    table.insert(threatOptionsContainer, threatXSlider.plusBtn)
+    y = y - 33
+
+    local threatYSlider = CreateHorizontalSlider(frame, "Y:", "threatIndicatorY", -250, 250, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatYSlider)
     table.insert(threatOptionsContainer, threatYSlider.label)
-    if threatYSlider.minusBtn then table.insert(threatOptionsContainer, threatYSlider.minusBtn) end
-    if threatYSlider.plusBtn then table.insert(threatOptionsContainer, threatYSlider.plusBtn) end
-    y = y - 55
-    
-    local threatSizeSlider = CreateSlider(frame, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
+    table.insert(threatOptionsContainer, threatYSlider.minusBtn)
+    table.insert(threatOptionsContainer, threatYSlider.plusBtn)
+    y = y - 33
+
+    local threatSizeSlider = CreateHorizontalSlider(frame, "Size:", "threatIndicatorSize", 4, 20, 1, y, function() Addon:RefreshThreatIndicators() end)
     table.insert(threatOptionsContainer, threatSizeSlider)
     table.insert(threatOptionsContainer, threatSizeSlider.label)
-    y = y - 55 - SECTION_PADDING
+    table.insert(threatOptionsContainer, threatSizeSlider.minusBtn)
+    table.insert(threatOptionsContainer, threatSizeSlider.plusBtn)
+    y = y - 33
     
     local function UpdateThreatOptionsEnabled(enabled)
         SetControlsEnabled(threatOptionsContainer, enabled)
     end
     frame.threatOptionsContainer = threatOptionsContainer
     UpdateThreatOptionsEnabled(Addon:GetSetting("showThreatIndicator"))
-    
-    CreateDivider(frame, y)
-    y = y - SECTION_PADDING
-    
-    -- Auras
-    local auraHeader = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    auraHeader:SetPoint("TOPLEFT", 16, y)
-    auraHeader:SetText("Auras")
-    auraHeader:SetTextColor(1, 0.82, 0)
-    y = y - HEADER_TO_CONTENT
-    
-    local auraBordersCheckbox = CreateCheckbox(frame, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
-    y = y - 25 - SECTION_PADDING
-    
+
+    y = y - 10
+    local version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
+    local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    versionText:SetPoint("TOPLEFT", 16, y)
+    versionText:SetText("v" .. (version or "?"))
+
     frame:SetSize(320, math.abs(y) + 30)
-    
+
     return frame
 end
 

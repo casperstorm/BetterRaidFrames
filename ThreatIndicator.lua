@@ -64,22 +64,40 @@ local function UpdateThreatIndicator(frame)
         indicator.animGroup:Stop()
         return
     end
-    
-    ApplyIndicatorSettings(indicator, frame)
-    
-    if Addon.testMode then
-        indicator:Show()
-        if not indicator.animGroup:IsPlaying() then
-            indicator.animGroup:Play()
-        end
+
+    if BetterRaidFramesDB.threatIndicatorHideInRaid and IsInRaid() then
+        indicator:Hide()
+        indicator.animGroup:Stop()
         return
     end
     
+    ApplyIndicatorSettings(indicator, frame)
+    
+    local shouldBlink = BetterRaidFramesDB.threatIndicatorBlink
+
+    if Addon.testMode then
+        indicator:Show()
+        if shouldBlink then
+            if not indicator.animGroup:IsPlaying() then
+                indicator.animGroup:Play()
+            end
+        else
+            indicator.animGroup:Stop()
+            indicator:SetAlpha(1)
+        end
+        return
+    end
+
     local status = UnitThreatSituation(frame.unit)
     if status and status >= 1 then
         indicator:Show()
-        if not indicator.animGroup:IsPlaying() then
-            indicator.animGroup:Play()
+        if shouldBlink then
+            if not indicator.animGroup:IsPlaying() then
+                indicator.animGroup:Play()
+            end
+        else
+            indicator.animGroup:Stop()
+            indicator:SetAlpha(1)
         end
     else
         indicator:Hide()

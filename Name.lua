@@ -35,19 +35,32 @@ local function TruncateName(name, maxLength)
     end
 end
 
+local function GetClassColor(unit)
+    if not unit then return nil end
+    local _, className = UnitClass(unit)
+    if className then
+        local color = C_ClassColor.GetClassColor(className)
+        if color then
+            return color
+        end
+    end
+    return nil
+end
+
 local function RestoreDefaultName(frame)
     if not frame or not frame.name then return end
-    
+
     local unit = frame.unit
     if not unit then return end
     if unit ~= "player" and not unit:match("^party%d$") and not unit:match("^raid%d+$") then
         return
     end
-    
+
     frame.name:ClearAllPoints()
     frame.name:SetPoint("LEFT", frame, "LEFT", 3, 0)
     frame.name:SetJustifyH("LEFT")
-    
+    frame.name:SetTextColor(1, 1, 1)
+
     local fullName = GetUnitName(unit, false) or ""
     frame.name:SetText(fullName)
 end
@@ -80,20 +93,29 @@ local function UpdateName(frame)
     
     if frame.unit then
         local displayName = GetUnitName(frame.unit, false) or ""
-        
+
         if not originalNames[frame] then
             originalNames[frame] = displayName
         end
-        
+
         if hideServer then
             displayName = StripServerName(displayName)
         end
-        
+
         if truncateEnabled then
             displayName = TruncateName(displayName, maxLength)
         end
-        
+
         frame.name:SetText(displayName)
+
+        if db.nameClassColor then
+            local color = GetClassColor(frame.unit)
+            if color then
+                frame.name:SetTextColor(color.r, color.g, color.b)
+            end
+        else
+            frame.name:SetTextColor(1, 1, 1)
+        end
     end
 end
 
