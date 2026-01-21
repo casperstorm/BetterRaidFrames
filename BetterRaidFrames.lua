@@ -21,6 +21,10 @@ local defaults = {
     showFriendlyAbsorb = false,
     showHostileAbsorb = false,
     hideSelectionBorder = false,
+    showPartyLeader = false,
+    partyLeaderX = 2,
+    partyLeaderY = -2,
+    partyLeaderSize = 16,
 }
 
 Addon.testMode = false
@@ -99,6 +103,7 @@ local function HookRaidFrames()
     Addon:HookFriendlyAbsorb()
     Addon:HookHostileAbsorb()
     Addon:HookSelectionBorder()
+    Addon:HookPartyLeader()
 end
 
 function Addon:UpdateAllFrames()
@@ -111,6 +116,7 @@ function Addon:UpdateAllFrames()
         Addon:UpdateFriendlyAbsorb(frame)
         Addon:UpdateHostileAbsorb(frame)
         Addon:UpdateSelectionBorder(frame)
+        Addon:UpdatePartyLeader(frame)
     end)
 end
 

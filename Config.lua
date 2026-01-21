@@ -245,16 +245,16 @@ local function CreateConfigFrame()
     
     frame.TitleText:SetText("BetterRaidFrames")
 
-    local y = -35
+    local y = -42
 
     -- Profile Section
-    local profileLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    profileLabel:SetPoint("TOPLEFT", 16, y)
-    profileLabel:SetText("Profile:")
-
     local profileDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
-    profileDropdown:SetPoint("LEFT", profileLabel, "RIGHT", 8, 0)
+    profileDropdown:SetPoint("TOP", frame, "TOP", 0, y)
     profileDropdown:SetWidth(120)
+
+    local profileLabel = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    profileLabel:SetPoint("RIGHT", profileDropdown, "LEFT", -8, 0)
+    profileLabel:SetText("Profile:")
 
     local function RefreshProfileDropdown()
         profileDropdown:SetupMenu(function(dropdown, rootDescription)
@@ -349,6 +349,35 @@ local function CreateConfigFrame()
         frame, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
     y = y - 55
+
+    local UpdatePartyLeaderOptionsEnabled
+
+    local partyLeaderCheckbox = CreateCheckbox(frame, "Show party leader icon", "showPartyLeader", y, function(checked)
+        UpdatePartyLeaderOptionsEnabled(checked)
+        Addon:RefreshPartyLeaders()
+    end)
+    frame.partyLeaderCheckbox = partyLeaderCheckbox
+    y = y - 28
+
+    local partyLeaderOptionsContainer = {}
+
+    local partyLeaderXSlider = CreateHorizontalSlider(frame, "X:", "partyLeaderX", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
+    table.insert(partyLeaderOptionsContainer, partyLeaderXSlider.container)
+    y = y - 26
+
+    local partyLeaderYSlider = CreateHorizontalSlider(frame, "Y:", "partyLeaderY", -250, 250, 1, y, function() Addon:RefreshPartyLeaders() end)
+    table.insert(partyLeaderOptionsContainer, partyLeaderYSlider.container)
+    y = y - 26
+
+    local partyLeaderSizeSlider = CreateHorizontalSlider(frame, "Size:", "partyLeaderSize", 8, 32, 1, y, function() Addon:RefreshPartyLeaders() end)
+    table.insert(partyLeaderOptionsContainer, partyLeaderSizeSlider.container)
+    y = y - 26
+
+    UpdatePartyLeaderOptionsEnabled = function(enabled)
+        SetControlsEnabled(partyLeaderOptionsContainer, enabled)
+    end
+    frame.partyLeaderOptionsContainer = partyLeaderOptionsContainer
+    UpdatePartyLeaderOptionsEnabled(Addon:GetSetting("showPartyLeader"))
 
     local friendlyAbsorbCheckbox = CreateCheckbox(frame, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
     y = y - 25
@@ -517,6 +546,9 @@ function Addon:RefreshConfig()
     end
     if ConfigFrame.threatOptionsContainer then
         SetControlsEnabled(ConfigFrame.threatOptionsContainer, self:GetSetting("showThreatIndicator"))
+    end
+    if ConfigFrame.partyLeaderOptionsContainer then
+        SetControlsEnabled(ConfigFrame.partyLeaderOptionsContainer, self:GetSetting("showPartyLeader"))
     end
 
     -- Recreate the config frame to reflect new profile settings
