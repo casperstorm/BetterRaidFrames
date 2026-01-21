@@ -15,6 +15,7 @@ A World of Warcraft addon that lets you customize the default raid frames.
 - Hide aura borders
 - Hide incoming heal indicator
 - Hide dispel debuff indicator
+- Show and adjust party leader indicator
 
 ## Usage
 
