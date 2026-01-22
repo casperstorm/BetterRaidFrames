@@ -108,8 +108,9 @@ end
 
 function Addon:HookThreatIndicator()
     hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", function(frame)
+        if Addon:IsEditModeActive() then return end
         if not IsRaidOrPartyFrame(frame) then return end
-        
+
         if Addon:GetSetting("showThreatIndicator") then
             if frame.aggroHighlight and frame.aggroHighlight.Hide then
                 frame.aggroHighlight:Hide()

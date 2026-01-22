@@ -21,11 +21,11 @@ local function SetControlsEnabled(controls, enabled)
 end
 
 local function CreateDivider(parent, yOffset)
-    local divider = parent:CreateTexture(nil, "ARTWORK")
+    local divider = parent:CreateTexture(nil, "OVERLAY")
     divider:SetPoint("TOPLEFT", 12, yOffset)
     divider:SetPoint("TOPRIGHT", -12, yOffset)
-    divider:SetHeight(1)
-    divider:SetColorTexture(0.4, 0.4, 0.4, 0.8)
+    divider:SetHeight(2)
+    divider:SetColorTexture(0.5, 0.5, 0.5, 1)
     return divider
 end
 
@@ -363,7 +363,39 @@ local function CreateConfigFrame()
     frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
     UpdateProfileButtonsVisibility()
 
-    y = y - 65
+    -- Profile section uses relative positioning, so set y to where it ends
+    -- Dropdown at -10, ~28px tall, buttons 8px below, buttons 20px tall = ends around -66
+    y = -80
+
+    -- Blizzard Raid Frame Settings Section
+    CreateDivider(content, y)
+    y = y - 16
+
+    local blizzHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    blizzHeader:SetPoint("TOPLEFT", 16, y)
+    blizzHeader:SetText("Shortcut to Blizzard Settings")
+    y = y - 22
+
+    local blizzSettingsBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    blizzSettingsBtn:SetSize(220, 22)
+    blizzSettingsBtn:SetPoint("TOPLEFT", 16, y)
+    blizzSettingsBtn:SetText("Interface Options")
+    blizzSettingsBtn:SetScript("OnClick", function()
+        Settings.OpenToCategory(Settings.INTERFACE_CATEGORY_ID)
+    end)
+    y = y - 26
+
+    local editModeBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    editModeBtn:SetSize(220, 22)
+    editModeBtn:SetPoint("TOPLEFT", 16, y)
+    editModeBtn:SetText("Frames Options (Edit Mode)")
+    editModeBtn:SetScript("OnClick", function()
+        ShowUIPanel(EditModeManagerFrame)
+    end)
+    y = y - 38
+
+    CreateDivider(content, y)
+    y = y - 16
 
     local roleIconDropdown = CreateDropdown(
         content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
