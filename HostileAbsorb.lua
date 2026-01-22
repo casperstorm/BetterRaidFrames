@@ -64,7 +64,11 @@ local function UpdateHostileAbsorb(frame)
         end
     end
     
-    bar:SetStatusBarColor(0.4, 0.1, 0.1, 0.7)
+    local opacity = Addon:GetSetting("hostileAbsorbOpacity") or 0.7
+    local r = Addon:GetSetting("hostileAbsorbColorR") or 0.4
+    local g = Addon:GetSetting("hostileAbsorbColorG") or 0.1
+    local b = Addon:GetSetting("hostileAbsorbColorB") or 0.1
+    bar:SetStatusBarColor(r, g, b, opacity)
     bar:ClearAllPoints()
     bar:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 0, 0)
     bar:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", 0, 0)

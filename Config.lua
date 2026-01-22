@@ -240,15 +240,76 @@ local function CreateSubCheckbox(parent, label, settingKey, yOffset, onChange)
     checkbox:SetPoint("TOPLEFT", 32, yOffset)
     checkbox.Text:SetText(label)
     checkbox.Text:SetFontObject("GameFontHighlight")
-    
+
     checkbox:SetChecked(Addon:GetSetting(settingKey))
     checkbox:SetScript("OnClick", function(self)
         Addon:SetSetting(settingKey, self:GetChecked())
         if onChange then onChange(self:GetChecked()) end
     end)
-    
+
     checkbox.settingKey = settingKey
     return checkbox
+end
+
+local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settingKeyB, yOffset, onChange)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetPoint("TOPLEFT", 32, yOffset)
+    container:SetSize(200, 20)
+
+    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    labelText:SetPoint("LEFT", 0, 0)
+    labelText:SetText(label)
+
+    local colorSwatch = CreateFrame("Button", nil, container)
+    colorSwatch:SetSize(20, 20)
+    colorSwatch:SetPoint("LEFT", labelText, "RIGHT", 8, 0)
+
+    local swatchBg = colorSwatch:CreateTexture(nil, "BACKGROUND")
+    swatchBg:SetAllPoints()
+    swatchBg:SetColorTexture(0, 0, 0, 1)
+
+    local swatchColor = colorSwatch:CreateTexture(nil, "ARTWORK")
+    swatchColor:SetPoint("TOPLEFT", 1, -1)
+    swatchColor:SetPoint("BOTTOMRIGHT", -1, 1)
+
+    local r = Addon:GetSetting(settingKeyR) or 1
+    local g = Addon:GetSetting(settingKeyG) or 1
+    local b = Addon:GetSetting(settingKeyB) or 1
+    swatchColor:SetColorTexture(r, g, b, 1)
+
+    colorSwatch:SetScript("OnClick", function()
+        local currentR = Addon:GetSetting(settingKeyR) or 1
+        local currentG = Addon:GetSetting(settingKeyG) or 1
+        local currentB = Addon:GetSetting(settingKeyB) or 1
+
+        local info = {
+            swatchFunc = function()
+                local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                Addon:SetSetting(settingKeyR, newR)
+                Addon:SetSetting(settingKeyG, newG)
+                Addon:SetSetting(settingKeyB, newB)
+                swatchColor:SetColorTexture(newR, newG, newB, 1)
+                if onChange then onChange() end
+            end,
+            cancelFunc = function()
+                Addon:SetSetting(settingKeyR, currentR)
+                Addon:SetSetting(settingKeyG, currentG)
+                Addon:SetSetting(settingKeyB, currentB)
+                swatchColor:SetColorTexture(currentR, currentG, currentB, 1)
+                if onChange then onChange() end
+            end,
+            r = currentR,
+            g = currentG,
+            b = currentB,
+            hasOpacity = false,
+        }
+        ColorPickerFrame:SetupColorPickerAndShow(info)
+    end)
+
+    container.colorSwatch = colorSwatch
+    container.swatchColor = swatchColor
+    container.label = labelText
+    return container
 end
 
 local function CreateConfigFrame()
@@ -435,11 +496,43 @@ local function CreateConfigFrame()
     frame.partyLeaderOptionsContainer = partyLeaderOptionsContainer
     UpdatePartyLeaderOptionsEnabled(Addon:GetSetting("showPartyLeader"))
 
-    local friendlyAbsorbCheckbox = CreateCheckbox(content, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function() Addon:RefreshFriendlyAbsorbs() end)
-    y = y - 25
+    local UpdateFriendlyAbsorbOptionsEnabled
 
-    local hostileAbsorbCheckbox = CreateCheckbox(content, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function() Addon:RefreshHostileAbsorbs() end)
-    y = y - 25
+    local friendlyAbsorbCheckbox = CreateCheckbox(content, "Show friendly absorb (shields)", "showFriendlyAbsorb", y, function(checked)
+        UpdateFriendlyAbsorbOptionsEnabled(checked)
+        Addon:RefreshFriendlyAbsorbs()
+    end)
+    y = y - 26
+
+    local friendlyAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "friendlyAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshFriendlyAbsorbs() end)
+    y = y - 24
+
+    local friendlyAbsorbColorPicker = CreateColorPicker(content, "Color:", "friendlyAbsorbColorR", "friendlyAbsorbColorG", "friendlyAbsorbColorB", y, function() Addon:RefreshFriendlyAbsorbs() end)
+    y = y - 30
+
+    UpdateFriendlyAbsorbOptionsEnabled = function(enabled)
+        SetControlsEnabled({friendlyAbsorbOpacitySlider.container, friendlyAbsorbColorPicker}, enabled)
+    end
+    UpdateFriendlyAbsorbOptionsEnabled(Addon:GetSetting("showFriendlyAbsorb"))
+
+    local UpdateHostileAbsorbOptionsEnabled
+
+    local hostileAbsorbCheckbox = CreateCheckbox(content, "Show hostile absorb (heal debuffs)", "showHostileAbsorb", y, function(checked)
+        UpdateHostileAbsorbOptionsEnabled(checked)
+        Addon:RefreshHostileAbsorbs()
+    end)
+    y = y - 26
+
+    local hostileAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "hostileAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshHostileAbsorbs() end)
+    y = y - 24
+
+    local hostileAbsorbColorPicker = CreateColorPicker(content, "Color:", "hostileAbsorbColorR", "hostileAbsorbColorG", "hostileAbsorbColorB", y, function() Addon:RefreshHostileAbsorbs() end)
+    y = y - 30
+
+    UpdateHostileAbsorbOptionsEnabled = function(enabled)
+        SetControlsEnabled({hostileAbsorbOpacitySlider.container, hostileAbsorbColorPicker}, enabled)
+    end
+    UpdateHostileAbsorbOptionsEnabled(Addon:GetSetting("showHostileAbsorb"))
 
     local hideIncomingHealsCheckbox = CreateCheckbox(content, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
     y = y - 25
