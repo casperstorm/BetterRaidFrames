@@ -2,9 +2,6 @@ local ADDON_NAME, Addon = ...
 
 local ConfigFrame = nil
 
-local SECTION_PADDING = 12
-local HEADER_TO_CONTENT = 20
-
 local function SetControlsEnabled(controls, enabled)
     local alpha = enabled and 1.0 or 0.5
     for _, control in ipairs(controls) do
@@ -68,162 +65,79 @@ local function CreateDropdown(parent, label, settingKey, options, yOffset, onCha
     return dropdown
 end
 
-local function CreateSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange, showButtons)
-    local labelText = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    labelText:SetPoint("TOPLEFT", 32, yOffset)
-    labelText:SetText(label)
-
-    local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
-    slider:SetPoint("TOPLEFT", 32, yOffset - 28)
-    slider:SetWidth(showButtons and 140 or 180)
-    slider:SetMinMaxValues(minVal, maxVal)
-    slider:SetValueStep(step)
-    slider:SetObeyStepOnDrag(true)
-
-    slider.Low:SetText(minVal)
-    slider.High:SetText(maxVal)
-
-    local currentValue = Addon:GetSetting(settingKey) or minVal
-    slider:SetValue(currentValue)
-    slider.Text:SetText(currentValue)
-
-    slider:SetScript("OnValueChanged", function(self, value)
-        value = math.floor(value / step + 0.5) * step
-        self.Text:SetText(value)
-        Addon:SetSetting(settingKey, value)
-        if onChange then onChange(value) end
-    end)
-
-    if showButtons then
-        local minusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-        minusBtn:SetSize(22, 22)
-        minusBtn:SetPoint("LEFT", slider, "RIGHT", 8, 0)
-        minusBtn:SetText("-")
-        minusBtn:SetScript("OnClick", function()
-            local val = slider:GetValue() - step
-            if val >= minVal then
-                slider:SetValue(val)
-            end
-        end)
-        slider.minusBtn = minusBtn
-
-        local plusBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-        plusBtn:SetSize(22, 22)
-        plusBtn:SetPoint("LEFT", minusBtn, "RIGHT", 2, 0)
-        plusBtn:SetText("+")
-        plusBtn:SetScript("OnClick", function()
-            local val = slider:GetValue() + step
-            if val <= maxVal then
-                slider:SetValue(val)
-            end
-        end)
-        slider.plusBtn = plusBtn
-    end
-
-    slider.settingKey = settingKey
-    slider.label = labelText
-    return slider
-end
-
-local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange)
+local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange, isPercent)
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", 32, yOffset)
-    container:SetPoint("TOPRIGHT", -12, yOffset)
-    container:SetHeight(20)
+    container:SetPoint("TOPRIGHT", -16, yOffset)
+    container:SetHeight(32)
 
     local currentValue = Addon:GetSetting(settingKey) or minVal
+    
+    local function FormatValue(val)
+        if isPercent then
+            return string.format("%d%%", math.floor(val * 100 + 0.5))
+        end
+        return tostring(math.floor(val + 0.5))
+    end
 
     -- Label on left
-    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     labelText:SetPoint("LEFT", 0, 0)
+    labelText:SetWidth(65)
+    labelText:SetJustifyH("LEFT")
     labelText:SetText(label)
 
-    -- Left arrow button (decrement)
-    local leftBtn = CreateFrame("Button", nil, container)
-    leftBtn:SetSize(20, 20)
-    leftBtn:SetPoint("LEFT", labelText, "RIGHT", 2, 0)
-    leftBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
-    leftBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
-    leftBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    -- Use Blizzard's MinimalSliderWithSteppersTemplate (same as Edit Mode uses)
+    local sliderFrame = CreateFrame("Frame", nil, container, "MinimalSliderWithSteppersTemplate")
+    sliderFrame:SetPoint("LEFT", labelText, "RIGHT", 8, 0)
+    sliderFrame:SetPoint("RIGHT", -10, 0)
+    sliderFrame:SetHeight(16)
+    
+    -- Calculate steps
+    local steps = math.floor((maxVal - minVal) / step + 0.5)
+    
+    -- Create formatter for the right-side value display
+    local formatters = {}
+    formatters[MinimalSliderWithSteppersMixin.Label.Right] = CreateMinimalSliderFormatter(
+        MinimalSliderWithSteppersMixin.Label.Right,
+        function(val) return FormatValue(val) end
+    )
+    
+    -- Track if init is in progress to avoid triggering callbacks
+    sliderFrame.initInProgress = true
+    
+    -- Initialize the slider
+    sliderFrame:Init(currentValue, minVal, maxVal, steps, formatters)
+    
+    -- Hide min/max text (we only want the value on the right)
+    if sliderFrame.MinText then sliderFrame.MinText:Hide() end
+    if sliderFrame.MaxText then sliderFrame.MaxText:Hide() end
 
-    -- Value input on right (editable)
-    local valueBox = CreateFrame("EditBox", nil, container, "InputBoxTemplate")
-    valueBox:SetSize(40, 18)
-    valueBox:SetPoint("RIGHT", 0, 0)
-    valueBox:SetAutoFocus(false)
-    valueBox:SetNumeric(false)
-    valueBox:SetText(currentValue)
-    valueBox:SetJustifyH("CENTER")
-    valueBox:SetFontObject("GameFontHighlightSmall")
+    sliderFrame.initInProgress = false
 
-    -- Right arrow button (increment)
-    local rightBtn = CreateFrame("Button", nil, container)
-    rightBtn:SetSize(20, 20)
-    rightBtn:SetPoint("RIGHT", valueBox, "LEFT", -8, 0)
-    rightBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
-    rightBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
-    rightBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    -- Hook the internal slider's OnValueChanged
+    if sliderFrame.Slider then
+        sliderFrame.Slider:HookScript("OnValueChanged", function(self, value)
+            if not sliderFrame.initInProgress then
+                value = math.floor(value / step + 0.5) * step
+                Addon:SetSetting(settingKey, value)
+                if onChange then onChange(value) end
+            end
+        end)
+    end
 
-    -- Slider in middle
-    local slider = CreateFrame("Slider", nil, container, "OptionsSliderTemplate")
-    slider:SetPoint("LEFT", leftBtn, "RIGHT", 4, 0)
-    slider:SetPoint("RIGHT", rightBtn, "LEFT", -4, 0)
-    slider:SetHeight(16)
-    slider:SetMinMaxValues(minVal, maxVal)
-    slider:SetValueStep(step)
-    slider:SetObeyStepOnDrag(true)
-
-    slider.Low:Hide()
-    slider.High:Hide()
-    slider.Text:Hide()
-
-    slider:SetValue(currentValue)
-
-    slider:SetScript("OnValueChanged", function(self, value)
-        value = math.floor(value / step + 0.5) * step
-        valueBox:SetText(value)
-        Addon:SetSetting(settingKey, value)
-        if onChange then onChange(value) end
-    end)
-
-    valueBox:SetScript("OnEnterPressed", function(self)
-        local val = tonumber(self:GetText())
-        if val then
-            val = math.max(minVal, math.min(maxVal, val))
-            val = math.floor(val / step + 0.5) * step
-            slider:SetValue(val)
-        else
-            self:SetText(slider:GetValue())
-        end
-        self:ClearFocus()
-    end)
-
-    valueBox:SetScript("OnEscapePressed", function(self)
-        self:SetText(slider:GetValue())
-        self:ClearFocus()
-    end)
-
-    leftBtn:SetScript("OnClick", function()
-        local val = slider:GetValue() - step
-        if val >= minVal then
-            slider:SetValue(val)
-        end
-    end)
-
-    rightBtn:SetScript("OnClick", function()
-        local val = slider:GetValue() + step
-        if val <= maxVal then
-            slider:SetValue(val)
-        end
-    end)
-
-    slider.leftBtn = leftBtn
-    slider.rightBtn = rightBtn
-    slider.settingKey = settingKey
-    slider.label = labelText
-    slider.valueBox = valueBox
-    slider.container = container
-    return slider
+    sliderFrame.settingKey = settingKey
+    sliderFrame.label = labelText
+    sliderFrame.container = container
+    
+    -- Helper to update slider value externally
+    function sliderFrame:SetSliderValue(val)
+        self.initInProgress = true
+        self:SetValue(val)
+        self.initInProgress = false
+    end
+    
+    return sliderFrame
 end
 
 local function CreateSubCheckbox(parent, label, settingKey, yOffset, onChange)
@@ -245,10 +159,12 @@ end
 local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settingKeyB, yOffset, onChange)
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", 32, yOffset)
-    container:SetSize(200, 20)
+    container:SetSize(200, 26)
 
-    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     labelText:SetPoint("LEFT", 0, 0)
+    labelText:SetWidth(65)
+    labelText:SetJustifyH("LEFT")
     labelText:SetText(label)
 
     local colorSwatch = CreateFrame("Button", nil, container)
@@ -498,7 +414,7 @@ local function CreateConfigFrame()
     end)
     y = y - 26
 
-    local friendlyAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "friendlyAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshFriendlyAbsorbs() end)
+    local friendlyAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "friendlyAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshFriendlyAbsorbs() end, true)
     y = y - 24
 
     local friendlyAbsorbColorPicker = CreateColorPicker(content, "Color:", "friendlyAbsorbColorR", "friendlyAbsorbColorG", "friendlyAbsorbColorB", y, function() Addon:RefreshFriendlyAbsorbs() end)
@@ -517,7 +433,7 @@ local function CreateConfigFrame()
     end)
     y = y - 26
 
-    local hostileAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "hostileAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshHostileAbsorbs() end)
+    local hostileAbsorbOpacitySlider = CreateHorizontalSlider(content, "Opacity:", "hostileAbsorbOpacity", 0.1, 1.0, 0.1, y, function() Addon:RefreshHostileAbsorbs() end, true)
     y = y - 24
 
     local hostileAbsorbColorPicker = CreateColorPicker(content, "Color:", "hostileAbsorbColorR", "hostileAbsorbColorG", "hostileAbsorbColorB", y, function() Addon:RefreshHostileAbsorbs() end)
