@@ -4,11 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., 0.0.6)'
+        description: 'Version tag (e.g., 0.0.8)'
         required: true
-
-permissions:
-  contents: write
 
 jobs:
   release:
@@ -17,24 +14,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create and Push Tag
+      - name: Create Tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git tag ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
 
-      - name: Package Addon
-        run: |
-          mkdir -p BetterRaidFrames
-          cp *.lua *.toc BetterRaidFrames/
-          cp -r Media BetterRaidFrames/
-          cp LICENSE BetterRaidFrames/
-          zip -r BetterRaidFrames-${{ github.event.inputs.version }}.zip BetterRaidFrames
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Package and Release
+        uses: BigWigsMods/packager@v2
         with:
-          tag_name: ${{ github.event.inputs.version }}
-          files: BetterRaidFrames-${{ github.event.inputs.version }}.zip
-          generate_release_notes: true
+          args: -g ${{ github.event.inputs.version }}
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

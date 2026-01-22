@@ -324,23 +324,69 @@ local function CreateConfigFrame()
     frame:SetFrameStrata("DIALOG")
     frame:Hide()
     
+    frame.TitleText:SetText("Better Raid Frames")
+
+    local tip1 = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    tip1:SetPoint("TOP", 0, -34)
+    tip1:SetText("Join a Follower Dungeon to test and adjust")
+    tip1:SetTextColor(0.7, 0.7, 0.7)
+
+    local tip2 = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    tip2:SetPoint("TOP", tip1, "BOTTOM", 0, -2)
+
+    local function UpdateRaidStyleTip()
+        local inGroup = IsInGroup()
+        local isRaidStyle = false
+
+        if inGroup then
+            -- Check if compact party frame is visible
+            local compactMember = _G["CompactPartyFrameMember1"]
+            isRaidStyle = compactMember and compactMember:IsShown() and compactMember:IsVisible()
+        else
+            -- Not in group, check Edit Mode setting directly
+            if EditModeManagerFrame and EditModeManagerFrame.UseRaidStylePartyFrames then
+                isRaidStyle = EditModeManagerFrame:UseRaidStylePartyFrames()
+            end
+        end
+
+        if isRaidStyle then
+            tip2:SetText("Raid-style party frames enabled")
+            tip2:SetTextColor(0.4, 0.8, 0.4)  -- green
+        else
+            tip2:SetText("Enable raid-style party frames in Edit Mode")
+            tip2:SetTextColor(1, 0.5, 0.5)  -- red/warning
+        end
+    end
+    UpdateRaidStyleTip()
+
+    -- Register events for dynamic updates
+    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    frame:SetScript("OnEvent", function(self, event)
+        UpdateRaidStyleTip()
+    end)
+
+    -- Periodic check for Edit Mode setting changes (event doesn't fire reliably)
+    local timeSinceLastUpdate = 0
+    frame:SetScript("OnUpdate", function(self, elapsed)
+        timeSinceLastUpdate = timeSinceLastUpdate + elapsed
+        if timeSinceLastUpdate >= 1 then
+            timeSinceLastUpdate = 0
+            UpdateRaidStyleTip()
+        end
+    end)
+
     frame:SetScript("OnShow", function()
+        UpdateRaidStyleTip()
         Addon:UpdateAllFrames()
     end)
-    
+
     frame:SetScript("OnHide", function()
         Addon:UpdateAllFrames()
     end)
-    
-    frame.TitleText:SetText("Better Raid Frames")
-    
-    local disclaimer = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    disclaimer:SetPoint("TOP", 0, -34)
-    disclaimer:SetText("Tip: Join a Follower Dungeon to test and adjust")
-    disclaimer:SetTextColor(0.7, 0.7, 0.7)
-    
+
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 16, -52)
+    scrollFrame:SetPoint("TOPLEFT", 16, -66)
     scrollFrame:SetPoint("BOTTOMRIGHT", -32, 8)
     
     local content = CreateFrame("Frame", nil, scrollFrame)
@@ -630,11 +676,6 @@ local function CreateConfigFrame()
     frame.threatOptionsContainer = threatOptionsContainer
     UpdateThreatOptionsEnabled(Addon:GetSetting("showThreatIndicator"))
 
-    y = y - 10
-    local version = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version")
-    local versionText = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    versionText:SetPoint("TOPLEFT", 0, y)
-    versionText:SetText("v" .. (version or "?"))
 
     content:SetHeight(math.abs(y) + 30)
 
