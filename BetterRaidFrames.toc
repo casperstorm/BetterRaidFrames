@@ -3,7 +3,7 @@
 ## Title: BetterRaidFrames
 ## Notes: Customize the default raid frames
 ## Author: casperstorm
-## Version: 0.0.5
+## Version: 0.0.6
 ## SavedVariables: BetterRaidFramesDB
 ## IconTexture: Interface\Icons\Spell_Holy_SealOfSacrifice
 ## X-Curse-Project-ID: 1439737
