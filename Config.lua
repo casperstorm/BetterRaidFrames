@@ -444,9 +444,6 @@ local function CreateConfigFrame()
     end
     UpdateHostileAbsorbOptionsEnabled(Addon:GetSetting("showHostileAbsorb"))
 
-    local hideIncomingHealsCheckbox = CreateCheckbox(content, "Hide incoming heal indicator", "hideIncomingHeals", y, function() Addon:RefreshIncomingHeals() end)
-    y = y - 25
-
     local auraBordersCheckbox = CreateCheckbox(content, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
     y = y - 25
 
@@ -549,7 +546,6 @@ local function CreateConfigFrame()
     table.insert(allRaidStyleControls, hostileAbsorbCheckbox)
     table.insert(allRaidStyleControls, hostileAbsorbOpacitySlider.container)
     table.insert(allRaidStyleControls, hostileAbsorbColorPicker)
-    table.insert(allRaidStyleControls, hideIncomingHealsCheckbox)
     table.insert(allRaidStyleControls, auraBordersCheckbox)
     table.insert(allRaidStyleControls, dispelIndicatorCheckbox)
     table.insert(allRaidStyleControls, selectionBorderCheckbox)
