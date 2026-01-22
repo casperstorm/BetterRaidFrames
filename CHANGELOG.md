@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [0.0.8]
+- Add Raid-styled party frames detection
+
 ## [0.0.7]
 - Automatically packaging and release
 
