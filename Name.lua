@@ -80,25 +80,11 @@ end
 
 local function RestoreDefaultName(frame)
     if not frame or not frame.name then return end
-
-    local unit = frame.unit
-    if not unit then return end
-    if unit ~= "player" and not unit:match("^party%d$") and not unit:match("^raid%d+$") then
-        return
-    end
-
-    frame.name:ClearAllPoints()
-    frame.name:SetPoint("LEFT", frame, "LEFT", 3, 0)
-    frame.name:SetJustifyH("LEFT")
+    if not frame.unit then return end
+    
+    -- Let Blizzard handle it by not modifying anything
+    -- Just ensure we're not leaving customizations behind
     frame.name:SetTextColor(1, 1, 1)
-
-    local fontPath, _, fontFlags = frame.name:GetFont()
-    if fontPath then
-        frame.name:SetFont(fontPath, 11, fontFlags)
-    end
-
-    local fullName = GetUnitName(unit, false) or ""
-    frame.name:SetText(fullName)
 end
 
 local function UpdateName(frame)
@@ -106,9 +92,6 @@ local function UpdateName(frame)
     
     local unit = frame.unit
     if not unit then return end
-    if unit ~= "player" and not unit:match("^party%d$") and not unit:match("^raid%d+$") then
-        return
-    end
     
     if not Addon:GetSetting("customizeNames") then
         RestoreDefaultName(frame)
@@ -165,6 +148,8 @@ end
 
 function Addon:HookName()
     hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
+        if Addon:IsEditModeActive() then return end
         UpdateName(frame)
     end)
 end

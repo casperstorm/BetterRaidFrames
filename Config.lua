@@ -447,12 +447,6 @@ local function CreateConfigFrame()
     local auraBordersCheckbox = CreateCheckbox(content, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
     y = y - 25
 
-    local dispelIndicatorCheckbox = CreateCheckbox(content, "Hide dispel indicator", "hideDispelIndicator", y, function() Addon:RefreshDispelIndicator() end)
-    y = y - 25
-
-    local selectionBorderCheckbox = CreateCheckbox(content, "Hide selection border", "hideSelectionBorder", y, function() Addon:RefreshSelectionBorders() end)
-    y = y - 25
-    
     -- Name
     local UpdateNameOptionsEnabled
 
@@ -547,8 +541,6 @@ local function CreateConfigFrame()
     table.insert(allRaidStyleControls, hostileAbsorbOpacitySlider.container)
     table.insert(allRaidStyleControls, hostileAbsorbColorPicker)
     table.insert(allRaidStyleControls, auraBordersCheckbox)
-    table.insert(allRaidStyleControls, dispelIndicatorCheckbox)
-    table.insert(allRaidStyleControls, selectionBorderCheckbox)
     table.insert(allRaidStyleControls, customizeNamesCheckbox)
     for _, ctrl in ipairs(nameOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
     table.insert(allRaidStyleControls, threatCheckbox)

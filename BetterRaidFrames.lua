@@ -8,7 +8,6 @@ local defaults = {
     threatIndicatorY = 0,
     threatIndicatorSize = 8,
     hideAuraBorders = false,
-    hideDispelIndicator = false,
     customizeNames = false,
     nameX = 0,
     nameY = 0,
@@ -28,7 +27,6 @@ local defaults = {
     hostileAbsorbColorR = 0.4,
     hostileAbsorbColorG = 0.1,
     hostileAbsorbColorB = 0.1,
-    hideSelectionBorder = false,
     showPartyLeader = false,
     partyLeaderX = 2,
     partyLeaderY = -2,
@@ -182,11 +180,9 @@ local function HookRaidFrames()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
     Addon:HookAuraBorders()
-    Addon:HookDispelIndicator()
     Addon:HookName()
     Addon:HookFriendlyAbsorb()
     Addon:HookHostileAbsorb()
-    Addon:HookSelectionBorder()
     Addon:HookPartyLeader()
 end
 
@@ -198,7 +194,6 @@ function Addon:UpdateAllFrames()
         Addon:UpdateName(frame)
         Addon:UpdateFriendlyAbsorb(frame)
         Addon:UpdateHostileAbsorb(frame)
-        Addon:UpdateSelectionBorder(frame)
         Addon:UpdatePartyLeader(frame)
     end)
     

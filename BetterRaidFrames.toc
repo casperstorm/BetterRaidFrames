@@ -16,11 +16,9 @@ Utils.lua
 RoleIcons.lua
 ThreatIndicator.lua
 AuraBorders.lua
-DispelIndicator.lua
 Name.lua
 FriendlyAbsorb.lua
 HostileAbsorb.lua
-SelectionBorder.lua
 PartyLeader.lua
 EditModeButton.lua
 Config.lua

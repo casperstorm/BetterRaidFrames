@@ -1,13 +1,5 @@
 local ADDON_NAME, Addon = ...
 
-local function IsRaidOrPartyFrame(frame)
-    if not frame or not frame.unit then return false end
-    local unit = frame.unit
-    return unit == "player" or 
-           string.match(unit, "^party%d") or 
-           string.match(unit, "^raid%d")
-end
-
 local function GetOrCreateLeaderIndicator(frame)
     if frame.BRFLeaderIndicator then
         return frame.BRFLeaderIndicator
@@ -33,6 +25,7 @@ end
 
 local function UpdatePartyLeader(frame)
     if not frame or not frame.unit then return end
+    if not UnitExists(frame.unit) then return end
     
     if not Addon:GetSetting("showPartyLeader") then
         if frame.BRFLeaderIndicator then
@@ -42,15 +35,16 @@ local function UpdatePartyLeader(frame)
     end
     
     local unit = frame.unit
-    if not unit then return end
-    
     local indicator = GetOrCreateLeaderIndicator(frame)
     ApplyLeaderIndicatorSettings(indicator, frame)
     
     local hideInCombat = Addon:GetSetting("partyLeaderHideInCombat")
     local inCombat = UnitAffectingCombat("player")
     
-    if UnitIsGroupLeader(unit) and not (hideInCombat and inCombat) then
+    -- Safely check if unit is group leader
+    local isLeader = UnitExists(unit) and UnitIsGroupLeader(unit)
+    
+    if isLeader and not (hideInCombat and inCombat) then
         indicator:Show()
     else
         indicator:Hide()
@@ -59,7 +53,7 @@ end
 
 function Addon:HookPartyLeader()
     hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
-        if not IsRaidOrPartyFrame(frame) then return end
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdatePartyLeader(frame)
     end)
     

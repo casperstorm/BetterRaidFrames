@@ -1,13 +1,5 @@
 local ADDON_NAME, Addon = ...
 
-local function IsRaidOrPartyFrame(frame)
-    if not frame or not frame.unit then return false end
-    local unit = frame.unit
-    return unit == "player" or 
-           string.match(unit, "^party%d") or 
-           string.match(unit, "^raid%d")
-end
-
 local function HideAuraFrameBorder(auraFrame)
     if not auraFrame then return end
     
@@ -159,7 +151,7 @@ end
 
 function Addon:HookAuraBorders()
     hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-        if not IsRaidOrPartyFrame(frame) then return end
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
         if Addon:GetSetting("hideAuraBorders") then
             ProcessFrameAuras(frame)
         end

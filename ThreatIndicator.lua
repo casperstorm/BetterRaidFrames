@@ -2,14 +2,6 @@ local ADDON_NAME, Addon = ...
 
 local BLINK_DURATION = 0.5
 
-local function IsRaidOrPartyFrame(frame)
-    if not frame or not frame.unit then return false end
-    local unit = frame.unit
-    return unit == "player" or 
-           string.match(unit, "^party%d") or 
-           string.match(unit, "^raid%d")
-end
-
 local function GetOrCreateThreatIndicator(frame)
     if frame.BRFThreatIndicator then
         return frame.BRFThreatIndicator
@@ -109,12 +101,9 @@ end
 function Addon:HookThreatIndicator()
     hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", function(frame)
         if Addon:IsEditModeActive() then return end
-        if not IsRaidOrPartyFrame(frame) then return end
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
 
         if Addon:GetSetting("showThreatIndicator") then
-            if frame.aggroHighlight and frame.aggroHighlight.Hide then
-                frame.aggroHighlight:Hide()
-            end
             UpdateThreatIndicator(frame)
         else
             if frame.BRFThreatIndicator then

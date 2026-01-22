@@ -12,6 +12,7 @@ end
 
 local function UpdateHostileAbsorb(frame)
     if not frame or not frame.healthBar then return end
+    
     if not Addon:GetSetting("showHostileAbsorb") then
         if frame.BRFHostileAbsorbBar then
             frame.BRFHostileAbsorbBar:Hide()
@@ -21,11 +22,7 @@ local function UpdateHostileAbsorb(frame)
     end
     
     local unit = frame.unit
-    if not unit then return end
-    if unit ~= "player" and not unit:match("^party%d$") and not unit:match("^raid%d+$") then
-        return
-    end
-    if not UnitExists(unit) then return end
+    if not unit or not UnitExists(unit) then return end
     
     local maxHealth = UnitHealthMax(unit)
     local healAbsorb = UnitGetTotalHealAbsorbs(unit)
@@ -40,20 +37,10 @@ local function UpdateHostileAbsorb(frame)
     if frame.myHealAbsorbOverlay then frame.myHealAbsorbOverlay:Hide() end
     
     if not frame.BRFHostileAbsorbBar then
-        frame.BRFHostileAbsorbBar = CreateFrame("StatusBar", nil, frame)
-        frame.BRFHostileAbsorbBar:SetMinMaxValues(0, 1)
-        frame.BRFHostileAbsorbBar:EnableMouse(false)
-    end
-    
-    local bar = frame.BRFHostileAbsorbBar
-    local healthLevel = frame.healthBar:GetFrameLevel()
-    
-    bar:SetParent(frame.healthBar)
-    bar:SetFrameStrata(frame:GetFrameStrata())
-    bar:SetFrameLevel(healthLevel + 3)
-    
-    if bar.currentTexture ~= HOSTILE_TEXTURE then
-        bar.currentTexture = HOSTILE_TEXTURE
+        local bar = CreateFrame("StatusBar", nil, frame.healthBar)
+        bar:SetMinMaxValues(0, 1)
+        bar:EnableMouse(false)
+        bar:SetFrameLevel(frame.healthBar:GetFrameLevel() + 3)
         bar:SetStatusBarTexture(HOSTILE_TEXTURE)
         local barTex = bar:GetStatusBarTexture()
         if barTex then
@@ -62,18 +49,18 @@ local function UpdateHostileAbsorb(frame)
             barTex:SetTexCoord(0, 1, 0, 1)
             barTex:SetDrawLayer("ARTWORK", 3)
         end
+        bar:SetAllPoints(frame.healthBar)
+        bar:SetOrientation("HORIZONTAL")
+        bar:SetReverseFill(false)
+        frame.BRFHostileAbsorbBar = bar
     end
     
+    local bar = frame.BRFHostileAbsorbBar
     local opacity = Addon:GetSetting("hostileAbsorbOpacity") or 0.7
     local r = Addon:GetSetting("hostileAbsorbColorR") or 0.4
     local g = Addon:GetSetting("hostileAbsorbColorG") or 0.1
     local b = Addon:GetSetting("hostileAbsorbColorB") or 0.1
     bar:SetStatusBarColor(r, g, b, opacity)
-    bar:ClearAllPoints()
-    bar:SetPoint("TOPLEFT", frame.healthBar, "TOPLEFT", 0, 0)
-    bar:SetPoint("BOTTOMRIGHT", frame.healthBar, "BOTTOMRIGHT", 0, 0)
-    bar:SetOrientation("HORIZONTAL")
-    bar:SetReverseFill(false)
     bar:SetMinMaxValues(0, maxHealth)
     bar:SetValue(healAbsorb)
     bar:Show()
@@ -81,16 +68,19 @@ end
 
 function Addon:HookHostileAbsorb()
     hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateHostileAbsorb(frame)
     end)
     
     if CompactUnitFrame_UpdateHealPrediction then
         hooksecurefunc("CompactUnitFrame_UpdateHealPrediction", function(frame)
+            if not Addon:IsRaidOrPartyFrame(frame) then return end
             UpdateHostileAbsorb(frame)
         end)
     end
     
     hooksecurefunc("CompactUnitFrame_UpdateHealth", function(frame)
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateHostileAbsorb(frame)
     end)
 end

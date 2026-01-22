@@ -1,13 +1,5 @@
 local ADDON_NAME, Addon = ...
 
-local function IsRaidOrPartyFrame(frame)
-    if not frame or not frame.unit then return false end
-    local unit = frame.unit
-    return unit == "player" or 
-           string.match(unit, "^party%d") or 
-           string.match(unit, "^raid%d")
-end
-
 Addon.RoleIconOptions = {
     { value = "ALL", label = "All" },
     { value = "TANK", label = "Tank" },
@@ -45,7 +37,7 @@ end
 
 function Addon:HookRoleIcons()
     hooksecurefunc("CompactUnitFrame_UpdateRoleIcon", function(frame)
-        if not IsRaidOrPartyFrame(frame) then return end
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateRoleIcon(frame)
     end)
 end
