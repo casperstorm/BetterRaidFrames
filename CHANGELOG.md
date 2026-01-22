@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [0.0.10]
+- Add settings button inside Options > AddOns
+
 ## [0.0.9]
 - Target 12.0.0 as well as 12.0.1
 - Bug fixes

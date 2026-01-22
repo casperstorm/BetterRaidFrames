@@ -230,11 +230,34 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
+local function RegisterOptionsPanel()
+    local panel = CreateFrame("Frame")
+    panel.name = "BetterRaidFrames"
+
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("BetterRaidFrames")
+
+    local openBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    openBtn:SetSize(150, 24)
+    openBtn:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
+    openBtn:SetText("Open Settings")
+    openBtn:SetScript("OnClick", function()
+        HideUIPanel(SettingsPanel)
+        Addon:OpenConfig()
+    end)
+
+    local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
+    category.ID = panel.name
+    Settings.RegisterAddOnCategory(category)
+end
+
 frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         InitializeDB()
         HookRaidFrames()
         Addon:HookEditMode()
+        RegisterOptionsPanel()
     elseif event == "PLAYER_ENTERING_WORLD" then
         Addon:UpdateAllFrames()
     end
