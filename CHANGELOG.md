@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [0.0.7]
+- Automatically packaging and release
+
 ## [0.0.6]
 - Set custom color and opacity for friendly and hostile absorbs
 
