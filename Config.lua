@@ -20,15 +20,6 @@ local function SetControlsEnabled(controls, enabled)
     end
 end
 
-local function CreateDivider(parent, yOffset)
-    local divider = parent:CreateTexture(nil, "OVERLAY")
-    divider:SetPoint("TOPLEFT", 12, yOffset)
-    divider:SetPoint("TOPRIGHT", -12, yOffset)
-    divider:SetHeight(2)
-    divider:SetColorTexture(0.5, 0.5, 0.5, 1)
-    return divider
-end
-
 local function CreateCheckbox(parent, label, settingKey, yOffset, onChange)
     local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
     checkbox:SetPoint("TOPLEFT", 16, yOffset)
@@ -314,7 +305,7 @@ end
 
 local function CreateConfigFrame()
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(340, 600)
+    frame:SetSize(380, 580)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -326,58 +317,12 @@ local function CreateConfigFrame()
     
     frame.TitleText:SetText("Better Raid Frames")
 
-    local tip1 = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    tip1:SetPoint("TOP", 0, -34)
-    tip1:SetText("Join a Follower Dungeon to test and adjust")
-    tip1:SetTextColor(0.7, 0.7, 0.7)
-
-    local tip2 = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    tip2:SetPoint("TOP", tip1, "BOTTOM", 0, -2)
-
-    local function UpdateRaidStyleTip()
-        local inGroup = IsInGroup()
-        local isRaidStyle = false
-
-        if inGroup then
-            -- Check if compact party frame is visible
-            local compactMember = _G["CompactPartyFrameMember1"]
-            isRaidStyle = compactMember and compactMember:IsShown() and compactMember:IsVisible()
-        else
-            -- Not in group, check Edit Mode setting directly
-            if EditModeManagerFrame and EditModeManagerFrame.UseRaidStylePartyFrames then
-                isRaidStyle = EditModeManagerFrame:UseRaidStylePartyFrames()
-            end
-        end
-
-        if isRaidStyle then
-            tip2:SetText("Raid-style party frames enabled")
-            tip2:SetTextColor(0.4, 0.8, 0.4)  -- green
-        else
-            tip2:SetText("Enable raid-style party frames in Edit Mode")
-            tip2:SetTextColor(1, 0.5, 0.5)  -- red/warning
-        end
-    end
-    UpdateRaidStyleTip()
-
-    -- Register events for dynamic updates
-    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
-    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    frame:SetScript("OnEvent", function(self, event)
-        UpdateRaidStyleTip()
-    end)
-
-    -- Periodic check for Edit Mode setting changes (event doesn't fire reliably)
-    local timeSinceLastUpdate = 0
-    frame:SetScript("OnUpdate", function(self, elapsed)
-        timeSinceLastUpdate = timeSinceLastUpdate + elapsed
-        if timeSinceLastUpdate >= 1 then
-            timeSinceLastUpdate = 0
-            UpdateRaidStyleTip()
-        end
-    end)
+    local tip1 = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    tip1:SetPoint("TOP", 0, -30)
+    tip1:SetText("Tip: Join a Follower Dungeon to preview changes")
+    tip1:SetTextColor(0.6, 0.6, 0.6)
 
     frame:SetScript("OnShow", function()
-        UpdateRaidStyleTip()
         Addon:UpdateAllFrames()
     end)
 
@@ -386,31 +331,56 @@ local function CreateConfigFrame()
     end)
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 16, -66)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -32, 8)
+    scrollFrame:SetPoint("TOPLEFT", 12, -54)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -28, 8)
     
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetWidth(288)
+    content:SetWidth(330)
     scrollFrame:SetScrollChild(content)
     
     frame.scrollFrame = scrollFrame
     frame.content = content
 
-    local y = -10
+    local y = -8
 
-    -- Profile Section
-    local profileDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
-    profileDropdown:SetPoint("TOP", content, "TOP", 0, y)
-    profileDropdown:SetWidth(120)
-
+    -- Profile Section (inline layout)
     local profileLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    profileLabel:SetPoint("RIGHT", profileDropdown, "LEFT", -8, 0)
+    profileLabel:SetPoint("TOPLEFT", 16, y)
     profileLabel:SetText("Profile:")
+
+    local profileDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+    profileDropdown:SetPoint("LEFT", profileLabel, "RIGHT", 6, 0)
+    profileDropdown:SetWidth(100)
+
+    local newBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    newBtn:SetSize(45, 20)
+    newBtn:SetPoint("LEFT", profileDropdown, "RIGHT", 6, 0)
+    newBtn:SetText("New")
+    newBtn:SetScript("OnClick", function()
+        StaticPopup_Show("BRF_NEW_PROFILE")
+    end)
+
+    local renameBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    renameBtn:SetSize(55, 20)
+    renameBtn:SetPoint("LEFT", newBtn, "RIGHT", 2, 0)
+    renameBtn:SetText("Rename")
+    renameBtn:GetFontString():SetFont(renameBtn:GetFontString():GetFont(), 10)
+    renameBtn:SetScript("OnClick", function()
+        StaticPopup_Show("BRF_RENAME_PROFILE")
+    end)
+
+    local deleteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    deleteBtn:SetSize(55, 20)
+    deleteBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
+    deleteBtn:SetText("Remove")
+    deleteBtn:SetScript("OnClick", function()
+        local current = Addon:GetCurrentProfileName()
+        StaticPopup_Show("BRF_DELETE_PROFILE", current)
+    end)
 
     local function RefreshProfileDropdown()
         profileDropdown:SetupMenu(function(dropdown, rootDescription)
             local profiles = Addon:GetProfileList()
-            local currentProfile = Addon:GetCurrentProfileName()
             for _, name in ipairs(profiles) do
                 rootDescription:CreateRadio(name,
                     function() return Addon:GetCurrentProfileName() == name end,
@@ -427,42 +397,10 @@ local function CreateConfigFrame()
     frame.profileDropdown = profileDropdown
     frame.RefreshProfileDropdown = RefreshProfileDropdown
 
-    local newBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    newBtn:SetSize(45, 20)
-    newBtn:SetPoint("TOPLEFT", profileDropdown, "BOTTOMLEFT", 0, -8)
-    newBtn:SetText("New")
-    newBtn:GetFontString():SetFont(newBtn:GetFontString():GetFont(), 10)
-    newBtn:SetScript("OnClick", function()
-        StaticPopup_Show("BRF_NEW_PROFILE")
-    end)
-
-    local renameBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    renameBtn:SetSize(55, 20)
-    renameBtn:SetPoint("LEFT", newBtn, "RIGHT", 2, 0)
-    renameBtn:SetText("Rename")
-    renameBtn:GetFontString():SetFont(renameBtn:GetFontString():GetFont(), 10)
-    renameBtn:SetScript("OnClick", function()
-        StaticPopup_Show("BRF_RENAME_PROFILE")
-    end)
-
-    local deleteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    deleteBtn:SetSize(50, 20)
-    deleteBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
-    deleteBtn:SetText("Delete")
-    deleteBtn:GetFontString():SetFont(deleteBtn:GetFontString():GetFont(), 10)
-    deleteBtn:SetScript("OnClick", function()
-        local current = Addon:GetCurrentProfileName()
-        StaticPopup_Show("BRF_DELETE_PROFILE", current)
-    end)
-
     local function UpdateProfileButtonsVisibility()
         local isDefault = Addon:GetCurrentProfileName() == "Default"
-        if renameBtn then
-            renameBtn:SetEnabled(not isDefault)
-        end
-        if deleteBtn then
-            deleteBtn:SetEnabled(not isDefault)
-        end
+        renameBtn:SetEnabled(not isDefault)
+        deleteBtn:SetEnabled(not isDefault)
     end
 
     frame.renameBtn = renameBtn
@@ -470,43 +408,52 @@ local function CreateConfigFrame()
     frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
     UpdateProfileButtonsVisibility()
 
-    -- Profile section uses relative positioning, so set y to where it ends
-    -- Dropdown at -10, ~28px tall, buttons 8px below, buttons 20px tall = ends around -66
-    y = -80
+    y = y - 34
 
-    -- Blizzard Raid Frame Settings Section
-    CreateDivider(content, y)
-    y = y - 16
-
-    local blizzHeader = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    blizzHeader:SetPoint("TOPLEFT", 16, y)
-    blizzHeader:SetText("Shortcut to Blizzard Settings")
-    y = y - 22
-
-    local blizzSettingsBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    blizzSettingsBtn:SetSize(220, 22)
-    blizzSettingsBtn:SetPoint("TOPLEFT", 16, y)
-    blizzSettingsBtn:SetText("Interface Options")
-    blizzSettingsBtn:SetScript("OnClick", function()
-        Settings.OpenToCategory(Settings.INTERFACE_CATEGORY_ID)
-    end)
+    -- Use Raid Style Party Frames checkbox
+    local raidStyleCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+    raidStyleCheckbox:SetPoint("TOPLEFT", 16, y)
+    raidStyleCheckbox.Text:SetText("Use Raid-Style Party Frames")
+    raidStyleCheckbox.Text:SetFontObject("GameFontHighlight")
+    
+    -- Warning text shown when disabled
+    local raidStyleWarning = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    raidStyleWarning:SetPoint("LEFT", raidStyleCheckbox.Text, "RIGHT", 6, 0)
+    raidStyleWarning:SetText("Required")
+    raidStyleWarning:SetTextColor(1, 0.3, 0.3)
     y = y - 26
-
-    local editModeBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    editModeBtn:SetSize(220, 22)
-    editModeBtn:SetPoint("TOPLEFT", 16, y)
-    editModeBtn:SetText("Frames Options (Edit Mode)")
-    editModeBtn:SetScript("OnClick", function()
-        ShowUIPanel(EditModeManagerFrame)
+    
+    -- Container for all controls that require raid-style frames
+    local allRaidStyleControls = {}
+    local UpdateAllRaidStyleControls
+    
+    local function UpdateRaidStyleCheckbox()
+        local isRaidStyle = Addon:GetUseRaidStylePartyFrames()
+        raidStyleCheckbox:SetChecked(isRaidStyle)
+        raidStyleWarning:SetShown(not isRaidStyle)
+        if UpdateAllRaidStyleControls then
+            UpdateAllRaidStyleControls(isRaidStyle)
+        end
+    end
+    
+    raidStyleCheckbox:SetScript("OnClick", function(self)
+        local enabled = self:GetChecked()
+        Addon:SetUseRaidStylePartyFrames(enabled)
+        -- Re-check after a delay since it may take time to apply
+        C_Timer.After(0.5, function()
+            UpdateRaidStyleCheckbox()
+        end)
     end)
-    y = y - 38
-
-    CreateDivider(content, y)
-    y = y - 16
+    
+    -- Update on show
+    raidStyleCheckbox:SetScript("OnShow", UpdateRaidStyleCheckbox)
+    y = y - 10
 
     local roleIconDropdown = CreateDropdown(
         content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
     )
+    table.insert(allRaidStyleControls, roleIconDropdown)
+    table.insert(allRaidStyleControls, roleIconDropdown.label)
     y = y - 60
 
     local UpdatePartyLeaderOptionsEnabled
@@ -515,6 +462,7 @@ local function CreateConfigFrame()
         UpdatePartyLeaderOptionsEnabled(checked)
         Addon:RefreshPartyLeaders()
     end)
+    table.insert(allRaidStyleControls, partyLeaderCheckbox)
     frame.partyLeaderCheckbox = partyLeaderCheckbox
     y = y - 28
 
@@ -676,6 +624,33 @@ local function CreateConfigFrame()
     frame.threatOptionsContainer = threatOptionsContainer
     UpdateThreatOptionsEnabled(Addon:GetSetting("showThreatIndicator"))
 
+    -- Add all remaining controls to the raid-style container
+    table.insert(allRaidStyleControls, partyLeaderHideInCombatCheckbox)
+    for _, ctrl in ipairs(partyLeaderOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
+    table.insert(allRaidStyleControls, friendlyAbsorbCheckbox)
+    table.insert(allRaidStyleControls, friendlyAbsorbOpacitySlider.container)
+    table.insert(allRaidStyleControls, friendlyAbsorbColorPicker)
+    table.insert(allRaidStyleControls, hostileAbsorbCheckbox)
+    table.insert(allRaidStyleControls, hostileAbsorbOpacitySlider.container)
+    table.insert(allRaidStyleControls, hostileAbsorbColorPicker)
+    table.insert(allRaidStyleControls, hideIncomingHealsCheckbox)
+    table.insert(allRaidStyleControls, auraBordersCheckbox)
+    table.insert(allRaidStyleControls, dispelIndicatorCheckbox)
+    table.insert(allRaidStyleControls, selectionBorderCheckbox)
+    table.insert(allRaidStyleControls, customizeNamesCheckbox)
+    for _, ctrl in ipairs(nameOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
+    table.insert(allRaidStyleControls, threatCheckbox)
+    for _, ctrl in ipairs(threatOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
+
+    -- Function to enable/disable all raid-style controls
+    UpdateAllRaidStyleControls = function(enabled)
+        SetControlsEnabled(allRaidStyleControls, enabled)
+    end
+    frame.allRaidStyleControls = allRaidStyleControls
+    frame.UpdateAllRaidStyleControls = UpdateAllRaidStyleControls
+
+    -- Initial update after a delay to ensure lib is ready
+    C_Timer.After(0.5, UpdateRaidStyleCheckbox)
 
     content:SetHeight(math.abs(y) + 30)
 

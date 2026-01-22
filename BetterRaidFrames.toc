@@ -8,6 +8,9 @@
 ## IconTexture: Interface\Icons\Spell_Holy_SealOfSacrifice
 ## X-Curse-Project-ID: 1439737
 
+Libs/LibStub/LibStub.lua
+Libs/LibEditModeOverride/LibEditModeOverride.lua
+
 BetterRaidFrames.lua
 Utils.lua
 RoleIcons.lua

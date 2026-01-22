@@ -45,6 +45,76 @@ function Addon:IsEditModeActive()
     return EditModeManagerFrame and EditModeManagerFrame:IsShown()
 end
 
+-- Get the current Raid-Style Party Frames setting via LibEditModeOverride
+function Addon:GetUseRaidStylePartyFrames()
+    local LibEditModeOverride = LibStub and LibStub("LibEditModeOverride-1.0", true)
+    if LibEditModeOverride and LibEditModeOverride:IsReady() then
+        LibEditModeOverride:LoadLayouts()
+        local success, result = pcall(function()
+            return LibEditModeOverride:GetFrameSetting(PartyFrame, Enum.EditModeUnitFrameSetting.UseRaidStylePartyFrames)
+        end)
+        if success then
+            return result == 1
+        end
+    end
+    
+    -- Fallback to checking EditModeManagerFrame
+    if EditModeManagerFrame and EditModeManagerFrame.UseRaidStylePartyFrames then
+        return EditModeManagerFrame:UseRaidStylePartyFrames()
+    end
+    
+    return false
+end
+
+-- Set the Raid-Style Party Frames setting via LibEditModeOverride
+local RAID_STYLE_MAX_RETRIES, RAID_STYLE_RETRY_DELAY = 3, 2
+function Addon:SetUseRaidStylePartyFrames(enabled, retryCount)
+    local LibEditModeOverride = LibStub and LibStub("LibEditModeOverride-1.0", true)
+    if not LibEditModeOverride then
+        print("|cff00ff00BetterRaidFrames:|r LibEditModeOverride not available")
+        return false
+    end
+    
+    if not LibEditModeOverride:IsReady() then
+        retryCount = retryCount or 0
+        if retryCount > RAID_STYLE_MAX_RETRIES then
+            print("|cff00ff00BetterRaidFrames:|r Edit Mode not ready, please try again later")
+            return false
+        end
+        C_Timer.After(RAID_STYLE_RETRY_DELAY, function()
+            Addon:SetUseRaidStylePartyFrames(enabled, retryCount + 1)
+        end)
+        return true
+    end
+    
+    local value = enabled and 1 or 0
+    
+    LibEditModeOverride:LoadLayouts()
+    
+    if not LibEditModeOverride:CanEditActiveLayout() then
+        print("|cff00ff00BetterRaidFrames:|r Cannot edit preset layouts. Create a custom layout in Edit Mode first.")
+        return false
+    end
+    
+    local success, err = pcall(function()
+        LibEditModeOverride:SetFrameSetting(PartyFrame, Enum.EditModeUnitFrameSetting.UseRaidStylePartyFrames, value)
+    end)
+    
+    if not success then
+        print("|cff00ff00BetterRaidFrames:|r Failed to set Raid-Style Party Frames: " .. tostring(err))
+        return false
+    end
+    
+    if InCombatLockdown() then
+        LibEditModeOverride:SaveOnly()
+        print("|cff00ff00BetterRaidFrames:|r Setting saved. Will apply after combat.")
+    else
+        LibEditModeOverride:ApplyChanges()
+    end
+    
+    return true
+end
+
 local function CopyDefaults()
     local copy = {}
     for key, value in pairs(defaults) do
