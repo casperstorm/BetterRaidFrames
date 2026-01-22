@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ## [0.0.10]
+- Better UX for when Raid styled party frames is disabled
 - Add settings button inside Options > AddOns
 
 ## [0.0.9]
