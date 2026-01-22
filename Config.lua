@@ -461,6 +461,10 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, classColorCheckbox)
     y = y - 25
 
+    local cyrillicCheckbox = CreateSubCheckbox(content, "Convert Cyrillic to Latin", "nameCyrillicToLatin", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, cyrillicCheckbox)
+    y = y - 25
+
     UpdateNameOptionsEnabled = function(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end

@@ -35,6 +35,37 @@ local function TruncateName(name, maxLength)
     end
 end
 
+local cyrillicToLatin = {
+    -- Russian uppercase
+    ["А"] = "A", ["Б"] = "B", ["В"] = "V", ["Г"] = "G", ["Д"] = "D",
+    ["Е"] = "E", ["Ё"] = "Yo", ["Ж"] = "Zh", ["З"] = "Z", ["И"] = "I",
+    ["Й"] = "Y", ["К"] = "K", ["Л"] = "L", ["М"] = "M", ["Н"] = "N",
+    ["О"] = "O", ["П"] = "P", ["Р"] = "R", ["С"] = "S", ["Т"] = "T",
+    ["У"] = "U", ["Ф"] = "F", ["Х"] = "Kh", ["Ц"] = "Ts", ["Ч"] = "Ch",
+    ["Ш"] = "Sh", ["Щ"] = "Shch", ["Ъ"] = "", ["Ы"] = "Y", ["Ь"] = "",
+    ["Э"] = "E", ["Ю"] = "Yu", ["Я"] = "Ya",
+    -- Russian lowercase
+    ["а"] = "a", ["б"] = "b", ["в"] = "v", ["г"] = "g", ["д"] = "d",
+    ["е"] = "e", ["ё"] = "yo", ["ж"] = "zh", ["з"] = "z", ["и"] = "i",
+    ["й"] = "y", ["к"] = "k", ["л"] = "l", ["м"] = "m", ["н"] = "n",
+    ["о"] = "o", ["п"] = "p", ["р"] = "r", ["с"] = "s", ["т"] = "t",
+    ["у"] = "u", ["ф"] = "f", ["х"] = "kh", ["ц"] = "ts", ["ч"] = "ch",
+    ["ш"] = "sh", ["щ"] = "shch", ["ъ"] = "", ["ы"] = "y", ["ь"] = "",
+    ["э"] = "e", ["ю"] = "yu", ["я"] = "ya",
+    -- Ukrainian specific
+    ["Є"] = "Ye", ["І"] = "I", ["Ї"] = "Yi", ["Ґ"] = "G",
+    ["є"] = "ye", ["і"] = "i", ["ї"] = "yi", ["ґ"] = "g",
+}
+
+local function TransliterateCyrillic(name)
+    if not name then return name end
+    local result = ""
+    for char in string.gmatch(name, "([%z\1-\127\194-\244][\128-\191]*)") do
+        result = result .. (cyrillicToLatin[char] or char)
+    end
+    return result
+end
+
 local function GetClassColor(unit)
     if not unit then return nil end
     local _, className = UnitClass(unit)
@@ -109,6 +140,10 @@ local function UpdateName(frame)
 
         if hideServer then
             displayName = StripServerName(displayName)
+        end
+
+        if Addon:GetSetting("nameCyrillicToLatin") then
+            displayName = TransliterateCyrillic(displayName)
         end
 
         if truncateEnabled then

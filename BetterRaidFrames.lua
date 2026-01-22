@@ -18,6 +18,7 @@ local defaults = {
     nameTruncate = false,
     nameTruncateLength = 8,
     nameClassColor = false,
+    nameCyrillicToLatin = false,
     showFriendlyAbsorb = false,
     showHostileAbsorb = false,
     hideSelectionBorder = false,
