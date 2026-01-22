@@ -3,32 +3,38 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Specify tag to create"
+      version:
+        description: 'Version tag (e.g., 0.0.6)'
         required: true
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Upload Release Asset
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Package Project
+      - name: Create and Push Tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
+      - name: Package Addon
         run: |
           mkdir -p BetterRaidFrames
           cp *.lua *.toc BetterRaidFrames/
           cp -r Media BetterRaidFrames/
-          zip -r BetterRaidFrames.zip BetterRaidFrames
+          cp LICENSE BetterRaidFrames/
+          zip -r BetterRaidFrames-${{ github.event.inputs.version }}.zip BetterRaidFrames
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
-          name: ${{ github.event.inputs.tag }}
-          draft: true
-          files: BetterRaidFrames.zip
+          tag_name: ${{ github.event.inputs.version }}
+          files: BetterRaidFrames-${{ github.event.inputs.version }}.zip
+          generate_release_notes: true

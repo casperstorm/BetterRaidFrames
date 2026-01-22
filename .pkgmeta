@@ -1,0 +1,11 @@
+package-as: BetterRaidFrames
+
+ignore:
+  - .github
+  - README.md
+  - "*.png"
+  - .gitignore
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
