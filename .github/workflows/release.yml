@@ -24,16 +24,8 @@ jobs:
           git tag ${{ github.event.inputs.version }}
           git push origin ${{ github.event.inputs.version }}
 
-      - name: Extract Release Notes
-        run: |
-          # Extract just this version's notes from CHANGELOG.md
-          VERSION="${{ github.event.inputs.version }}"
-          awk "/^## \[${VERSION}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > RELEASE_NOTES.md
-
       - name: Package and Release
         uses: BigWigsMods/packager@v2
-        with:
-          args: -c RELEASE_NOTES.md
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
