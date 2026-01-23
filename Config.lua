@@ -238,14 +238,23 @@ local function CreateConfigFrame()
     tip1:SetText("Tip: Join a Follower Dungeon to preview changes")
     tip1:SetTextColor(0.6, 0.6, 0.6)
 
+    local combatWarning = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    combatWarning:SetPoint("TOP", tip1, "BOTTOM", 0, -2)
+    combatWarning:SetText("Settings disabled during combat")
+    combatWarning:SetTextColor(1, 0.3, 0.3)
+    combatWarning:Hide()
+
     frame:SetScript("OnShow", function(self)
         Addon:UpdateAllFrames()
-        -- Restore sub-section disabled states based on parent checkbox values
-        SetControlsEnabled(self.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
-        SetControlsEnabled(self.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
-        SetControlsEnabled(self.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
-        SetControlsEnabled(self.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
-        SetControlsEnabled(self.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
+        if self.UpdateCombatLockdown then
+            self.UpdateCombatLockdown(InCombatLockdown())
+        else
+            SetControlsEnabled(self.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
+            SetControlsEnabled(self.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
+            SetControlsEnabled(self.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
+            SetControlsEnabled(self.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
+            SetControlsEnabled(self.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
+        end
     end)
 
     frame:SetScript("OnHide", function()
@@ -329,6 +338,8 @@ local function CreateConfigFrame()
     frame.deleteBtn = deleteBtn
     frame.UpdateProfileButtonsVisibility = UpdateProfileButtonsVisibility
     UpdateProfileButtonsVisibility()
+
+    local profileControls = {profileDropdown, profileLabel, newBtn, renameBtn, deleteBtn}
 
     y = y - 34
 
@@ -565,6 +576,35 @@ local function CreateConfigFrame()
 
     -- Initial update after a delay to ensure lib is ready
     C_Timer.After(0.5, UpdateRaidStyleCheckbox)
+
+    -- Combat lockdown: disable all controls when in combat
+    local function UpdateCombatLockdown(inCombat)
+        combatWarning:SetShown(inCombat)
+        SetControlsEnabled(profileControls, not inCombat)
+        SetControlsEnabled({raidStyleCheckbox}, not inCombat)
+        if inCombat then
+            SetControlsEnabled(allRaidStyleControls, false)
+        else
+            local isRaidStyle = Addon:GetUseRaidStylePartyFrames()
+            UpdateAllRaidStyleControls(isRaidStyle)
+            raidStyleCheckbox:SetAlpha(1.0)
+            raidStyleCheckbox:EnableMouse(true)
+            -- Re-apply sub-section states
+            SetControlsEnabled(frame.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
+            SetControlsEnabled(frame.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
+            SetControlsEnabled(frame.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
+            SetControlsEnabled(frame.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
+            SetControlsEnabled(frame.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
+        end
+    end
+    frame.UpdateCombatLockdown = UpdateCombatLockdown
+
+    frame.combatEventFrame = CreateFrame("Frame")
+    frame.combatEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    frame.combatEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame.combatEventFrame:SetScript("OnEvent", function(self, event)
+        UpdateCombatLockdown(event == "PLAYER_REGEN_DISABLED")
+    end)
 
     content:SetHeight(math.abs(y) + 30)
 
