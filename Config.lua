@@ -238,8 +238,14 @@ local function CreateConfigFrame()
     tip1:SetText("Tip: Join a Follower Dungeon to preview changes")
     tip1:SetTextColor(0.6, 0.6, 0.6)
 
-    frame:SetScript("OnShow", function()
+    frame:SetScript("OnShow", function(self)
         Addon:UpdateAllFrames()
+        -- Restore sub-section disabled states based on parent checkbox values
+        SetControlsEnabled(self.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
+        SetControlsEnabled(self.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
+        SetControlsEnabled(self.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
+        SetControlsEnabled(self.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
+        SetControlsEnabled(self.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
     end)
 
     frame:SetScript("OnHide", function()
@@ -420,9 +426,11 @@ local function CreateConfigFrame()
     local friendlyAbsorbColorPicker = CreateColorPicker(content, "Color:", "friendlyAbsorbColorR", "friendlyAbsorbColorG", "friendlyAbsorbColorB", y, function() Addon:RefreshFriendlyAbsorbs() end)
     y = y - 30
 
+    local friendlyAbsorbOptionsContainer = {friendlyAbsorbOpacitySlider.container, friendlyAbsorbColorPicker}
     UpdateFriendlyAbsorbOptionsEnabled = function(enabled)
-        SetControlsEnabled({friendlyAbsorbOpacitySlider.container, friendlyAbsorbColorPicker}, enabled)
+        SetControlsEnabled(friendlyAbsorbOptionsContainer, enabled)
     end
+    frame.friendlyAbsorbOptionsContainer = friendlyAbsorbOptionsContainer
     UpdateFriendlyAbsorbOptionsEnabled(Addon:GetSetting("showFriendlyAbsorb"))
 
     local UpdateHostileAbsorbOptionsEnabled
@@ -439,9 +447,11 @@ local function CreateConfigFrame()
     local hostileAbsorbColorPicker = CreateColorPicker(content, "Color:", "hostileAbsorbColorR", "hostileAbsorbColorG", "hostileAbsorbColorB", y, function() Addon:RefreshHostileAbsorbs() end)
     y = y - 30
 
+    local hostileAbsorbOptionsContainer = {hostileAbsorbOpacitySlider.container, hostileAbsorbColorPicker}
     UpdateHostileAbsorbOptionsEnabled = function(enabled)
-        SetControlsEnabled({hostileAbsorbOpacitySlider.container, hostileAbsorbColorPicker}, enabled)
+        SetControlsEnabled(hostileAbsorbOptionsContainer, enabled)
     end
+    frame.hostileAbsorbOptionsContainer = hostileAbsorbOptionsContainer
     UpdateHostileAbsorbOptionsEnabled(Addon:GetSetting("showHostileAbsorb"))
 
     local auraBordersCheckbox = CreateCheckbox(content, "Hide borders on buff/debuff icons", "hideAuraBorders", y, function() Addon:RefreshAuraBorders() end)
