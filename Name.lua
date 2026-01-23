@@ -115,7 +115,7 @@ local function UpdateName(frame)
     end
     
     if frame.unit then
-        local displayName = GetUnitName(frame.unit, false) or ""
+        local displayName = UnitName(frame.unit) or ""
 
         if not originalNames[frame] then
             originalNames[frame] = displayName
