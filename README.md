@@ -2,6 +2,8 @@
 
 A World of Warcraft addon that lets you customize the default raid frames.
 
+<img src="icon.png" alt="icon" width="128"> 
+
 ![BetterRaidFrames](asset.png)
 
 ## Features
