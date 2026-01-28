@@ -24,6 +24,10 @@ Type `/brf` to open the configuration window.
 1. Download the latest release
 2. Extract the `BetterRaidFrames` folder to your `Interface/AddOns` directory
 
+## Links
+
+- https://www.curseforge.com/wow/addons/better-raid-frames
+
 ## License
 
 BetterRaidFrames is released under the GPL-3.0 License. For more details, see the LICENSE file.
