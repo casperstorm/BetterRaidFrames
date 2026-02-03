@@ -71,17 +71,24 @@ function Addon:HookHostileAbsorb()
         if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateHostileAbsorb(frame)
     end)
-    
+
     if CompactUnitFrame_UpdateHealPrediction then
         hooksecurefunc("CompactUnitFrame_UpdateHealPrediction", function(frame)
             if not Addon:IsRaidOrPartyFrame(frame) then return end
             UpdateHostileAbsorb(frame)
         end)
     end
-    
+
     hooksecurefunc("CompactUnitFrame_UpdateHealth", function(frame)
         if not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateHostileAbsorb(frame)
+    end)
+
+    -- Listen for heal absorb changes (e.g., when dispelled)
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED")
+    eventFrame:SetScript("OnEvent", function(self, event, unit)
+        Addon:RefreshHostileAbsorbs()
     end)
 end
 
