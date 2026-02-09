@@ -109,7 +109,14 @@ local function UpdateName(frame)
     frame.name:SetPoint("CENTER", frame, "CENTER", offsetX, offsetY)
     frame.name:SetJustifyH("CENTER")
 
-    local fontPath, _, fontFlags = frame.name:GetFont()
+    local fontPath, _, fontFlags
+    local fontObject = frame.name:GetFontObject()
+    if fontObject then
+        fontPath, _, fontFlags = fontObject:GetFont()
+    end
+    if not fontPath then
+        fontPath, _, fontFlags = frame.name:GetFont()
+    end
     if fontPath then
         frame.name:SetFont(fontPath, fontSize, fontFlags)
     end
