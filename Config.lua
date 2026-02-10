@@ -512,6 +512,10 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, cyrillicCheckbox)
     y = y - 25
 
+    local hideOnDeadCheckbox = CreateSubCheckbox(content, "Hide name when dead", "nameHideOnDead", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, hideOnDeadCheckbox)
+    y = y - 25
+
     UpdateNameOptionsEnabled = function(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end

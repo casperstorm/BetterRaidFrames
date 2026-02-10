@@ -98,6 +98,14 @@ local function UpdateName(frame)
         return
     end
 
+    -- Hide name when unit is dead and setting is enabled
+    if Addon:GetSetting("nameHideOnDead") and UnitIsDeadOrGhost(unit) then
+        frame.name:Hide()
+        return
+    else
+        frame.name:Show()
+    end
+
     local offsetX = Addon:GetSetting("nameX") or 0
     local offsetY = Addon:GetSetting("nameY") or 0
     local fontSize = Addon:GetSetting("nameSize") or 11
@@ -155,6 +163,11 @@ end
 
 function Addon:HookName()
     hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
+        if not Addon:IsRaidOrPartyFrame(frame) then return end
+        if Addon:IsEditModeActive() then return end
+        UpdateName(frame)
+    end)
+    hooksecurefunc("CompactUnitFrame_UpdateStatusText", function(frame)
         if not Addon:IsRaidOrPartyFrame(frame) then return end
         if Addon:IsEditModeActive() then return end
         UpdateName(frame)
