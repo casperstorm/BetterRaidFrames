@@ -85,6 +85,7 @@ local function RestoreDefaultName(frame)
     -- Let Blizzard handle it by not modifying anything
     -- Just ensure we're not leaving customizations behind
     frame.name:SetTextColor(1, 1, 1)
+    frame.name:SetShadowOffset(0, 0)
 end
 
 local function UpdateName(frame)
@@ -126,7 +127,20 @@ local function UpdateName(frame)
         fontPath, _, fontFlags = frame.name:GetFont()
     end
     if fontPath then
-        frame.name:SetFont(fontPath, fontSize, fontFlags)
+        local outline = Addon:GetSetting("nameTextOutline") or "NONE"
+        local flags = outline ~= "NONE" and outline or ""
+        frame.name:SetFont(fontPath, fontSize, flags)
+    end
+
+    if Addon:GetSetting("nameTextShadow") then
+        local sr = Addon:GetSetting("nameTextShadowColorR") or 0
+        local sg = Addon:GetSetting("nameTextShadowColorG") or 0
+        local sb = Addon:GetSetting("nameTextShadowColorB") or 0
+        local offset = Addon:GetSetting("nameTextShadowOffset") or 1
+        frame.name:SetShadowColor(sr, sg, sb, 1)
+        frame.name:SetShadowOffset(offset, -offset)
+    else
+        frame.name:SetShadowOffset(0, 0)
     end
     
     if frame.unit then

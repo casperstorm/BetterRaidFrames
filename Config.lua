@@ -516,6 +516,50 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, hideOnDeadCheckbox)
     y = y - 25
 
+    local shadowCheckbox = CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, shadowCheckbox)
+    y = y - 15
+
+    local shadowColorPicker = CreateColorPicker(content, "", "nameTextShadowColorR", "nameTextShadowColorG", "nameTextShadowColorB", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, shadowColorPicker)
+    y = y - 15
+
+    local shadowOffsetSlider = CreateHorizontalSlider(content, "Offset:", "nameTextShadowOffset", 1, 3, 1, y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, shadowOffsetSlider.container)
+    y = y - 30
+
+    local outlineContainer = CreateFrame("Frame", nil, content)
+    outlineContainer:SetPoint("TOPLEFT", 32, y)
+    outlineContainer:SetPoint("TOPRIGHT", -16, y)
+    outlineContainer:SetHeight(32)
+
+    local outlineLabel = outlineContainer:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    outlineLabel:SetPoint("LEFT", 0, 0)
+    outlineLabel:SetWidth(65)
+    outlineLabel:SetJustifyH("LEFT")
+    outlineLabel:SetText("Outline:")
+
+    local outlineDropdown = CreateFrame("DropdownButton", nil, outlineContainer, "WowStyle1DropdownTemplate")
+    outlineDropdown:SetPoint("LEFT", outlineLabel, "RIGHT", 8, 0)
+    outlineDropdown:SetWidth(120)
+
+    local function IsOutlineSelected(value)
+        return Addon:GetSetting("nameTextOutline") == value
+    end
+    local function SetOutlineSelected(value)
+        Addon:SetSetting("nameTextOutline", value)
+        Addon:RefreshNames()
+        outlineDropdown:GenerateMenu()
+    end
+    outlineDropdown:SetupMenu(function(_, rootDescription)
+        rootDescription:CreateRadio("None", IsOutlineSelected, SetOutlineSelected, "NONE")
+        rootDescription:CreateRadio("Thin", IsOutlineSelected, SetOutlineSelected, "OUTLINE")
+        rootDescription:CreateRadio("Thick", IsOutlineSelected, SetOutlineSelected, "THICKOUTLINE")
+    end)
+
+    table.insert(nameOptionsContainer, outlineContainer)
+    y = y - 30
+
     UpdateNameOptionsEnabled = function(enabled)
         SetControlsEnabled(nameOptionsContainer, enabled)
     end
