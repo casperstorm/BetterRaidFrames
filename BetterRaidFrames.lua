@@ -1,6 +1,10 @@
 local ADDON_NAME, Addon = ...
 
 local defaults = {
+    showRaidMarkers = false,
+    raidMarkerX = 0,
+    raidMarkerY = 2,
+    raidMarkerSize = 16,
     showRoleIcons = "ALL",
     showThreatIndicator = false,
     threatIndicatorBlink = true,
@@ -184,6 +188,7 @@ local function InitializeDB()
 end
 
 local function HookRaidFrames()
+    Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
     Addon:HookAuraBorders()
@@ -195,6 +200,7 @@ end
 
 function Addon:UpdateAllFrames()
     Addon:ForEachFrame(function(frame)
+        Addon:UpdateRaidMarker(frame)
         Addon:UpdateRoleIcon(frame)
         Addon:UpdateThreatIndicator(frame)
         Addon:UpdateAuraBorders(frame)

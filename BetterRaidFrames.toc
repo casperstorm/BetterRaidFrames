@@ -13,6 +13,7 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 
 BetterRaidFrames.lua
 Utils.lua
+RaidMarkers.lua
 RoleIcons.lua
 ThreatIndicator.lua
 AuraBorders.lua

@@ -252,6 +252,7 @@ local function CreateConfigFrame()
             SetControlsEnabled(self.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
             SetControlsEnabled(self.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
             SetControlsEnabled(self.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
+            SetControlsEnabled(self.raidMarkerOptionsContainer or {}, Addon:GetSetting("showRaidMarkers"))
             SetControlsEnabled(self.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
             SetControlsEnabled(self.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
         end
@@ -381,6 +382,39 @@ local function CreateConfigFrame()
     -- Update on show
     raidStyleCheckbox:SetScript("OnShow", UpdateRaidStyleCheckbox)
     y = y - 10
+
+    local UpdateRaidMarkerOptionsEnabled
+    local raidMarkersCheckbox = CreateCheckbox(content, "Show raid markers", "showRaidMarkers", y, function(checked)
+        UpdateRaidMarkerOptionsEnabled(checked)
+        Addon:RefreshRaidMarkers()
+    end)
+    table.insert(allRaidStyleControls, raidMarkersCheckbox)
+    y = y - 28
+
+    local raidMarkerOptionsContainer = {}
+    local raidMarkerXSlider = CreateHorizontalSlider(content, "Marker X:", "raidMarkerX", -250, 250, 1, y, function()
+        Addon:RefreshRaidMarkers()
+    end)
+    table.insert(raidMarkerOptionsContainer, raidMarkerXSlider.container)
+    y = y - 26
+
+    local raidMarkerYSlider = CreateHorizontalSlider(content, "Marker Y:", "raidMarkerY", -250, 250, 1, y, function()
+        Addon:RefreshRaidMarkers()
+    end)
+    table.insert(raidMarkerOptionsContainer, raidMarkerYSlider.container)
+    y = y - 26
+
+    local raidMarkerSizeSlider = CreateHorizontalSlider(content, "Marker size:", "raidMarkerSize", 8, 32, 1, y, function()
+        Addon:RefreshRaidMarkers()
+    end)
+    table.insert(raidMarkerOptionsContainer, raidMarkerSizeSlider.container)
+    y = y - 34
+
+    frame.raidMarkerOptionsContainer = raidMarkerOptionsContainer
+    UpdateRaidMarkerOptionsEnabled = function(enabled)
+        SetControlsEnabled(raidMarkerOptionsContainer, enabled)
+    end
+    UpdateRaidMarkerOptionsEnabled(Addon:GetSetting("showRaidMarkers"))
 
     local roleIconDropdown = CreateDropdown(
         content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y
@@ -601,6 +635,7 @@ local function CreateConfigFrame()
     UpdateThreatOptionsEnabled(Addon:GetSetting("showThreatIndicator"))
 
     -- Add all remaining controls to the raid-style container
+    for _, ctrl in ipairs(raidMarkerOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
     table.insert(allRaidStyleControls, partyLeaderHideInCombatCheckbox)
     for _, ctrl in ipairs(partyLeaderOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
     table.insert(allRaidStyleControls, friendlyAbsorbCheckbox)
@@ -641,6 +676,7 @@ local function CreateConfigFrame()
             SetControlsEnabled(frame.partyLeaderOptionsContainer or {}, Addon:GetSetting("showPartyLeader"))
             SetControlsEnabled(frame.friendlyAbsorbOptionsContainer or {}, Addon:GetSetting("showFriendlyAbsorb"))
             SetControlsEnabled(frame.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
+            SetControlsEnabled(frame.raidMarkerOptionsContainer or {}, Addon:GetSetting("showRaidMarkers"))
             SetControlsEnabled(frame.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
             SetControlsEnabled(frame.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
         end
@@ -694,6 +730,9 @@ function Addon:RefreshConfig()
     end
     if ConfigFrame.partyLeaderOptionsContainer then
         SetControlsEnabled(ConfigFrame.partyLeaderOptionsContainer, self:GetSetting("showPartyLeader"))
+    end
+    if ConfigFrame.raidMarkerOptionsContainer then
+        SetControlsEnabled(ConfigFrame.raidMarkerOptionsContainer, self:GetSetting("showRaidMarkers"))
     end
 
     -- Recreate the config frame to reflect new profile settings
