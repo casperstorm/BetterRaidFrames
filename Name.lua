@@ -99,8 +99,10 @@ local function UpdateName(frame)
         return
     end
 
-    -- Hide name when unit is dead and setting is enabled
-    if Addon:GetSetting("nameHideOnDead") and UnitIsDeadOrGhost(unit) then
+    local hideWhenDead = Addon:GetSetting("nameHideOnDead") and UnitIsDeadOrGhost(unit)
+    local hideWhenOffline = Addon:GetSetting("nameHideOnOffline") and not UnitIsConnected(unit)
+
+    if hideWhenDead or hideWhenOffline then
         frame.name:Hide()
         return
     else

@@ -22,6 +22,7 @@ local defaults = {
     nameClassColor = false,
     nameCyrillicToLatin = false,
     nameHideOnDead = false,
+    nameHideOnOffline = false,
     nameTextShadow = false,
     nameTextShadowColorR = 0,
     nameTextShadowColorG = 0,

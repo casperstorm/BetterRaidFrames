@@ -550,6 +550,10 @@ local function CreateConfigFrame()
     table.insert(nameOptionsContainer, hideOnDeadCheckbox)
     y = y - 25
 
+    local hideOnOfflineCheckbox = CreateSubCheckbox(content, "Hide name when offline", "nameHideOnOffline", y, function() Addon:RefreshNames() end)
+    table.insert(nameOptionsContainer, hideOnOfflineCheckbox)
+    y = y - 25
+
     local shadowCheckbox = CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y, function() Addon:RefreshNames() end)
     table.insert(nameOptionsContainer, shadowCheckbox)
     y = y - 15
