@@ -905,16 +905,28 @@ function Addon:RefreshCustomIndicators()
     RefreshTickerState()
 end
 
+local function HideBlizzardBuffs(frame)
+    if not Addon:GetSetting("hideBlizzardAuras") then return end
+
+    if frame.buffFrames then
+        for _, buffFrame in ipairs(frame.buffFrames) do
+            buffFrame:Hide()
+        end
+    end
+end
+
 function Addon:HookCustomIndicators()
     hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
         if not Addon:IsRaidOrPartyFrame(frame) then return end
         Addon:UpdateCustomIndicators(frame)
+        HideBlizzardBuffs(frame)
     end)
 
     if CompactUnitFrame_UpdateAuras then
         hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
             if not Addon:IsRaidOrPartyFrame(frame) then return end
             Addon:UpdateCustomIndicators(frame)
+            HideBlizzardBuffs(frame)
         end)
     end
 
