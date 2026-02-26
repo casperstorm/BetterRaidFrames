@@ -14,31 +14,19 @@ local function GetFrameDefaultFont(statusText)
     return statusText:GetFont()
 end
 
-local function ApplyBlizzardDefaultHealthText(frame)
-    if not frame or not frame.statusText then return end
-
-    local statusText = frame.statusText
-    local fontPath, fontSize, fontFlags = GetFrameDefaultFont(statusText)
-
-    statusText:Show()
-    statusText:ClearAllPoints()
-    if frame.healthBar then
-        statusText:SetPoint("CENTER", frame.healthBar, "CENTER", 0, 0)
-    else
-        statusText:SetPoint("CENTER", frame, "CENTER", 0, 0)
+local function GetClassColor(unit)
+    if not unit then return nil end
+    local _, className = UnitClass(unit)
+    if className then
+        local color = C_ClassColor.GetClassColor(className)
+        if color then
+            return color.r, color.g, color.b
+        end
     end
-    statusText:SetJustifyH("CENTER")
-
-    if fontPath then
-        statusText:SetFont(fontPath, fontSize or 12, fontFlags or "")
-    end
-
-    statusText:SetTextColor(1, 1, 1, 1)
-    statusText:SetShadowColor(0, 0, 0, 1)
-    statusText:SetShadowOffset(0, 0)
+    return nil
 end
 
-local function ApplyCustomHealthText(frame)
+local function ApplyHealthText(frame)
     if not frame or not frame.statusText then return end
 
     local statusText = frame.statusText
@@ -50,7 +38,6 @@ local function ApplyCustomHealthText(frame)
 
     local fontPath = select(1, GetFrameDefaultFont(statusText))
 
-    statusText:Show()
     statusText:ClearAllPoints()
     statusText:SetPoint("CENTER", frame, "CENTER", offsetX, offsetY)
     statusText:SetJustifyH("CENTER")
@@ -62,6 +49,12 @@ local function ApplyCustomHealthText(frame)
     local textR = Addon:GetSetting("healthTextColorR") or 1
     local textG = Addon:GetSetting("healthTextColorG") or 1
     local textB = Addon:GetSetting("healthTextColorB") or 1
+    if Addon:GetSetting("healthTextClassColor") then
+        local cr, cg, cb = GetClassColor(frame.unit)
+        if cr and cg and cb then
+            textR, textG, textB = cr, cg, cb
+        end
+    end
     statusText:SetTextColor(textR, textG, textB, 1)
 
     if Addon:GetSetting("healthTextShadow") then
@@ -78,12 +71,7 @@ end
 
 local function UpdateHealthText(frame)
     if not frame or not frame.statusText then return end
-
-    if Addon:GetSetting("customizeHealthText") then
-        ApplyCustomHealthText(frame)
-    else
-        ApplyBlizzardDefaultHealthText(frame)
-    end
+    ApplyHealthText(frame)
 end
 
 function Addon:HookHealthText()

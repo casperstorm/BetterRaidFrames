@@ -78,27 +78,12 @@ local function GetClassColor(unit)
     return nil
 end
 
-local function RestoreDefaultName(frame)
-    if not frame or not frame.name then return end
-    if not frame.unit then return end
-    
-    -- Let Blizzard handle it by not modifying anything
-    -- Just ensure we're not leaving customizations behind
-    frame.name:SetTextColor(1, 1, 1)
-    frame.name:SetShadowOffset(0, 0)
-end
-
 local function UpdateName(frame)
     if not frame or not frame.name then return end
     
     local unit = frame.unit
     if not unit then return end
     
-    if not Addon:GetSetting("customizeNames") then
-        RestoreDefaultName(frame)
-        return
-    end
-
     local hideWhenDead = Addon:GetSetting("nameHideOnDead") and UnitIsDeadOrGhost(unit)
     local hideWhenOffline = Addon:GetSetting("nameHideOnOffline") and not UnitIsConnected(unit)
 
