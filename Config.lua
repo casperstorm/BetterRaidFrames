@@ -1147,6 +1147,16 @@ local function CreateConfigFrame()
             Addon:RefreshCustomIndicators()
             RefreshEditorState()
         end)
+        y = y - 26
+
+        local hideBlizzAurasToggle = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        hideBlizzAurasToggle:SetPoint("TOPLEFT", 16, y)
+        hideBlizzAurasToggle.Text:SetText("Hide Blizzard buffs on raid frames")
+        hideBlizzAurasToggle.Text:SetFontObject("GameFontHighlight")
+        hideBlizzAurasToggle:SetChecked(Addon:GetSetting("hideBlizzardAuras") == true)
+        hideBlizzAurasToggle:SetScript("OnClick", function(self)
+            Addon:SetSetting("hideBlizzardAuras", self:GetChecked())
+        end)
         y = y - 32
 
         local addBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
