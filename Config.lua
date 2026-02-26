@@ -254,6 +254,7 @@ local function CreateConfigFrame()
             SetControlsEnabled(self.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
             SetControlsEnabled(self.raidMarkerOptionsContainer or {}, Addon:GetSetting("showRaidMarkers"))
             SetControlsEnabled(self.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
+            SetControlsEnabled(self.healthTextOptionsContainer or {}, Addon:GetSetting("customizeHealthText"))
             SetControlsEnabled(self.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
         end
     end)
@@ -604,6 +605,91 @@ local function CreateConfigFrame()
     frame.nameOptionsContainer = nameOptionsContainer
     UpdateNameOptionsEnabled(Addon:GetSetting("customizeNames"))
 
+    -- Health Text
+    local UpdateHealthTextOptionsEnabled
+
+    local customizeHealthTextCheckbox = CreateCheckbox(content, "Customize health text", "customizeHealthText", y, function(checked)
+        UpdateHealthTextOptionsEnabled(checked)
+        Addon:RefreshHealthTexts()
+    end)
+    frame.customizeHealthTextCheckbox = customizeHealthTextCheckbox
+
+    local healthTextNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    healthTextNote:SetPoint("TOPLEFT", 32, y - 24)
+    healthTextNote:SetText("Requires Blizzard option \"Display Health Text\" to be enabled.")
+    healthTextNote:SetTextColor(0.9, 0.75, 0.2)
+
+    y = y - 48
+
+    local healthTextOptionsContainer = {}
+    table.insert(healthTextOptionsContainer, healthTextNote)
+
+    local healthTextXSlider = CreateHorizontalSlider(content, "X:", "healthTextX", -250, 250, 1, y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthTextXSlider.container)
+    y = y - 26
+
+    local healthTextYSlider = CreateHorizontalSlider(content, "Y:", "healthTextY", -250, 250, 1, y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthTextYSlider.container)
+    y = y - 26
+
+    local healthTextSizeSlider = CreateHorizontalSlider(content, "Size:", "healthTextSize", 6, 20, 1, y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthTextSizeSlider.container)
+    y = y - 30
+
+    local healthTextColorPicker = CreateColorPicker(content, "Color:", "healthTextColorR", "healthTextColorG", "healthTextColorB", y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthTextColorPicker)
+    y = y - 30
+
+    local healthShadowCheckbox = CreateSubCheckbox(content, "Text shadow", "healthTextShadow", y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthShadowCheckbox)
+    y = y - 15
+
+    local healthShadowColorPicker = CreateColorPicker(content, "", "healthTextShadowColorR", "healthTextShadowColorG", "healthTextShadowColorB", y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthShadowColorPicker)
+    y = y - 15
+
+    local healthShadowOffsetSlider = CreateHorizontalSlider(content, "Offset:", "healthTextShadowOffset", 1, 3, 1, y, function() Addon:RefreshHealthTexts() end)
+    table.insert(healthTextOptionsContainer, healthShadowOffsetSlider.container)
+    y = y - 30
+
+    local healthOutlineContainer = CreateFrame("Frame", nil, content)
+    healthOutlineContainer:SetPoint("TOPLEFT", 32, y)
+    healthOutlineContainer:SetPoint("TOPRIGHT", -16, y)
+    healthOutlineContainer:SetHeight(32)
+
+    local healthOutlineLabel = healthOutlineContainer:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    healthOutlineLabel:SetPoint("LEFT", 0, 0)
+    healthOutlineLabel:SetWidth(65)
+    healthOutlineLabel:SetJustifyH("LEFT")
+    healthOutlineLabel:SetText("Outline:")
+
+    local healthOutlineDropdown = CreateFrame("DropdownButton", nil, healthOutlineContainer, "WowStyle1DropdownTemplate")
+    healthOutlineDropdown:SetPoint("LEFT", healthOutlineLabel, "RIGHT", 8, 0)
+    healthOutlineDropdown:SetWidth(120)
+
+    local function IsHealthOutlineSelected(value)
+        return Addon:GetSetting("healthTextOutline") == value
+    end
+    local function SetHealthOutlineSelected(value)
+        Addon:SetSetting("healthTextOutline", value)
+        Addon:RefreshHealthTexts()
+        healthOutlineDropdown:GenerateMenu()
+    end
+    healthOutlineDropdown:SetupMenu(function(_, rootDescription)
+        rootDescription:CreateRadio("None", IsHealthOutlineSelected, SetHealthOutlineSelected, "NONE")
+        rootDescription:CreateRadio("Thin", IsHealthOutlineSelected, SetHealthOutlineSelected, "OUTLINE")
+        rootDescription:CreateRadio("Thick", IsHealthOutlineSelected, SetHealthOutlineSelected, "THICKOUTLINE")
+    end)
+
+    table.insert(healthTextOptionsContainer, healthOutlineContainer)
+    y = y - 28
+
+    UpdateHealthTextOptionsEnabled = function(enabled)
+        SetControlsEnabled(healthTextOptionsContainer, enabled)
+    end
+    frame.healthTextOptionsContainer = healthTextOptionsContainer
+    UpdateHealthTextOptionsEnabled(Addon:GetSetting("customizeHealthText"))
+
     -- Threat Indicator
     local UpdateThreatOptionsEnabled
 
@@ -651,6 +737,8 @@ local function CreateConfigFrame()
     table.insert(allRaidStyleControls, auraBordersCheckbox)
     table.insert(allRaidStyleControls, customizeNamesCheckbox)
     for _, ctrl in ipairs(nameOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
+    table.insert(allRaidStyleControls, customizeHealthTextCheckbox)
+    for _, ctrl in ipairs(healthTextOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
     table.insert(allRaidStyleControls, threatCheckbox)
     for _, ctrl in ipairs(threatOptionsContainer) do table.insert(allRaidStyleControls, ctrl) end
 
@@ -682,6 +770,7 @@ local function CreateConfigFrame()
             SetControlsEnabled(frame.hostileAbsorbOptionsContainer or {}, Addon:GetSetting("showHostileAbsorb"))
             SetControlsEnabled(frame.raidMarkerOptionsContainer or {}, Addon:GetSetting("showRaidMarkers"))
             SetControlsEnabled(frame.nameOptionsContainer or {}, Addon:GetSetting("customizeNames"))
+            SetControlsEnabled(frame.healthTextOptionsContainer or {}, Addon:GetSetting("customizeHealthText"))
             SetControlsEnabled(frame.threatOptionsContainer or {}, Addon:GetSetting("showThreatIndicator"))
         end
     end
@@ -728,6 +817,9 @@ function Addon:RefreshConfig()
 
     if ConfigFrame.nameOptionsContainer then
         SetControlsEnabled(ConfigFrame.nameOptionsContainer, self:GetSetting("customizeNames"))
+    end
+    if ConfigFrame.healthTextOptionsContainer then
+        SetControlsEnabled(ConfigFrame.healthTextOptionsContainer, self:GetSetting("customizeHealthText"))
     end
     if ConfigFrame.threatOptionsContainer then
         SetControlsEnabled(ConfigFrame.threatOptionsContainer, self:GetSetting("showThreatIndicator"))

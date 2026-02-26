@@ -18,6 +18,7 @@ RoleIcons.lua
 ThreatIndicator.lua
 AuraBorders.lua
 Name.lua
+HealthText.lua
 FriendlyAbsorb.lua
 HostileAbsorb.lua
 PartyLeader.lua

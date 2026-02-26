@@ -29,6 +29,19 @@ local defaults = {
     nameTextShadowColorB = 0,
     nameTextShadowOffset = 1,
     nameTextOutline = "NONE",
+    customizeHealthText = false,
+    healthTextX = 0,
+    healthTextY = 0,
+    healthTextSize = 11,
+    healthTextColorR = 1,
+    healthTextColorG = 1,
+    healthTextColorB = 1,
+    healthTextShadow = false,
+    healthTextShadowColorR = 0,
+    healthTextShadowColorG = 0,
+    healthTextShadowColorB = 0,
+    healthTextShadowOffset = 1,
+    healthTextOutline = "NONE",
     showFriendlyAbsorb = false,
     friendlyAbsorbOpacity = 0.8,
     friendlyAbsorbColorR = 1,
@@ -194,6 +207,7 @@ local function HookRaidFrames()
     Addon:HookThreatIndicator()
     Addon:HookAuraBorders()
     Addon:HookName()
+    Addon:HookHealthText()
     Addon:HookFriendlyAbsorb()
     Addon:HookHostileAbsorb()
     Addon:HookPartyLeader()
@@ -206,6 +220,7 @@ function Addon:UpdateAllFrames()
         Addon:UpdateThreatIndicator(frame)
         Addon:UpdateAuraBorders(frame)
         Addon:UpdateName(frame)
+        Addon:UpdateHealthText(frame)
         Addon:UpdateFriendlyAbsorb(frame)
         Addon:UpdateHostileAbsorb(frame)
         Addon:UpdatePartyLeader(frame)
