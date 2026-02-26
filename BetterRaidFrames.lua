@@ -56,6 +56,11 @@ local defaults = {
     partyLeaderY = -2,
     partyLeaderSize = 16,
     partyLeaderHideInCombat = false,
+    customIndicators = {
+        enabled = true,
+        nextId = 1,
+        items = {},
+    },
 }
 
 function Addon:IsConfigOpen()
@@ -139,7 +144,23 @@ end
 local function CopyDefaults()
     local copy = {}
     for key, value in pairs(defaults) do
-        copy[key] = value
+        if type(value) == "table" then
+            local t = {}
+            for k, v in pairs(value) do
+                if type(v) == "table" then
+                    local inner = {}
+                    for ik, iv in pairs(v) do
+                        inner[ik] = iv
+                    end
+                    t[k] = inner
+                else
+                    t[k] = v
+                end
+            end
+            copy[key] = t
+        else
+            copy[key] = value
+        end
     end
     return copy
 end
@@ -210,6 +231,7 @@ local function HookRaidFrames()
     Addon:HookFriendlyAbsorb()
     Addon:HookHostileAbsorb()
     Addon:HookPartyLeader()
+    Addon:HookCustomIndicators()
 end
 
 function Addon:UpdateAllFrames()
@@ -223,6 +245,7 @@ function Addon:UpdateAllFrames()
         Addon:UpdateFriendlyAbsorb(frame)
         Addon:UpdateHostileAbsorb(frame)
         Addon:UpdatePartyLeader(frame)
+        Addon:UpdateCustomIndicators(frame)
     end)
     
 end

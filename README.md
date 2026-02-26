@@ -16,6 +16,7 @@ A World of Warcraft addon that lets you customize the default raid frames.
 - Blinking threat indicator
 - Hide aura borders
 - Show and adjust party leader indicator
+- Dynamic custom indicators (bars, spell icons, squares)
 
 ## Usage
 
