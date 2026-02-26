@@ -22,5 +22,6 @@ HealthText.lua
 FriendlyAbsorb.lua
 HostileAbsorb.lua
 PartyLeader.lua
+CustomIndicators.lua
 EditModeButton.lua
 Config.lua
