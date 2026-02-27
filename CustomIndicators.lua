@@ -657,7 +657,7 @@ local function EnsureVisual(frame, item)
         existing.frame:Hide()
     end
 
-    local parent = frame.healthBar or frame
+    local parent = frame
     if not parent or not CreateFrame then
         return nil
     end
@@ -729,6 +729,41 @@ local function HideVisual(data)
     data.frame:Hide()
 end
 
+local function IsBackdropSafe(frame)
+    if not frame or not frame.SetBackdrop then
+        return false
+    end
+    if frame.IsForbidden and frame:IsForbidden() then
+        return false
+    end
+    if InCombatLockdown and InCombatLockdown() then
+        return false
+    end
+    return true
+end
+
+local function ClearBackdrop(frame)
+    if not frame or not frame.SetBackdrop then return end
+    pcall(frame.SetBackdrop, frame, nil)
+end
+
+local function ApplyBorderBackdrop(frame, edgeFile, edgeSize, r, g, b, a)
+    if not IsBackdropSafe(frame) then
+        return false
+    end
+
+    local ok = pcall(frame.SetBackdrop, frame, {
+        edgeFile = edgeFile,
+        edgeSize = edgeSize,
+    })
+    if not ok then
+        return false
+    end
+
+    pcall(frame.SetBackdropBorderColor, frame, r, g, b, a)
+    return true
+end
+
 local function UpdateIndicatorVisual(frame, item)
     local previewActive = Addon:IsConfigOpen() and Addon:IsCustomIndicatorPreviewActive(item.id)
 
@@ -756,9 +791,9 @@ local function UpdateIndicatorVisual(frame, item)
     end
 
     visual.frame:ClearAllPoints()
-    visual.frame:SetPoint("CENTER", frame.healthBar or frame, "CENTER", item.x, item.y)
+    visual.frame:SetPoint("CENTER", frame, "CENTER", item.x, item.y)
     visual.frame:SetSize(item.width, item.height)
-    local parent = frame.healthBar or frame
+    local parent = frame
     if parent and parent.GetFrameLevel and visual.frame.SetFrameLevel then
         local baseLevel = parent:GetFrameLevel()
         visual.frame:SetFrameLevel(ClampFrameLevel(baseLevel + (item.zOffset or 0)))
@@ -791,14 +826,13 @@ local function UpdateIndicatorVisual(frame, item)
                 if total < 0 then total = 0 end
                 visual.border:SetPoint("TOPLEFT", -total, total)
                 visual.border:SetPoint("BOTTOMRIGHT", total, -total)
-                visual.border:SetBackdrop({
-                    edgeFile = borderSpec.path,
-                    edgeSize = edgeSize,
-                })
-                visual.border:SetBackdropBorderColor(item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
-                visual.border:Show()
+                if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA) then
+                    visual.border:Show()
+                else
+                    visual.border:Hide()
+                end
             else
-                visual.border:SetBackdrop(nil)
+                ClearBackdrop(visual.border)
                 visual.border:Hide()
             end
         end
@@ -808,7 +842,7 @@ local function UpdateIndicatorVisual(frame, item)
             visual.texture:SetTexture(icon)
         end
         if visual.border then
-            visual.border:SetBackdrop(nil)
+            ClearBackdrop(visual.border)
             visual.border:Hide()
         end
         ApplyCooldown(visual, item, aura)
@@ -823,14 +857,13 @@ local function UpdateIndicatorVisual(frame, item)
                 if total < 0 then total = 0 end
                 visual.border:SetPoint("TOPLEFT", -total, total)
                 visual.border:SetPoint("BOTTOMRIGHT", total, -total)
-                visual.border:SetBackdrop({
-                    edgeFile = borderSpec.path,
-                    edgeSize = edgeSize,
-                })
-                visual.border:SetBackdropBorderColor(item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
-                visual.border:Show()
+                if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA) then
+                    visual.border:Show()
+                else
+                    visual.border:Hide()
+                end
             else
-                visual.border:SetBackdrop(nil)
+                ClearBackdrop(visual.border)
                 visual.border:Hide()
             end
         end
