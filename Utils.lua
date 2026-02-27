@@ -3,8 +3,18 @@ local ADDON_NAME, Addon = ...
 function Addon:IsRaidOrPartyFrame(frame)
     if not frame or not frame.unit then return false end
     local unit = frame.unit
-    -- Use string.sub for better performance (no temp string allocation like match)
-    if unit == "player" then return true end
+    -- Nameplates can expose unit="player" in some contexts.
+    -- Only accept player when the frame is an actual Compact Party/Raid frame.
+    if unit == "player" then
+        local frameName = frame.GetName and frame:GetName()
+        if not frameName then return false end
+        if string.find(frameName, "^CompactPartyFrame") then return true end
+        if string.find(frameName, "^CompactRaidFrame") then return true end
+        if string.find(frameName, "^CompactRaidGroup") then return true end
+        return false
+    end
+
+    -- Use string.sub for lightweight prefix checks.
     local p4 = string.sub(unit, 1, 4)
     if p4 == "raid" then return true end
     local p5 = string.sub(unit, 1, 5)
