@@ -93,6 +93,7 @@ local PREVIEW_PERIOD = 3.0
 local runtime = {
     ticker = nil,
     previewId = nil,
+    previewAll = false,
 }
 
 local function Clamp(v, minV, maxV)
@@ -428,6 +429,19 @@ function Addon:CustomIndicatorComputeFill(now, expirationTime, duration)
     return Clamp(fill, 0, 1)
 end
 
+function Addon:CustomIndicatorGetEffectiveDuration(aura)
+    if type(aura) ~= "table" then return nil end
+    local duration = tonumber(aura.duration)
+    if not duration or duration <= 0 then return nil end
+
+    local modRate = tonumber(aura.timeMod or aura.modRate)
+    if modRate and modRate > 0 and modRate ~= 1 then
+        return duration / modRate
+    end
+
+    return duration
+end
+
 function Addon:GetCustomIndicatorBarDirectionConfig(direction)
     if direction == "LEFT_TO_RIGHT" then
         return { orientation = "HORIZONTAL", reverseFill = false }
@@ -573,6 +587,14 @@ function Addon:IsCustomIndicatorPreviewActive(id)
     return type(id) == "string" and runtime.previewId == id
 end
 
+function Addon:SetCustomIndicatorPreviewAll(enabled)
+    runtime.previewAll = enabled == true
+end
+
+function Addon:IsCustomIndicatorPreviewAll()
+    return runtime.previewAll == true
+end
+
 function Addon:CustomIndicatorPreviewFill(now)
     local t = tonumber(now) or 0
     local phase = t % PREVIEW_PERIOD
@@ -584,20 +606,61 @@ function Addon:CustomIndicatorShouldReverseCooldown(item)
     return type(item) == "table" and item.invertCooldownSwipe == true
 end
 
+function Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duration, expirationTime, timeMod)
+    if auraOrName == nil then
+        return nil
+    end
+
+    if type(auraOrName) == "table" then
+        local aura = auraOrName
+        return {
+            icon = aura.icon or aura.iconTexture or aura.iconFileID,
+            applications = aura.applications or aura.count or 0,
+            duration = aura.duration,
+            expirationTime = aura.expirationTime,
+            timeMod = aura.timeMod or aura.modRate,
+        }
+    end
+
+    return {
+        icon = icon,
+        applications = count or 0,
+        duration = duration,
+        expirationTime = expirationTime,
+        timeMod = timeMod,
+    }
+end
+
+function Addon:CustomIndicatorHasReliableTiming(aura)
+    if type(aura) ~= "table" then return false end
+    if not self:CustomIndicatorGetEffectiveDuration(aura) then return false end
+    if type(aura.expirationTime) ~= "number" or aura.expirationTime <= 0 then return false end
+    return true
+end
+
+function Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura)
+    if previewActive ~= true then
+        return false
+    end
+    return aura == nil
+end
+
 local function FindAuraBySpellID(unit, spellId)
     if not unit or not UnitExists or not UnitExists(unit) or not spellId or spellId <= 0 then
         return nil
     end
 
+    local bestEffortAura = nil
+
     if AuraUtil and AuraUtil.FindAuraBySpellID then
-        local name, icon, count, debuffType, duration, expirationTime = AuraUtil.FindAuraBySpellID(spellId, unit, "HELPFUL")
-        if name then
-            return {
-                icon = icon,
-                applications = count,
-                duration = duration,
-                expirationTime = expirationTime,
-            }
+        local auraOrName, icon, count, _, duration, expirationTime, _, _, _, _, _, _, _, _, timeMod =
+            AuraUtil.FindAuraBySpellID(spellId, unit, "HELPFUL")
+        local normalized = Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duration, expirationTime, timeMod)
+        if normalized then
+            if Addon:CustomIndicatorHasReliableTiming(normalized) then
+                return normalized
+            end
+            bestEffortAura = normalized
         end
     end
 
@@ -613,27 +676,39 @@ local function FindAuraBySpellID(unit, spellId)
             local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
             if not aura then break end
             if IsMatchingSpellId(aura.spellId, spellId) then
-                return aura
+                local normalized = Addon:CustomIndicatorNormalizeAuraData(aura)
+                if normalized then
+                    if Addon:CustomIndicatorHasReliableTiming(normalized) then
+                        return normalized
+                    end
+                    if not bestEffortAura then
+                        bestEffortAura = normalized
+                    end
+                end
             end
         end
     end
 
     if UnitAura then
         for i = 1, 255 do
-            local name, icon, count, _, duration, expirationTime, _, _, _, auraSpellID = UnitAura(unit, i, "HELPFUL")
+            local name, icon, count, _, duration, expirationTime, _, _, _, auraSpellID, _, _, _, _, _, timeMod =
+                UnitAura(unit, i, "HELPFUL")
             if not name then break end
             if IsMatchingSpellId(auraSpellID, spellId) then
-                return {
-                    icon = icon,
-                    applications = count,
-                    duration = duration,
-                    expirationTime = expirationTime,
-                }
+                local normalized = Addon:CustomIndicatorNormalizeAuraData(name, icon, count, duration, expirationTime, timeMod)
+                if normalized then
+                    if Addon:CustomIndicatorHasReliableTiming(normalized) then
+                        return normalized
+                    end
+                    if not bestEffortAura then
+                        bestEffortAura = normalized
+                    end
+                end
             end
         end
     end
 
-    return nil
+    return bestEffortAura
 end
 
 local function EnsureCooldown(parent)
@@ -717,9 +792,19 @@ local function ApplyCooldown(visual, item, aura)
     if visual.cooldown.SetHideCountdownNumbers then
         visual.cooldown:SetHideCountdownNumbers(item.showCooldownText == false)
     end
-    if aura and aura.duration and aura.duration > 0 and aura.expirationTime then
-        local startTime = aura.expirationTime - aura.duration
-        visual.cooldown:SetCooldown(startTime, aura.duration)
+    if aura and Addon:CustomIndicatorHasReliableTiming(aura) then
+        local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
+        local startTime = aura.expirationTime - effectiveDuration
+        local modRate = tonumber(aura.timeMod or aura.modRate)
+
+        if modRate and modRate > 0 then
+            local ok = pcall(visual.cooldown.SetCooldown, visual.cooldown, startTime, aura.duration, modRate)
+            if not ok then
+                visual.cooldown:SetCooldown(startTime, effectiveDuration)
+            end
+        else
+            visual.cooldown:SetCooldown(startTime, effectiveDuration)
+        end
         visual.cooldown:Show()
     else
         if visual.cooldown.Clear then
@@ -774,7 +859,8 @@ local function ApplyBorderBackdrop(frame, edgeFile, edgeSize, r, g, b, a)
 end
 
 local function UpdateIndicatorVisual(frame, item)
-    local previewActive = Addon:IsConfigOpen() and Addon:IsCustomIndicatorPreviewActive(item.id)
+    local previewActive = Addon:IsConfigOpen() and
+        (Addon:IsCustomIndicatorPreviewAll() or Addon:IsCustomIndicatorPreviewActive(item.id))
 
     if item.spellId <= 0 and not previewActive then
         return false, false
@@ -782,7 +868,8 @@ local function UpdateIndicatorVisual(frame, item)
 
     local now = GetTime and GetTime() or 0
     local aura = FindAuraBySpellID(frame.unit, item.spellId)
-    if not aura and previewActive then
+    local usePreviewTiming = Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura)
+    if usePreviewTiming then
         aura = {
             icon = GetSpellTexture and GetSpellTexture(item.spellId > 0 and item.spellId or 136243),
             duration = PREVIEW_PERIOD,
@@ -812,18 +899,21 @@ local function UpdateIndicatorVisual(frame, item)
     end
     visual.frame:Show()
 
+    local fillForColor
+    if usePreviewTiming then
+        fillForColor = Addon:CustomIndicatorPreviewFill(now)
+    else
+        local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
+        fillForColor = Addon:CustomIndicatorComputeFill(now, aura.expirationTime, effectiveDuration or aura.duration)
+    end
+
     if item.type == "bar" and visual.bar then
         visual.bar:SetStatusBarTexture(Addon:GetCustomIndicatorBarTexturePath(item.barTexture) or BAR_TEXTURES.BLIZZARD.path)
         local dirCfg = Addon:GetCustomIndicatorBarDirectionConfig(item.direction)
         visual.bar:SetOrientation(dirCfg.orientation)
         visual.bar:SetReverseFill(dirCfg.reverseFill)
-        local fill
-        if previewActive then
-            fill = Addon:CustomIndicatorPreviewFill(now)
-        else
-            fill = Addon:CustomIndicatorComputeFill(now, aura.expirationTime, aura.duration)
-        end
         visual.bar:SetStatusBarColor(item.colorR, item.colorG, item.colorB, item.colorA)
+        local fill = fillForColor
         visual.bar:SetValue(fill)
 
         if visual.border and visual.border.SetBackdrop then
@@ -879,8 +969,7 @@ local function UpdateIndicatorVisual(frame, item)
         ApplyCooldown(visual, item, aura)
     end
 
-    local timed = (previewActive and true) or (aura.duration and aura.duration > 0 and aura.expirationTime and aura.expirationTime > 0)
-    return true, timed and true or false
+    return true, Addon:CustomIndicatorHasReliableTiming(aura) and true or false
 end
 
 local function HideStaleVisuals(frame, activeIds)
@@ -896,7 +985,7 @@ function Addon:UpdateCustomIndicators(frame)
     if not self:IsRaidOrPartyFrame(frame) then return false end
 
     local cfg = self:GetCustomIndicatorsConfig()
-    local allowPreview = self:IsConfigOpen() and runtime.previewId ~= nil
+    local allowPreview = self:IsConfigOpen() and (runtime.previewId ~= nil or runtime.previewAll == true)
     if not cfg.enabled and not allowPreview then
         if frame.BRFCustomIndicators then
             for _, data in pairs(frame.BRFCustomIndicators) do

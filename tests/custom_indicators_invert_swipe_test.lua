@@ -25,4 +25,11 @@ assertEqual(Addon:CustomIndicatorShouldReverseCooldown({ invertCooldownSwipe = t
 assertEqual(Addon:CustomIndicatorShouldReverseCooldown({ invertCooldownSwipe = false }), false,
     "reverse helper should return false")
 
+assertEqual(type(Addon.SetCustomIndicatorPreviewAll), "function", "preview-all setter should exist")
+assertEqual(type(Addon.IsCustomIndicatorPreviewAll), "function", "preview-all getter should exist")
+Addon:SetCustomIndicatorPreviewAll(true)
+assertEqual(Addon:IsCustomIndicatorPreviewAll(), true, "preview-all should turn on")
+Addon:SetCustomIndicatorPreviewAll(false)
+assertEqual(Addon:IsCustomIndicatorPreviewAll(), false, "preview-all should turn off")
+
 print("PASS: custom_indicators_invert_swipe_test")

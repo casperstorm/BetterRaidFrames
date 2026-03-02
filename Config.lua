@@ -795,6 +795,7 @@ local function CreateConfigFrame()
         local barTextureDropdown
         local barBorderDropdown
         local spellDropdown
+        local previewAllCheckbox
         local cooldownSwipeCheckbox
         local invertSwipeCheckbox
         local cooldownTextCheckbox
@@ -1040,6 +1041,7 @@ local function CreateConfigFrame()
             local active = hasItem and cfg.enabled
 
             if globalToggle then globalToggle:SetChecked(cfg.enabled) end
+            if previewAllCheckbox then previewAllCheckbox:SetChecked(Addon:IsCustomIndicatorPreviewAll()) end
             if duplicateBtn then duplicateBtn:SetEnabled(active) end
             if deleteBtn then deleteBtn:SetEnabled(active) end
             SetControlsEnabled(options, active)
@@ -1093,6 +1095,7 @@ local function CreateConfigFrame()
                 directionDropdown:SetShown(true)
                 directionDropdown:SetEnabled(supportsBarStyle)
             end
+
             if barTextureDropdown then
                 barTextureDropdown:SetShown(true)
                 barTextureDropdown:SetEnabled(supportsBarStyle)
@@ -1165,6 +1168,22 @@ local function CreateConfigFrame()
         hideBlizzAurasToggle:SetChecked(Addon:GetSetting("hideBlizzardAuras") == true)
         hideBlizzAurasToggle:SetScript("OnClick", function(self)
             Addon:SetSetting("hideBlizzardAuras", self:GetChecked())
+        end)
+        y = y - 32
+
+        previewAllCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        previewAllCheckbox:SetPoint("TOPLEFT", 16, y)
+        previewAllCheckbox.Text:SetText("Preview all indicators in config")
+        previewAllCheckbox.Text:SetFontObject("GameFontHighlight")
+        previewAllCheckbox:SetChecked(Addon:IsCustomIndicatorPreviewAll())
+        previewAllCheckbox:SetScript("OnClick", function(self)
+            Addon:SetCustomIndicatorPreviewAll(self:GetChecked())
+            if not self:GetChecked() then
+                UpdatePreviewTarget()
+            else
+                Addon:RefreshCustomIndicators()
+            end
+            RefreshEditorState()
         end)
         y = y - 32
 
