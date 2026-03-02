@@ -207,6 +207,7 @@ local function BuildDefaultItem(id, indicatorType)
         borderColorB = 1,
         borderColorA = 1,
         showCooldownSwipe = true,
+        invertCooldownSwipe = false,
         showCooldownText = true,
         colorR = 0.2,
         colorG = 0.8,
@@ -281,6 +282,7 @@ function Addon:NormalizeCustomIndicatorsConfig(cfg)
             normalized.borderColorB = Clamp(item.borderColorB or normalized.borderColorB, 0, 1)
             normalized.borderColorA = Clamp(item.borderColorA or normalized.borderColorA, 0, 1)
             normalized.showCooldownSwipe = item.showCooldownSwipe ~= false
+            normalized.invertCooldownSwipe = item.invertCooldownSwipe == true
             normalized.showCooldownText = item.showCooldownText ~= false
             normalized.colorR = Clamp(item.colorR or normalized.colorR, 0, 1)
             normalized.colorG = Clamp(item.colorG or normalized.colorG, 0, 1)
@@ -578,6 +580,10 @@ function Addon:CustomIndicatorPreviewFill(now)
     return Clamp(fill, 0, 1)
 end
 
+function Addon:CustomIndicatorShouldReverseCooldown(item)
+    return type(item) == "table" and item.invertCooldownSwipe == true
+end
+
 local function FindAuraBySpellID(unit, spellId)
     if not unit or not UnitExists or not UnitExists(unit) or not spellId or spellId <= 0 then
         return nil
@@ -704,6 +710,9 @@ local function ApplyCooldown(visual, item, aura)
     if not visual or not visual.cooldown then return end
     if visual.cooldown.SetDrawSwipe then
         visual.cooldown:SetDrawSwipe(item.showCooldownSwipe ~= false)
+    end
+    if visual.cooldown.SetReverse then
+        visual.cooldown:SetReverse(Addon:CustomIndicatorShouldReverseCooldown(item))
     end
     if visual.cooldown.SetHideCountdownNumbers then
         visual.cooldown:SetHideCountdownNumbers(item.showCooldownText == false)

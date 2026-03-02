@@ -796,6 +796,7 @@ local function CreateConfigFrame()
         local barBorderDropdown
         local spellDropdown
         local cooldownSwipeCheckbox
+        local invertSwipeCheckbox
         local cooldownTextCheckbox
         local globalToggle
         local colorContainer
@@ -1052,6 +1053,7 @@ local function CreateConfigFrame()
                 if borderSizeSlider then borderSizeSlider.container:SetShown(true) end
                 if borderPaddingSlider then borderPaddingSlider.container:SetShown(true) end
                 if cooldownSwipeCheckbox then cooldownSwipeCheckbox:SetShown(true) end
+                if invertSwipeCheckbox then invertSwipeCheckbox:SetShown(true) end
                 if cooldownTextCheckbox then cooldownTextCheckbox:SetShown(true) end
                 return
             end
@@ -1126,6 +1128,13 @@ local function CreateConfigFrame()
                 cooldownSwipeCheckbox:SetEnabled(supportsIconSquareCooldown)
                 cooldownSwipeCheckbox:SetChecked(item.showCooldownSwipe ~= false)
                 cooldownSwipeCheckbox:SetAlpha(supportsIconSquareCooldown and 1 or 0.4)
+            end
+
+            if invertSwipeCheckbox then
+                invertSwipeCheckbox:SetShown(true)
+                invertSwipeCheckbox:SetEnabled(supportsIconSquareCooldown)
+                invertSwipeCheckbox:SetChecked(item.invertCooldownSwipe == true)
+                invertSwipeCheckbox:SetAlpha(supportsIconSquareCooldown and 1 or 0.4)
             end
 
             if cooldownTextCheckbox then
@@ -1369,6 +1378,16 @@ local function CreateConfigFrame()
             UpdateSelectedItem({ showCooldownSwipe = self:GetChecked() })
         end)
         table.insert(options, cooldownSwipeCheckbox)
+
+        invertSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        invertSwipeCheckbox:SetPoint("LEFT", cooldownSwipeCheckbox, "RIGHT", 120, 0)
+        invertSwipeCheckbox.Text:SetText("Inverse Swipe")
+        invertSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
+        invertSwipeCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ invertCooldownSwipe = self:GetChecked() })
+        end)
+        table.insert(options, invertSwipeCheckbox)
+
         y = y - 24
 
         cooldownTextCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
