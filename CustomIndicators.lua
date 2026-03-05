@@ -830,7 +830,7 @@ local function IsBackdropSafe(frame)
     if frame.IsForbidden and frame:IsForbidden() then
         return false
     end
-    if InCombatLockdown and InCombatLockdown() then
+    if InCombatLockdown and InCombatLockdown() and frame.IsProtected and frame:IsProtected() then
         return false
     end
     return true
