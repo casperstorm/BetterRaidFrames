@@ -2,6 +2,23 @@ local ADDON_NAME, Addon = ...
 
 local originalNames = {}
 
+local function TryTransformName(name, transform, ...)
+    if name == nil then return name end
+
+    local ok, result = pcall(transform, name, ...)
+    if ok then
+        return result
+    end
+
+    return name
+end
+
+local function TrySetText(fontString, text)
+    if not fontString then return false end
+
+    return pcall(fontString.SetText, fontString, text)
+end
+
 local function StripServerName(name)
     if not name then return name end
     local spacePos = string.find(name, " ")
@@ -138,18 +155,20 @@ local function UpdateName(frame)
         end
 
         if hideServer then
-            displayName = StripServerName(displayName)
+            displayName = TryTransformName(displayName, StripServerName)
         end
 
         if Addon:GetSetting("nameCyrillicToLatin") then
-            displayName = TransliterateCyrillic(displayName)
+            displayName = TryTransformName(displayName, TransliterateCyrillic)
         end
 
         if truncateEnabled then
-            displayName = TruncateName(displayName, maxLength)
+            displayName = TryTransformName(displayName, TruncateName, maxLength)
         end
 
-        frame.name:SetText(displayName)
+        if not TrySetText(frame.name, displayName) then
+            return
+        end
 
         if Addon:GetSetting("nameClassColor") then
             local color = GetClassColor(frame.unit)
