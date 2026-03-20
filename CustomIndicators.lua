@@ -88,12 +88,21 @@ local VALID_DIRECTIONS = {
     BOTTOM_TO_TOP = true,
 }
 
+local DIRECTION_CONFIGS = {
+    LEFT_TO_RIGHT = { orientation = "HORIZONTAL", reverseFill = false },
+    RIGHT_TO_LEFT = { orientation = "HORIZONTAL", reverseFill = true },
+    TOP_TO_BOTTOM = { orientation = "VERTICAL", reverseFill = true },
+    BOTTOM_TO_TOP = { orientation = "VERTICAL", reverseFill = false },
+}
+
 local TICKER_INTERVAL = 0.08
 local PREVIEW_PERIOD = 3.0
 local runtime = {
     ticker = nil,
     previewId = nil,
     previewAll = false,
+    rawConfig = nil,
+    normalizedConfig = nil,
 }
 
 local function Clamp(v, minV, maxV)
@@ -299,11 +308,21 @@ end
 
 function Addon:GetCustomIndicatorsConfig()
     local cfg = self:GetSetting("customIndicators")
-    return self:NormalizeCustomIndicatorsConfig(cfg)
+    if cfg == runtime.rawConfig and runtime.normalizedConfig then
+        return runtime.normalizedConfig
+    end
+
+    local normalized = self:NormalizeCustomIndicatorsConfig(cfg)
+    runtime.rawConfig = cfg
+    runtime.normalizedConfig = normalized
+    return normalized
 end
 
 function Addon:SetCustomIndicatorsConfig(cfg)
-    self:SetSetting("customIndicators", self:NormalizeCustomIndicatorsConfig(cfg))
+    local normalized = self:NormalizeCustomIndicatorsConfig(cfg)
+    runtime.rawConfig = normalized
+    runtime.normalizedConfig = normalized
+    self:SetSetting("customIndicators", normalized)
 end
 
 function Addon:CreateCustomIndicatorItem(indicatorType)
@@ -443,14 +462,7 @@ function Addon:CustomIndicatorGetEffectiveDuration(aura)
 end
 
 function Addon:GetCustomIndicatorBarDirectionConfig(direction)
-    if direction == "LEFT_TO_RIGHT" then
-        return { orientation = "HORIZONTAL", reverseFill = false }
-    elseif direction == "TOP_TO_BOTTOM" then
-        return { orientation = "VERTICAL", reverseFill = true }
-    elseif direction == "BOTTOM_TO_TOP" then
-        return { orientation = "VERTICAL", reverseFill = false }
-    end
-    return { orientation = "HORIZONTAL", reverseFill = true }
+    return DIRECTION_CONFIGS[direction] or DIRECTION_CONFIGS.RIGHT_TO_LEFT
 end
 
 function Addon:GetCustomIndicatorBarTextureOptions()
@@ -566,13 +578,7 @@ function Addon:GetCustomIndicatorBarBorderSpec(key)
     end
 
     local border = BAR_BORDERS[key]
-    if border then
-        return {
-            path = border.path,
-            edgeSize = border.edgeSize,
-        }
-    end
-    return nil
+    return border
 end
 
 function Addon:SetCustomIndicatorPreviewId(id)
@@ -1025,7 +1031,15 @@ function Addon:UpdateCustomIndicators(frame)
     end
 
     local hasTimed = false
-    local activeIds = {}
+    local activeIds = frame.BRFCustomIndicatorActiveIds
+    if not activeIds then
+        activeIds = {}
+        frame.BRFCustomIndicatorActiveIds = activeIds
+    else
+        for id in pairs(activeIds) do
+            activeIds[id] = nil
+        end
+    end
 
     for _, item in ipairs(cfg.items) do
         activeIds[item.id] = true

@@ -1,7 +1,5 @@
 local ADDON_NAME, Addon = ...
 
-local originalNames = {}
-
 local function TryTransformName(name, transform, ...)
     if name == nil then return name end
 
@@ -150,10 +148,6 @@ local function UpdateName(frame)
     if frame.unit then
         local displayName = UnitName(frame.unit) or ""
 
-        if not originalNames[frame] then
-            originalNames[frame] = displayName
-        end
-
         if hideServer then
             displayName = TryTransformName(displayName, StripServerName)
         end
@@ -199,6 +193,5 @@ function Addon:UpdateName(frame)
 end
 
 function Addon:RefreshNames()
-    wipe(originalNames)
     Addon:ForEachFrame(UpdateName)
 end

@@ -7,6 +7,22 @@ end
 local Addon = {}
 assert(loadfile("CustomIndicators.lua"))("BetterRaidFrames", Addon)
 
+local settings = {
+    customIndicators = {
+        enabled = true,
+        nextId = 3,
+        items = {},
+    },
+}
+
+function Addon:GetSetting(key)
+    return settings[key]
+end
+
+function Addon:SetSetting(key, value)
+    settings[key] = value
+end
+
 local normalized = Addon:NormalizeCustomIndicatorsConfig({
     enabled = true,
     nextId = 3,
@@ -43,5 +59,20 @@ assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, { isFromPlayerOrPlayerPet = t
     "player-owned aura flags should be accepted")
 assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, {}), false,
     "auras without ownership metadata should be rejected")
+
+local cachedA = Addon:GetCustomIndicatorsConfig()
+local cachedB = Addon:GetCustomIndicatorsConfig()
+assertEqual(cachedA, cachedB, "config reads should reuse cached normalized table")
+
+Addon:SetCustomIndicatorsConfig({
+    enabled = true,
+    nextId = 9,
+    items = {},
+})
+
+local cachedC = Addon:GetCustomIndicatorsConfig()
+local cachedD = Addon:GetCustomIndicatorsConfig()
+assertEqual(cachedC, cachedD, "config cache should stay stable after writes")
+assertEqual(cachedC.nextId, 9, "written config should remain normalized")
 
 print("PASS: custom_indicators_invert_swipe_test")
