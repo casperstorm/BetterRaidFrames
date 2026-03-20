@@ -111,12 +111,15 @@ local DIRECTION_CONFIGS = {
 
 local TICKER_INTERVAL = 0.10
 local PREVIEW_PERIOD = 3.0
+local DURATION_TEXT_INTERVAL = 0.25
+local FULL_REFRESH_MIN_INTERVAL = 0.05
 local runtime = {
     ticker = nil,
     previewId = nil,
     previewAll = false,
     rawConfig = nil,
     normalizedConfig = nil,
+    activeTimedVisuals = {},
 }
 
 local function Clamp(v, minV, maxV)
@@ -1238,9 +1241,16 @@ local function ApplyDurationText(visual, item, aura, now)
     ApplyFontStringPosition(visual.durationText, visual.frame, item.durationAnchor, item.durationX, item.durationY)
 
     if item.showDuration == false or not aura or not Addon:CustomIndicatorHasReliableTiming(aura) then
+        visual.BRFLastDurationTextTick = nil
         ApplyTextState(visual.durationText, false)
         return
     end
+
+    local coarseTick = math.floor((now or 0) / DURATION_TEXT_INTERVAL)
+    if visual.BRFLastDurationTextTick == coarseTick and visual.durationText.BRFShown then
+        return
+    end
+    visual.BRFLastDurationTextTick = coarseTick
 
     local text = FormatRemainingTime(aura, now)
     local r, g, b, a = GetDurationTextColor(item, aura, now)
@@ -1317,13 +1327,134 @@ local function HideVisual(data)
     if not data or not data.frame then return end
     data.frame:Hide()
     data.BRFShown = false
-    if data.durationText then data.durationText:Hide() end
-    if data.stackText then data.stackText:Hide() end
+    if runtime.activeTimedVisuals[data] then
+        runtime.activeTimedVisuals[data] = nil
+    end
+    if data.durationText then
+        data.durationText:Hide()
+        data.durationText.BRFShown = false
+    end
+    if data.stackText then
+        data.stackText:Hide()
+        data.stackText.BRFShown = false
+    end
     if data.cooldown then
         data.cooldown:Hide()
         data.BRFCooldownShown = false
     end
     data.BRFBorderBodyShown = false
+end
+
+local function RegisterTimedVisual(visual, frame, item)
+    if not visual or not frame or not item then return end
+    visual.BRFFrameRef = frame
+    visual.BRFItemRef = item
+    if not runtime.activeTimedVisuals[visual] then
+        runtime.activeTimedVisuals[visual] = true
+    end
+end
+
+local function UnregisterTimedVisual(visual)
+    if runtime.activeTimedVisuals[visual] then
+        runtime.activeTimedVisuals[visual] = nil
+    end
+end
+
+local function UpdateTimedIndicatorVisual(visual, now)
+    if not visual or not visual.frame then
+        UnregisterTimedVisual(visual)
+        return false
+    end
+
+    local frame = visual.BRFFrameRef
+    local item = visual.BRFItemRef
+    if not frame or not item or not frame.unit or not Addon:IsRaidOrPartyFrame(frame) then
+        UnregisterTimedVisual(visual)
+        return false
+    end
+    if visual.frame.IsShown and not visual.frame:IsShown() then
+        UnregisterTimedVisual(visual)
+        return false
+    end
+
+    local aura = nil
+    local previewActive = Addon:IsConfigOpen() and
+        (Addon:IsCustomIndicatorPreviewAll() or Addon:IsCustomIndicatorPreviewActive(item.id))
+    local aurasBySpellId = frame.BRFCustomIndicatorAurasBySpellId
+    if type(aurasBySpellId) == "table" then
+        aura = aurasBySpellId[item.spellId]
+    end
+    if Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura) then
+        aura = {
+            icon = GetSpellTexture and GetSpellTexture(item.spellId > 0 and item.spellId or 136243),
+            applications = 3,
+            duration = PREVIEW_PERIOD,
+            expirationTime = now + (PREVIEW_PERIOD - (now % PREVIEW_PERIOD)),
+        }
+    end
+
+    if not aura or not Addon:CustomIndicatorHasReliableTiming(aura) then
+        UnregisterTimedVisual(visual)
+        return false
+    end
+
+    local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
+    local fill = Addon:CustomIndicatorComputeFill(now, aura.expirationTime, effectiveDuration or aura.duration)
+    local isExpiring = GetExpiringState(item, aura, now)
+
+    if item.type == "bar" and visual.bar then
+        local barR, barG, barB, barA = item.colorR, item.colorG, item.colorB, item.colorA
+        if isExpiring then
+            barR, barG, barB, barA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+        end
+        if visual.BRFBarColorR ~= barR or visual.BRFBarColorG ~= barG or visual.BRFBarColorB ~= barB or visual.BRFBarColorA ~= barA then
+            visual.bar:SetStatusBarColor(barR, barG, barB, barA)
+            visual.BRFBarColorR = barR
+            visual.BRFBarColorG = barG
+            visual.BRFBarColorB = barB
+            visual.BRFBarColorA = barA
+        end
+        if visual.BRFBarValue ~= fill then
+            visual.bar:SetValue(fill)
+            visual.BRFBarValue = fill
+        end
+        ApplyDurationText(visual, item, aura, now)
+    elseif item.type == "icon" or item.type == "square" then
+        if item.type == "square" and visual.texture then
+            local squareR, squareG, squareB, squareA = item.colorR, item.colorG, item.colorB, item.colorA
+            if isExpiring then
+                squareR, squareG, squareB, squareA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+            end
+            if visual.BRFSquareColorR ~= squareR or visual.BRFSquareColorG ~= squareG or visual.BRFSquareColorB ~= squareB or visual.BRFSquareColorA ~= squareA then
+                visual.texture:SetColorTexture(squareR, squareG, squareB, squareA)
+                visual.BRFSquareColorR = squareR
+                visual.BRFSquareColorG = squareG
+                visual.BRFSquareColorB = squareB
+                visual.BRFSquareColorA = squareA
+            end
+        end
+        ApplyDurationText(visual, item, aura, now)
+    elseif item.type == "border" and visual.border then
+        local borderR, borderG, borderB, borderA = item.colorR, item.colorG, item.colorB, item.alpha or 1
+        if isExpiring then
+            borderR, borderG, borderB, borderA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+        end
+        local edgeSize = item.borderSize or 1
+        if (visual.BRFBorderBodyPath ~= "Interface\\Buttons\\WHITE8X8" or visual.BRFBorderBodyEdgeSize ~= edgeSize
+            or visual.BRFBorderBodyColorR ~= borderR or visual.BRFBorderBodyColorG ~= borderG
+            or visual.BRFBorderBodyColorB ~= borderB or visual.BRFBorderBodyColorA ~= borderA)
+            and ApplyBorderBackdrop(visual.border, "Interface\\Buttons\\WHITE8X8", edgeSize, borderR, borderG, borderB, borderA) then
+            visual.BRFBorderBodyPath = "Interface\\Buttons\\WHITE8X8"
+            visual.BRFBorderBodyEdgeSize = edgeSize
+            visual.BRFBorderBodyColorR = borderR
+            visual.BRFBorderBodyColorG = borderG
+            visual.BRFBorderBodyColorB = borderB
+            visual.BRFBorderBodyColorA = borderA
+        end
+        ApplyDurationText(visual, item, aura, now)
+    end
+
+    return true
 end
 
 local function IsBackdropSafe(frame)
@@ -1551,7 +1682,14 @@ local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
         ApplyDurationText(visual, item, aura, now)
     end
 
-    return true, Addon:CustomIndicatorHasReliableTiming(aura) and true or false
+    local isTimed = Addon:CustomIndicatorHasReliableTiming(aura) and true or false
+    if isTimed then
+        RegisterTimedVisual(visual, frame, item)
+    else
+        UnregisterTimedVisual(visual)
+    end
+
+    return true, isTimed
 end
 
 local function HideStaleVisuals(frame, activeIds)
@@ -1613,11 +1751,12 @@ end
 
 local function RefreshTickerState()
     local needsTicker = false
-    Addon:ForEachFrame(function(frame)
-        if Addon:UpdateCustomIndicators(frame, true) then
+    local now = GetTime and GetTime() or 0
+    for visual in pairs(runtime.activeTimedVisuals) do
+        if UpdateTimedIndicatorVisual(visual, now) then
             needsTicker = true
         end
-    end)
+    end
 
     if needsTicker and not runtime.ticker and C_Timer and C_Timer.NewTicker then
         runtime.ticker = C_Timer.NewTicker(TICKER_INTERVAL, function()
@@ -1630,9 +1769,42 @@ local function RefreshTickerState()
 end
 
 local HideBlizzardBuffs
+local eventFrame
 
-local function UpdateFrameAndTicker(frame, hideBlizzardBuffs)
+local function FindFrameByUnit(unit)
+    if not unit then return nil end
+
+    local matched = nil
+    Addon:ForEachFrame(function(frame)
+        if frame and frame.unit == unit and not matched then
+            matched = frame
+        end
+    end)
+    return matched
+end
+
+local function UpdateFrameAndTicker(frame, hideBlizzardBuffs, forced)
     if not Addon:IsRaidOrPartyFrame(frame) then return end
+
+    local now = GetTime and GetTime() or 0
+    local lastRefresh = frame.BRFCustomIndicatorLastFullRefresh or 0
+    if forced ~= true and (now - lastRefresh) < FULL_REFRESH_MIN_INTERVAL then
+        if not frame.BRFCustomIndicatorRefreshPending and C_Timer and C_Timer.After then
+            frame.BRFCustomIndicatorRefreshPending = true
+            local delay = FULL_REFRESH_MIN_INTERVAL - (now - lastRefresh)
+            if delay < 0 then delay = 0 end
+            C_Timer.After(delay, function()
+                frame.BRFCustomIndicatorRefreshPending = false
+                UpdateFrameAndTicker(frame, hideBlizzardBuffs, true)
+            end)
+        end
+        if hideBlizzardBuffs then
+            HideBlizzardBuffs(frame)
+        end
+        return
+    end
+
+    frame.BRFCustomIndicatorLastFullRefresh = now
 
     local hasTimed = Addon:UpdateCustomIndicators(frame)
     if hideBlizzardBuffs then
@@ -1651,7 +1823,23 @@ local function UpdateFrameAndTicker(frame, hideBlizzardBuffs)
 end
 
 function Addon:RefreshCustomIndicators()
-    RefreshTickerState()
+    local needsTicker = false
+    Addon:ForEachFrame(function(frame)
+        if Addon:UpdateCustomIndicators(frame) then
+            needsTicker = true
+        end
+    end)
+
+    if needsTicker then
+        if not runtime.ticker and C_Timer and C_Timer.NewTicker then
+            runtime.ticker = C_Timer.NewTicker(TICKER_INTERVAL, function()
+                RefreshTickerState()
+            end)
+        end
+    elseif runtime.ticker then
+        runtime.ticker:Cancel()
+        runtime.ticker = nil
+    end
 end
 
 HideBlizzardBuffs = function(frame)
@@ -1665,14 +1853,28 @@ HideBlizzardBuffs = function(frame)
 end
 
 function Addon:HookCustomIndicators()
-    hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
-        UpdateFrameAndTicker(frame, true)
-    end)
-
     if CompactUnitFrame_UpdateAuras then
         hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-            UpdateFrameAndTicker(frame, true)
+            if Addon:IsRaidOrPartyFrame(frame) then
+                HideBlizzardBuffs(frame)
+            end
         end)
     end
 
+    if not eventFrame then
+        eventFrame = CreateFrame("Frame")
+        eventFrame:RegisterEvent("UNIT_AURA")
+        eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+        eventFrame:SetScript("OnEvent", function(_, event, unit)
+            if event == "UNIT_AURA" then
+                local frame = FindFrameByUnit(unit)
+                if frame then
+                    UpdateFrameAndTicker(frame, true)
+                end
+            else
+                Addon:RefreshCustomIndicators()
+            end
+        end)
+    end
 end

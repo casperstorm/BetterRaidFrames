@@ -171,6 +171,18 @@ local function CopyDefaults()
     return copy
 end
 
+local function DeepCopy(value)
+    if type(value) ~= "table" then
+        return value
+    end
+
+    local copy = {}
+    for k, v in pairs(value) do
+        copy[k] = DeepCopy(v)
+    end
+    return copy
+end
+
 local function GetCurrentProfile()
     return BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile]
 end
@@ -386,6 +398,18 @@ function Addon:CreateProfile(name)
         return false
     end
     BetterRaidFramesDB.profiles[name] = CopyDefaults()
+    return true
+end
+
+function Addon:DuplicateProfile(sourceName, targetName)
+    if not sourceName or sourceName == "" or not BetterRaidFramesDB.profiles[sourceName] then
+        return false
+    end
+    if not targetName or targetName == "" or BetterRaidFramesDB.profiles[targetName] then
+        return false
+    end
+
+    BetterRaidFramesDB.profiles[targetName] = DeepCopy(BetterRaidFramesDB.profiles[sourceName])
     return true
 end
 

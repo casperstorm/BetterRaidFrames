@@ -2,6 +2,16 @@ local ADDON_NAME, Addon = ...
 
 local ConfigFrame = nil
 
+local function RefreshConfigDeferred()
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0, function()
+            Addon:RefreshConfig()
+        end)
+    else
+        Addon:RefreshConfig()
+    end
+end
+
 local function SetControlsEnabled(controls, enabled)
     local alpha = enabled and 1.0 or 0.5
     for _, control in ipairs(controls) do
@@ -327,9 +337,19 @@ local function CreateConfigFrame()
         renameBtn:GetFontString():SetFont(renameBtn:GetFontString():GetFont(), 10)
         renameBtn:SetScript("OnClick", function() StaticPopup_Show("BRF_RENAME_PROFILE") end)
 
+        local duplicateBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+        duplicateBtn:SetSize(62, 20)
+        duplicateBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
+        duplicateBtn:SetText("Duplicate")
+        duplicateBtn:GetFontString():SetFont(duplicateBtn:GetFontString():GetFont(), 10)
+        duplicateBtn:SetScript("OnClick", function()
+            local current = Addon:GetCurrentProfileName()
+            StaticPopup_Show("BRF_DUPLICATE_PROFILE", current)
+        end)
+
         local deleteBtn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
         deleteBtn:SetSize(55, 20)
-        deleteBtn:SetPoint("LEFT", renameBtn, "RIGHT", 2, 0)
+        deleteBtn:SetPoint("LEFT", duplicateBtn, "RIGHT", 2, 0)
         deleteBtn:SetText("Remove")
         deleteBtn:SetScript("OnClick", function()
             local current = Addon:GetCurrentProfileName()
@@ -344,7 +364,7 @@ local function CreateConfigFrame()
                         function() return Addon:GetCurrentProfileName() == name end,
                         function()
                             Addon:SwitchProfile(name)
-                            Addon:RefreshConfig()
+                            RefreshConfigDeferred()
                         end,
                         name
                     )
@@ -2072,8 +2092,19 @@ function Addon:RefreshConfig()
         ConfigFrame = nil
         ConfigFrame = CreateConfigFrame()
         ConfigFrame:Show()
-        if activeTabId and ConfigFrame.ShowTab then
-            ConfigFrame:ShowTab(activeTabId)
+        local targetTabId = activeTabId or "general"
+        if targetTabId ~= "general" and not Addon:GetUseRaidStylePartyFrames() then
+            targetTabId = "general"
+        end
+        if ConfigFrame.ShowTab then
+            ConfigFrame:ShowTab(targetTabId)
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0, function()
+                    if ConfigFrame and ConfigFrame.ShowTab and ConfigFrame:IsShown() then
+                        ConfigFrame:ShowTab(targetTabId)
+                    end
+                end)
+            end
         end
     else
         ConfigFrame = nil
@@ -2089,7 +2120,7 @@ StaticPopupDialogs["BRF_NEW_PROFILE"] = {
         local name = self.EditBox:GetText()
         if BetterRaidFrames:CreateProfile(name) then
             BetterRaidFrames:SwitchProfile(name)
-            BetterRaidFrames:RefreshConfig()
+            RefreshConfigDeferred()
         else
             print("|cff00ff00BetterRaidFrames:|r Could not create profile (name empty or already exists)")
         end
@@ -2103,7 +2134,7 @@ StaticPopupDialogs["BRF_NEW_PROFILE"] = {
         local name = parent.EditBox:GetText()
         if BetterRaidFrames:CreateProfile(name) then
             BetterRaidFrames:SwitchProfile(name)
-            BetterRaidFrames:RefreshConfig()
+            RefreshConfigDeferred()
         end
         parent:Hide()
     end,
@@ -2122,7 +2153,7 @@ StaticPopupDialogs["BRF_RENAME_PROFILE"] = {
         local newName = self.EditBox:GetText()
         local oldName = BetterRaidFrames:GetCurrentProfileName()
         if BetterRaidFrames:RenameProfile(oldName, newName) then
-            BetterRaidFrames:RefreshConfig()
+            RefreshConfigDeferred()
         else
             print("|cff00ff00BetterRaidFrames:|r Could not rename profile")
         end
@@ -2137,7 +2168,47 @@ StaticPopupDialogs["BRF_RENAME_PROFILE"] = {
         local newName = parent.EditBox:GetText()
         local oldName = BetterRaidFrames:GetCurrentProfileName()
         if BetterRaidFrames:RenameProfile(oldName, newName) then
-            BetterRaidFrames:RefreshConfig()
+            RefreshConfigDeferred()
+        end
+        parent:Hide()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["BRF_DUPLICATE_PROFILE"] = {
+    text = "Duplicate profile '%s' to:",
+    button1 = "Duplicate",
+    button2 = "Cancel",
+    hasEditBox = true,
+    OnAccept = function(self)
+        local targetName = self.EditBox:GetText()
+        local sourceName = BetterRaidFrames:GetCurrentProfileName()
+        if BetterRaidFrames:DuplicateProfile(sourceName, targetName) then
+            BetterRaidFrames:SwitchProfile(targetName)
+            RefreshConfigDeferred()
+        else
+            print("|cff00ff00BetterRaidFrames:|r Could not duplicate profile (name empty or already exists)")
+        end
+    end,
+    OnShow = function(self, data)
+        local sourceName = data or BetterRaidFrames:GetCurrentProfileName()
+        if self.Text and self.Text.SetFormattedText then
+            self.Text:SetFormattedText("Duplicate profile '%s' to:", sourceName)
+        end
+        self.EditBox:SetText(sourceName .. " Copy")
+        self.EditBox:HighlightText()
+        self.EditBox:SetFocus()
+    end,
+    EditBoxOnEnterPressed = function(self)
+        local parent = self:GetParent()
+        local targetName = parent.EditBox:GetText()
+        local sourceName = BetterRaidFrames:GetCurrentProfileName()
+        if BetterRaidFrames:DuplicateProfile(sourceName, targetName) then
+            BetterRaidFrames:SwitchProfile(targetName)
+            RefreshConfigDeferred()
         end
         parent:Hide()
     end,
@@ -2153,7 +2224,7 @@ StaticPopupDialogs["BRF_DELETE_PROFILE"] = {
     button2 = "Cancel",
     OnAccept = function(self)
         if BetterRaidFrames:DeleteProfile(BetterRaidFrames:GetCurrentProfileName()) then
-            BetterRaidFrames:RefreshConfig()
+            RefreshConfigDeferred()
         end
     end,
     timeout = 0,
