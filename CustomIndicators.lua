@@ -109,7 +109,7 @@ local DIRECTION_CONFIGS = {
     BOTTOM_TO_TOP = { orientation = "VERTICAL", reverseFill = false },
 }
 
-local TICKER_INTERVAL = 0.08
+local TICKER_INTERVAL = 0.10
 local PREVIEW_PERIOD = 3.0
 local runtime = {
     ticker = nil,
@@ -1004,19 +1004,51 @@ end
 
 local function ApplyFontStringPosition(text, parent, anchor, x, y)
     if not text then return end
+
+    anchor = anchor or "CENTER"
+    x = x or 0
+    y = y or 0
+
+    if text.BRFAnchor == anchor and text.BRFParent == parent and text.BRFX == x and text.BRFY == y then
+        return
+    end
+
     text:ClearAllPoints()
-    text:SetPoint(anchor or "CENTER", parent, anchor or "CENTER", x or 0, y or 0)
+    text:SetPoint(anchor, parent, anchor, x, y)
+    text.BRFAnchor = anchor
+    text.BRFParent = parent
+    text.BRFX = x
+    text.BRFY = y
 end
 
 local function ApplyTextState(text, shown, value, r, g, b, a)
     if not text then return end
     if shown and value and value ~= "" then
-        text:SetText(value)
-        text:SetTextColor(r or 1, g or 1, b or 1, a or 1)
-        text:Show()
+        if text.BRFText ~= value then
+            text:SetText(value)
+            text.BRFText = value
+        end
+        r, g, b, a = r or 1, g or 1, b or 1, a or 1
+        if text.BRFColorR ~= r or text.BRFColorG ~= g or text.BRFColorB ~= b or text.BRFColorA ~= a then
+            text:SetTextColor(r, g, b, a)
+            text.BRFColorR = r
+            text.BRFColorG = g
+            text.BRFColorB = b
+            text.BRFColorA = a
+        end
+        if not text.BRFShown then
+            text:Show()
+            text.BRFShown = true
+        end
     else
-        text:SetText("")
-        text:Hide()
+        if text.BRFText ~= "" then
+            text:SetText("")
+            text.BRFText = ""
+        end
+        if text.BRFShown ~= false then
+            text:Hide()
+            text.BRFShown = false
+        end
     end
 end
 
@@ -1040,16 +1072,29 @@ local function ApplyVisualFrameLevel(frame, visual, item)
     if not frame or not visual or not visual.frame or not visual.frame.SetFrameLevel then return end
 
     local baseLevel = frame.GetFrameLevel and frame:GetFrameLevel() or 0
-    visual.frame:SetFrameLevel(ClampFrameLevel(baseLevel + (item.frameLevelOffset or 0)))
+    local desiredLevel = ClampFrameLevel(baseLevel + (item.frameLevelOffset or 0))
+    if visual.BRFFrameLevel ~= desiredLevel then
+        visual.frame:SetFrameLevel(desiredLevel)
+        visual.BRFFrameLevel = desiredLevel
+    end
 
+    local desiredStrata
     if item.frameStrata and item.frameStrata ~= "INHERIT" and visual.frame.SetFrameStrata then
-        visual.frame:SetFrameStrata(item.frameStrata)
+        desiredStrata = item.frameStrata
     elseif frame.GetFrameStrata and visual.frame.SetFrameStrata then
-        visual.frame:SetFrameStrata(frame:GetFrameStrata())
+        desiredStrata = frame:GetFrameStrata()
+    end
+    if desiredStrata and visual.BRFFrameStrata ~= desiredStrata then
+        visual.frame:SetFrameStrata(desiredStrata)
+        visual.BRFFrameStrata = desiredStrata
     end
 
     if visual.border and visual.border.SetFrameLevel then
-        visual.border:SetFrameLevel(ClampFrameLevel(visual.frame:GetFrameLevel() + 1))
+        local borderLevel = ClampFrameLevel(desiredLevel + 1)
+        if visual.BRFBorderFrameLevel ~= borderLevel then
+            visual.border:SetFrameLevel(borderLevel)
+            visual.BRFBorderFrameLevel = borderLevel
+        end
     end
 end
 
@@ -1125,38 +1170,65 @@ end
 
 local function ApplyCooldown(visual, item, aura)
     if not visual or not visual.cooldown then return end
+    local shouldDrawSwipe = item.hideSwipe ~= true and item.showCooldownSwipe ~= false
     if visual.cooldown.SetDrawSwipe then
-        visual.cooldown:SetDrawSwipe(item.hideSwipe ~= true and item.showCooldownSwipe ~= false)
+        if visual.BRFDrawSwipe ~= shouldDrawSwipe then
+            visual.cooldown:SetDrawSwipe(shouldDrawSwipe)
+            visual.BRFDrawSwipe = shouldDrawSwipe
+        end
     end
+    local shouldReverse = Addon:CustomIndicatorShouldReverseCooldown(item)
     if visual.cooldown.SetReverse then
-        visual.cooldown:SetReverse(Addon:CustomIndicatorShouldReverseCooldown(item))
+        if visual.BRFReverse ~= shouldReverse then
+            visual.cooldown:SetReverse(shouldReverse)
+            visual.BRFReverse = shouldReverse
+        end
     end
+    local hideCountdownNumbers = item.showCooldownText == false
     if visual.cooldown.SetHideCountdownNumbers then
-        visual.cooldown:SetHideCountdownNumbers(item.showCooldownText == false)
+        if visual.BRFHideCountdownNumbers ~= hideCountdownNumbers then
+            visual.cooldown:SetHideCountdownNumbers(hideCountdownNumbers)
+            visual.BRFHideCountdownNumbers = hideCountdownNumbers
+        end
     end
     if aura and Addon:CustomIndicatorHasReliableTiming(aura) then
         local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
         local startTime = aura.expirationTime - effectiveDuration
         local modRate = tonumber(aura.timeMod or aura.modRate)
+        local durationToSet = (modRate and modRate > 0) and aura.duration or effectiveDuration
 
-        if modRate and modRate > 0 then
-            local ok = pcall(visual.cooldown.SetCooldown, visual.cooldown, startTime, aura.duration, modRate)
-            if not ok then
+        if visual.BRFCooldownStart ~= startTime or visual.BRFCooldownDuration ~= durationToSet or visual.BRFCooldownModRate ~= modRate then
+            if modRate and modRate > 0 then
+                local ok = pcall(visual.cooldown.SetCooldown, visual.cooldown, startTime, aura.duration, modRate)
+                if not ok then
+                    visual.cooldown:SetCooldown(startTime, effectiveDuration)
+                end
+            else
                 visual.cooldown:SetCooldown(startTime, effectiveDuration)
             end
-        else
-            visual.cooldown:SetCooldown(startTime, effectiveDuration)
+            visual.BRFCooldownStart = startTime
+            visual.BRFCooldownDuration = durationToSet
+            visual.BRFCooldownModRate = modRate
         end
-        visual.cooldown:Show()
+        if not visual.BRFCooldownShown then
+            visual.cooldown:Show()
+            visual.BRFCooldownShown = true
+        end
     else
-        if visual.cooldown.Clear then
-            visual.cooldown:Clear()
-        elseif CooldownFrame_Clear then
-            CooldownFrame_Clear(visual.cooldown)
-        else
-            visual.cooldown:SetCooldown(0, 0)
+        if visual.BRFCooldownShown ~= false then
+            if visual.cooldown.Clear then
+                visual.cooldown:Clear()
+            elseif CooldownFrame_Clear then
+                CooldownFrame_Clear(visual.cooldown)
+            else
+                visual.cooldown:SetCooldown(0, 0)
+            end
+            visual.cooldown:Hide()
+            visual.BRFCooldownShown = false
+            visual.BRFCooldownStart = nil
+            visual.BRFCooldownDuration = nil
+            visual.BRFCooldownModRate = nil
         end
-        visual.cooldown:Hide()
     end
 end
 
@@ -1194,8 +1266,12 @@ local function ApplyPlacedIndicatorBorder(visual, item, r, g, b, a)
     if not visual or not visual.border or not visual.border.SetBackdrop then return end
 
     if item.showBorder == false then
-        ClearBackdrop(visual.border)
-        visual.border:Hide()
+        if visual.BRFBorderActive ~= false then
+            ClearBackdrop(visual.border)
+            visual.border:Hide()
+            visual.BRFBorderActive = false
+            visual.BRFBorderPath = nil
+        end
         return
     end
 
@@ -1205,24 +1281,49 @@ local function ApplyPlacedIndicatorBorder(visual, item, r, g, b, a)
         local padding = (item.borderPadding or 0) - (item.borderInset or 0)
         local total = edgeSize + padding
         if total < 0 then total = 0 end
-        visual.border:SetPoint("TOPLEFT", -total, total)
-        visual.border:SetPoint("BOTTOMRIGHT", total, -total)
-        if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, r, g, b, a) then
-            visual.border:Show()
+        if visual.BRFBorderTotal ~= total then
+            visual.border:SetPoint("TOPLEFT", -total, total)
+            visual.border:SetPoint("BOTTOMRIGHT", total, -total)
+            visual.BRFBorderTotal = total
+        end
+        local needsBackdrop = visual.BRFBorderPath ~= borderSpec.path or visual.BRFBorderEdgeSize ~= edgeSize
+            or visual.BRFBorderColorR ~= r or visual.BRFBorderColorG ~= g or visual.BRFBorderColorB ~= b or visual.BRFBorderColorA ~= a
+        if (needsBackdrop and ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, r, g, b, a)) or (not needsBackdrop and visual.BRFBorderActive) then
+            if not visual.BRFBorderActive then
+                visual.border:Show()
+            end
+            visual.BRFBorderActive = true
+            visual.BRFBorderPath = borderSpec.path
+            visual.BRFBorderEdgeSize = edgeSize
+            visual.BRFBorderColorR = r
+            visual.BRFBorderColorG = g
+            visual.BRFBorderColorB = b
+            visual.BRFBorderColorA = a
         else
             visual.border:Hide()
+            visual.BRFBorderActive = false
         end
     else
-        ClearBackdrop(visual.border)
-        visual.border:Hide()
+        if visual.BRFBorderActive ~= false or visual.BRFBorderPath ~= nil then
+            ClearBackdrop(visual.border)
+            visual.border:Hide()
+            visual.BRFBorderActive = false
+            visual.BRFBorderPath = nil
+        end
     end
 end
 
 local function HideVisual(data)
     if not data or not data.frame then return end
     data.frame:Hide()
+    data.BRFShown = false
     if data.durationText then data.durationText:Hide() end
     if data.stackText then data.stackText:Hide() end
+    if data.cooldown then
+        data.cooldown:Hide()
+        data.BRFCooldownShown = false
+    end
+    data.BRFBorderBodyShown = false
 end
 
 local function IsBackdropSafe(frame)
@@ -1241,6 +1342,7 @@ end
 ClearBackdrop = function(frame)
     if not frame or not frame.SetBackdrop then return end
     pcall(frame.SetBackdrop, frame, nil)
+    frame.BRFBackdropKey = nil
 end
 
 ApplyBorderBackdrop = function(frame, edgeFile, edgeSize, r, g, b, a)
@@ -1248,15 +1350,25 @@ ApplyBorderBackdrop = function(frame, edgeFile, edgeSize, r, g, b, a)
         return false
     end
 
-    local ok = pcall(frame.SetBackdrop, frame, {
-        edgeFile = edgeFile,
-        edgeSize = edgeSize,
-    })
-    if not ok then
-        return false
+    local backdropKey = tostring(edgeFile) .. "|" .. tostring(edgeSize)
+    if frame.BRFBackdropKey ~= backdropKey then
+        local ok = pcall(frame.SetBackdrop, frame, {
+            edgeFile = edgeFile,
+            edgeSize = edgeSize,
+        })
+        if not ok then
+            return false
+        end
+        frame.BRFBackdropKey = backdropKey
     end
 
-    pcall(frame.SetBackdropBorderColor, frame, r, g, b, a)
+    if frame.BRFBackdropColorR ~= r or frame.BRFBackdropColorG ~= g or frame.BRFBackdropColorB ~= b or frame.BRFBackdropColorA ~= a then
+        pcall(frame.SetBackdropBorderColor, frame, r, g, b, a)
+        frame.BRFBackdropColorR = r
+        frame.BRFBackdropColorG = g
+        frame.BRFBackdropColorB = b
+        frame.BRFBackdropColorA = a
+    end
     return true
 end
 
@@ -1289,20 +1401,46 @@ local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
         return false, false
     end
 
-    visual.frame:ClearAllPoints()
     local width, height = GetIndicatorDisplaySize(item)
     if item.type == "border" then
         local inset = item.borderInset or 0
-        visual.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", -inset, inset)
-        visual.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", inset, -inset)
+        if visual.BRFLayoutMode ~= "border" or visual.BRFInset ~= inset or visual.BRFLayoutParent ~= frame then
+            visual.frame:ClearAllPoints()
+            visual.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", -inset, inset)
+            visual.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", inset, -inset)
+            visual.BRFLayoutMode = "border"
+            visual.BRFInset = inset
+            visual.BRFLayoutParent = frame
+        end
     else
         local point = item.anchor or "CENTER"
-        visual.frame:SetPoint(point, frame, point, item.offsetX or 0, item.offsetY or 0)
-        visual.frame:SetSize(width, height)
+        local offsetX = item.offsetX or 0
+        local offsetY = item.offsetY or 0
+        if visual.BRFLayoutMode ~= "point" or visual.BRFAnchor ~= point or visual.BRFOffsetX ~= offsetX or visual.BRFOffsetY ~= offsetY or visual.BRFLayoutParent ~= frame then
+            visual.frame:ClearAllPoints()
+            visual.frame:SetPoint(point, frame, point, offsetX, offsetY)
+            visual.BRFLayoutMode = "point"
+            visual.BRFAnchor = point
+            visual.BRFOffsetX = offsetX
+            visual.BRFOffsetY = offsetY
+            visual.BRFLayoutParent = frame
+        end
+        if visual.BRFWidth ~= width or visual.BRFHeight ~= height then
+            visual.frame:SetSize(width, height)
+            visual.BRFWidth = width
+            visual.BRFHeight = height
+        end
     end
     ApplyVisualFrameLevel(frame, visual, item)
-    visual.frame:SetAlpha(item.alpha or 1)
-    visual.frame:Show()
+    local frameAlpha = item.alpha or 1
+    if visual.BRFAlpha ~= frameAlpha then
+        visual.frame:SetAlpha(frameAlpha)
+        visual.BRFAlpha = frameAlpha
+    end
+    if not visual.BRFShown then
+        visual.frame:Show()
+        visual.BRFShown = true
+    end
 
     local fillForColor
     if usePreviewTiming then
@@ -1315,31 +1453,58 @@ local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
     local isExpiring = GetExpiringState(item, aura, now)
 
     if item.type == "bar" and visual.bar then
-        visual.bar:SetStatusBarTexture(Addon:GetCustomIndicatorBarTexturePath(item.barTexture) or BAR_TEXTURES.BLIZZARD.path)
+        local barTexture = Addon:GetCustomIndicatorBarTexturePath(item.barTexture) or BAR_TEXTURES.BLIZZARD.path
+        if visual.BRFBarTexture ~= barTexture then
+            visual.bar:SetStatusBarTexture(barTexture)
+            visual.BRFBarTexture = barTexture
+        end
         local direction = item.orientation == "VERTICAL"
             and ((item.direction == "TOP_TO_BOTTOM" or item.direction == "BOTTOM_TO_TOP") and item.direction or "BOTTOM_TO_TOP")
             or ((item.direction == "LEFT_TO_RIGHT" or item.direction == "RIGHT_TO_LEFT") and item.direction or "RIGHT_TO_LEFT")
         local dirCfg = Addon:GetCustomIndicatorBarDirectionConfig(direction)
-        visual.bar:SetOrientation(dirCfg.orientation)
-        visual.bar:SetReverseFill(dirCfg.reverseFill)
+        if visual.BRFBarOrientation ~= dirCfg.orientation then
+            visual.bar:SetOrientation(dirCfg.orientation)
+            visual.BRFBarOrientation = dirCfg.orientation
+        end
+        if visual.BRFBarReverseFill ~= dirCfg.reverseFill then
+            visual.bar:SetReverseFill(dirCfg.reverseFill)
+            visual.BRFBarReverseFill = dirCfg.reverseFill
+        end
         local barR, barG, barB, barA = item.colorR, item.colorG, item.colorB, item.colorA
         if isExpiring then
             barR, barG, barB, barA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
         end
-        visual.bar:SetStatusBarColor(barR, barG, barB, barA)
+        if visual.BRFBarColorR ~= barR or visual.BRFBarColorG ~= barG or visual.BRFBarColorB ~= barB or visual.BRFBarColorA ~= barA then
+            visual.bar:SetStatusBarColor(barR, barG, barB, barA)
+            visual.BRFBarColorR = barR
+            visual.BRFBarColorG = barG
+            visual.BRFBarColorB = barB
+            visual.BRFBarColorA = barA
+        end
         if visual.background then
-            visual.background:SetColorTexture(item.barBackgroundColorR, item.barBackgroundColorG,
-                item.barBackgroundColorB, item.barBackgroundColorA)
+            local bgR, bgG, bgB, bgA = item.barBackgroundColorR, item.barBackgroundColorG,
+                item.barBackgroundColorB, item.barBackgroundColorA
+            if visual.BRFBackgroundColorR ~= bgR or visual.BRFBackgroundColorG ~= bgG or visual.BRFBackgroundColorB ~= bgB or visual.BRFBackgroundColorA ~= bgA then
+                visual.background:SetColorTexture(bgR, bgG, bgB, bgA)
+                visual.BRFBackgroundColorR = bgR
+                visual.BRFBackgroundColorG = bgG
+                visual.BRFBackgroundColorB = bgB
+                visual.BRFBackgroundColorA = bgA
+            end
         end
         local fill = fillForColor
-        visual.bar:SetValue(fill)
+        if visual.BRFBarValue ~= fill then
+            visual.bar:SetValue(fill)
+            visual.BRFBarValue = fill
+        end
 
         ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
         ApplyDurationText(visual, item, aura, now)
     elseif item.type == "icon" and visual.texture then
         local icon = aura.icon or (GetSpellTexture and GetSpellTexture(item.spellId))
-        if icon then
+        if icon and visual.BRFTexture ~= icon then
             visual.texture:SetTexture(icon)
+            visual.BRFTexture = icon
         end
         ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
         ApplyCooldown(visual, item, aura)
@@ -1350,7 +1515,13 @@ local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
         if isExpiring then
             squareR, squareG, squareB, squareA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
         end
-        visual.texture:SetColorTexture(squareR, squareG, squareB, squareA)
+        if visual.BRFSquareColorR ~= squareR or visual.BRFSquareColorG ~= squareG or visual.BRFSquareColorB ~= squareB or visual.BRFSquareColorA ~= squareA then
+            visual.texture:SetColorTexture(squareR, squareG, squareB, squareA)
+            visual.BRFSquareColorR = squareR
+            visual.BRFSquareColorG = squareG
+            visual.BRFSquareColorB = squareB
+            visual.BRFSquareColorA = squareA
+        end
         ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
         ApplyCooldown(visual, item, aura)
         ApplyDurationText(visual, item, aura, now)
@@ -1362,10 +1533,20 @@ local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
                 item.expiringColorA
         end
         local edgeSize = item.borderSize or 1
-        if ApplyBorderBackdrop(visual.border, "Interface\\Buttons\\WHITE8X8", edgeSize, borderR, borderG, borderB, borderA) then
+        if (visual.BRFBorderBodyPath ~= "Interface\\Buttons\\WHITE8X8" or visual.BRFBorderBodyEdgeSize ~= edgeSize
+            or visual.BRFBorderBodyColorR ~= borderR or visual.BRFBorderBodyColorG ~= borderG
+            or visual.BRFBorderBodyColorB ~= borderB or visual.BRFBorderBodyColorA ~= borderA)
+            and ApplyBorderBackdrop(visual.border, "Interface\\Buttons\\WHITE8X8", edgeSize, borderR, borderG, borderB, borderA) then
+            visual.BRFBorderBodyPath = "Interface\\Buttons\\WHITE8X8"
+            visual.BRFBorderBodyEdgeSize = edgeSize
+            visual.BRFBorderBodyColorR = borderR
+            visual.BRFBorderBodyColorG = borderG
+            visual.BRFBorderBodyColorB = borderB
+            visual.BRFBorderBodyColorA = borderA
+        end
+        if not visual.BRFBorderBodyShown then
             visual.border:Show()
-        else
-            visual.border:Hide()
+            visual.BRFBorderBodyShown = true
         end
         ApplyDurationText(visual, item, aura, now)
     end
