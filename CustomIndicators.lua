@@ -803,6 +803,23 @@ function Addon:CustomIndicatorShouldReverseCooldown(item)
     return type(item) == "table" and item.invertCooldownSwipe == true
 end
 
+local function ReadNonSecretAuraField(aura, key)
+    if type(aura) ~= "table" then
+        return nil
+    end
+
+    local ok, value = pcall(function()
+        return aura[key]
+    end)
+    if not ok then
+        return nil
+    end
+    if issecretvalue and issecretvalue(value) then
+        return nil
+    end
+    return value
+end
+
 function Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duration, expirationTime, timeMod)
     if auraOrName == nil then
         return nil
@@ -811,11 +828,11 @@ function Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duratio
     if type(auraOrName) == "table" then
         local aura = auraOrName
         return {
-            icon = aura.icon or aura.iconTexture or aura.iconFileID,
-            applications = aura.applications or aura.count or 0,
-            duration = aura.duration,
-            expirationTime = aura.expirationTime,
-            timeMod = aura.timeMod or aura.modRate,
+            icon = ReadNonSecretAuraField(aura, "icon") or ReadNonSecretAuraField(aura, "iconTexture") or ReadNonSecretAuraField(aura, "iconFileID"),
+            applications = ReadNonSecretAuraField(aura, "applications") or ReadNonSecretAuraField(aura, "count") or 0,
+            duration = ReadNonSecretAuraField(aura, "duration"),
+            expirationTime = ReadNonSecretAuraField(aura, "expirationTime"),
+            timeMod = ReadNonSecretAuraField(aura, "timeMod") or ReadNonSecretAuraField(aura, "modRate"),
         }
     end
 
@@ -838,20 +855,22 @@ end
 function Addon:CustomIndicatorIsPlayerAura(unitCaster, aura)
     local sourceUnit = unitCaster
     if type(aura) == "table" then
-        sourceUnit = aura.sourceUnit or aura.unitCaster or aura.casterUnit or sourceUnit
+        sourceUnit = ReadNonSecretAuraField(aura, "sourceUnit")
+            or ReadNonSecretAuraField(aura, "unitCaster")
+            or ReadNonSecretAuraField(aura, "casterUnit")
+            or sourceUnit
     end
 
-    if type(sourceUnit) == "string" and sourceUnit ~= "" then
+    if sourceUnit ~= nil then
         if UnitIsUnit then
             local ok, matches = pcall(UnitIsUnit, sourceUnit, "player")
             return ok and matches or false
         end
-        return sourceUnit == "player"
-    end
-
-    if type(aura) == "table" then
-        if aura.isFromPlayerOrPlayerPet == true or aura.castByPlayer == true then
-            return true
+        local ok, matches = pcall(function()
+            return sourceUnit == "player"
+        end)
+        if ok then
+            return matches or false
         end
     end
 
@@ -865,51 +884,47 @@ function Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura)
     return aura == nil
 end
 
-local function FindAuraBySpellID(unit, spellId)
-    if not unit or not UnitExists or not UnitExists(unit) or not spellId or spellId <= 0 then
+local function ShouldReplaceCachedAura(existing, candidate)
+    if not candidate then
+        return false
+    end
+    if not existing then
+        return true
+    end
+
+    local existingReliable = Addon:CustomIndicatorHasReliableTiming(existing)
+    local candidateReliable = Addon:CustomIndicatorHasReliableTiming(candidate)
+    if candidateReliable ~= existingReliable then
+        return candidateReliable
+    end
+
+    local existingExpiration = tonumber(existing.expirationTime) or 0
+    local candidateExpiration = tonumber(candidate.expirationTime) or 0
+    return candidateExpiration > existingExpiration
+end
+
+local function StorePlayerAuraBySpellId(aurasBySpellId, spellId, normalized)
+    if type(aurasBySpellId) ~= "table" or not spellId or spellId <= 0 or not normalized then
+        return
+    end
+
+    local existing = aurasBySpellId[spellId]
+    if ShouldReplaceCachedAura(existing, normalized) then
+        aurasBySpellId[spellId] = normalized
+    end
+end
+
+local function ScanPlayerHelpfulAuras(unit, existingCache)
+    if not unit or not UnitExists or not UnitExists(unit) then
         return nil
     end
 
-    local bestEffortAura = nil
-
-    if AuraUtil and AuraUtil.FindAuraBySpellID then
-        local auraOrName, icon, count, _, duration, expirationTime, sourceUnit, _, _, _, _, _, _, _, timeMod =
-            AuraUtil.FindAuraBySpellID(spellId, unit, "HELPFUL")
-        local normalized = Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duration, expirationTime, timeMod)
-        if normalized then
-            if Addon:CustomIndicatorIsPlayerAura(sourceUnit, auraOrName) and Addon:CustomIndicatorHasReliableTiming(normalized) then
-                return normalized
-            end
-            if Addon:CustomIndicatorIsPlayerAura(sourceUnit, auraOrName) then
-                bestEffortAura = normalized
-            end
-        end
-    end
-
-    local function IsMatchingSpellId(auraSpellId, wantedSpellId)
-        local ok, matched = pcall(function()
-            return auraSpellId == wantedSpellId
-        end)
-        return ok and matched or false
-    end
-
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        for i = 1, 255 do
-            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
-            if not aura then break end
-            if IsMatchingSpellId(aura.spellId, spellId) then
-                if Addon:CustomIndicatorIsPlayerAura(nil, aura) then
-                    local normalized = Addon:CustomIndicatorNormalizeAuraData(aura)
-                    if normalized then
-                        if Addon:CustomIndicatorHasReliableTiming(normalized) then
-                            return normalized
-                        end
-                        if not bestEffortAura then
-                            bestEffortAura = normalized
-                        end
-                    end
-                end
-            end
+    local aurasBySpellId = existingCache
+    if not aurasBySpellId then
+        aurasBySpellId = {}
+    else
+        for spellId in pairs(aurasBySpellId) do
+            aurasBySpellId[spellId] = nil
         end
     end
 
@@ -918,23 +933,52 @@ local function FindAuraBySpellID(unit, spellId)
             local name, icon, count, _, duration, expirationTime, unitCaster, _, _, auraSpellID, _, _, _, _, _, timeMod =
                 UnitAura(unit, i, "HELPFUL")
             if not name then break end
-            if IsMatchingSpellId(auraSpellID, spellId) then
-                if Addon:CustomIndicatorIsPlayerAura(unitCaster) then
-                    local normalized = Addon:CustomIndicatorNormalizeAuraData(name, icon, count, duration, expirationTime, timeMod)
-                    if normalized then
-                        if Addon:CustomIndicatorHasReliableTiming(normalized) then
-                            return normalized
-                        end
-                        if not bestEffortAura then
-                            bestEffortAura = normalized
-                        end
-                    end
-                end
+            if Addon:CustomIndicatorIsPlayerAura(unitCaster) and type(auraSpellID) == "number" and auraSpellID > 0 then
+                StorePlayerAuraBySpellId(aurasBySpellId, auraSpellID,
+                    Addon:CustomIndicatorNormalizeAuraData(name, icon, count, duration, expirationTime, timeMod))
+            end
+        end
+        return aurasBySpellId
+    end
+
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        for i = 1, 255 do
+            local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+            if not aura then break end
+            local spellId = ReadNonSecretAuraField(aura, "spellId")
+            if Addon:CustomIndicatorIsPlayerAura(nil, aura) and type(spellId) == "number" and spellId > 0 then
+                StorePlayerAuraBySpellId(aurasBySpellId, spellId, Addon:CustomIndicatorNormalizeAuraData(aura))
             end
         end
     end
 
-    return bestEffortAura
+    return aurasBySpellId
+end
+
+local function FindAuraBySpellID(unit, spellId, aurasBySpellId)
+    if not unit or not UnitExists or not UnitExists(unit) or not spellId or spellId <= 0 then
+        return nil
+    end
+
+    if type(aurasBySpellId) == "table" then
+        return aurasBySpellId[spellId]
+    end
+
+    local directAura = nil
+    if C_UnitAuras then
+        if unit == "player" and C_UnitAuras.GetPlayerAuraBySpellID then
+            directAura = C_UnitAuras.GetPlayerAuraBySpellID(spellId)
+        elseif C_UnitAuras.GetUnitAuraBySpellID then
+            directAura = C_UnitAuras.GetUnitAuraBySpellID(unit, spellId)
+        end
+    end
+
+    if directAura and Addon:CustomIndicatorIsPlayerAura(nil, directAura) then
+        return Addon:CustomIndicatorNormalizeAuraData(directAura)
+    end
+
+    local scanned = ScanPlayerHelpfulAuras(unit)
+    return scanned and scanned[spellId] or nil
 end
 
 local function EnsureCooldown(parent)
@@ -1216,7 +1260,7 @@ ApplyBorderBackdrop = function(frame, edgeFile, edgeSize, r, g, b, a)
     return true
 end
 
-local function UpdateIndicatorVisual(frame, item)
+local function UpdateIndicatorVisual(frame, item, aurasBySpellId)
     local previewActive = Addon:IsConfigOpen() and
         (Addon:IsCustomIndicatorPreviewAll() or Addon:IsCustomIndicatorPreviewActive(item.id))
 
@@ -1225,7 +1269,7 @@ local function UpdateIndicatorVisual(frame, item)
     end
 
     local now = GetTime and GetTime() or 0
-    local aura = FindAuraBySpellID(frame.unit, item.spellId)
+    local aura = FindAuraBySpellID(frame.unit, item.spellId, aurasBySpellId)
     local usePreviewTiming = Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura)
     if usePreviewTiming then
         aura = {
@@ -1338,7 +1382,7 @@ local function HideStaleVisuals(frame, activeIds)
     end
 end
 
-function Addon:UpdateCustomIndicators(frame)
+function Addon:UpdateCustomIndicators(frame, useCachedAurasOnly)
     if not self:IsRaidOrPartyFrame(frame) then return false end
 
     local cfg = self:GetCustomIndicatorsConfig()
@@ -1353,6 +1397,13 @@ function Addon:UpdateCustomIndicators(frame)
     end
 
     local hasTimed = false
+    local aurasBySpellId = frame.BRFCustomIndicatorAurasBySpellId
+    if useCachedAurasOnly ~= true or not aurasBySpellId or frame.BRFCustomIndicatorAuraUnit ~= frame.unit then
+        aurasBySpellId = ScanPlayerHelpfulAuras(frame.unit, aurasBySpellId)
+        frame.BRFCustomIndicatorAurasBySpellId = aurasBySpellId
+        frame.BRFCustomIndicatorAuraUnit = frame.unit
+    end
+
     local activeIds = frame.BRFCustomIndicatorActiveIds
     if not activeIds then
         activeIds = {}
@@ -1365,7 +1416,7 @@ function Addon:UpdateCustomIndicators(frame)
 
     for _, item in ipairs(cfg.items) do
         activeIds[item.id] = true
-        local visible, timed = UpdateIndicatorVisual(frame, item)
+        local visible, timed = UpdateIndicatorVisual(frame, item, aurasBySpellId)
         if not visible then
             local existing = frame.BRFCustomIndicators and frame.BRFCustomIndicators[item.id]
             HideVisual(existing)
@@ -1382,7 +1433,7 @@ end
 local function RefreshTickerState()
     local needsTicker = false
     Addon:ForEachFrame(function(frame)
-        if Addon:UpdateCustomIndicators(frame) then
+        if Addon:UpdateCustomIndicators(frame, true) then
             needsTicker = true
         end
     end)
@@ -1443,7 +1494,4 @@ function Addon:HookCustomIndicators()
         end)
     end
 
-    hooksecurefunc("CompactUnitFrame_UpdateHealth", function(frame)
-        UpdateFrameAndTicker(frame, false)
-    end)
 end
