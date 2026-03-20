@@ -221,7 +221,7 @@ end
 
 local function CreateConfigFrame()
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(780, 600)
+    frame:SetSize(920, 700)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -265,7 +265,7 @@ local function CreateConfigFrame()
         scrollFrame:Hide()
 
         local content = CreateFrame("Frame", nil, scrollFrame)
-        content:SetWidth(560)
+        content:SetWidth(700)
         content:SetHeight(1)
         scrollFrame:SetScrollChild(content)
 
@@ -863,16 +863,40 @@ local function CreateConfigFrame()
         local cooldownTextCheckbox
         local globalToggle
         local colorContainer
+        local backgroundColorContainer
         local borderColorContainer
+        local durationColorContainer
+        local stackColorContainer
+        local expiringColorContainer
         local widthSlider
         local heightSlider
+        local sizeSlider
+        local alphaSlider
+        local scaleSlider
         local xSlider
         local ySlider
         local zSlider
         local borderSizeSlider
         local borderPaddingSlider
+        local borderInsetSlider
+        local stackMinimumSlider
+        local durationXSlider
+        local durationYSlider
+        local stackXSlider
+        local stackYSlider
+        local expiringThresholdSlider
         local duplicateBtn
         local deleteBtn
+        local anchorDropdown
+        local orientationDropdown
+        local durationAnchorDropdown
+        local stackAnchorDropdown
+        local expiringModeDropdown
+        local showBorderCheckbox
+        local showDurationCheckbox
+        local durationColorByTimeCheckbox
+        local showStacksCheckbox
+        local expiringCheckbox
         local RefreshEditorState
 
         local function Clamp(v, minV, maxV)
@@ -919,11 +943,11 @@ local function CreateConfigFrame()
             local container = CreateFrame("Frame", nil, parent)
             container:SetPoint("TOPLEFT", 32, yOffset)
             container:SetPoint("TOPRIGHT", -16, yOffset)
-            container:SetHeight(32)
+            container:SetHeight(36)
 
             local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
             labelText:SetPoint("LEFT", 0, 0)
-            labelText:SetWidth(65)
+            labelText:SetWidth(90)
             labelText:SetJustifyH("LEFT")
             labelText:SetText(label)
 
@@ -978,8 +1002,9 @@ local function CreateConfigFrame()
                         local resolvedName = Addon:GetCustomIndicatorSpellDisplay(item.spellId)
                         spellName = resolvedName or ("Spell " .. tostring(item.spellId))
                     end
-                    local typeLabel = (item.type == "spell-icon" and "Spell Icon") or
-                        (item.type == "square" and "Square") or "Bar"
+                    local typeLabel = (item.type == "icon" and "Icon") or
+                        (item.type == "square" and "Square") or
+                        (item.type == "border" and "Border") or "Bar"
                     local title
                     if item.spellId > 0 then
                         title = string.format("%d. %s - %s (%d)", _, typeLabel, spellName, item.spellId)
@@ -1013,14 +1038,81 @@ local function CreateConfigFrame()
             typeDropdown:SetupMenu(function(_, rootDescription)
                 local choices = {
                     { label = "Bar",        value = "bar" },
-                    { label = "Spell Icon", value = "spell-icon" },
+                    { label = "Icon",       value = "icon" },
                     { label = "Square",     value = "square" },
+                    { label = "Border",     value = "border" },
                 }
                 for _, choice in ipairs(choices) do
                     rootDescription:CreateRadio(choice.label,
                         function(v) return item and item.type == v end,
                         function(v)
                             UpdateSelectedItem({ type = v })
+                        end,
+                        choice.value
+                    )
+                end
+            end)
+        end
+
+        local function RefreshAnchorDropdown(dropdown, item, key)
+            if not dropdown then return end
+            local options = Addon:GetCustomIndicatorAnchorOptions()
+            dropdown:SetupMenu(function(_, rootDescription)
+                for _, option in ipairs(options) do
+                    rootDescription:CreateRadio(option.label,
+                        function(v) return item and item[key] == v end,
+                        function(v)
+                            local updates = {}
+                            updates[key] = v
+                            UpdateSelectedItem(updates)
+                        end,
+                        option.value
+                    )
+                end
+            end)
+        end
+
+        local function RefreshOrientationDropdown(item)
+            if not orientationDropdown then return end
+            orientationDropdown:SetupMenu(function(_, rootDescription)
+                local choices = {
+                    { label = "Horizontal", value = "HORIZONTAL" },
+                    { label = "Vertical", value = "VERTICAL" },
+                }
+                for _, choice in ipairs(choices) do
+                    rootDescription:CreateRadio(choice.label,
+                        function(v) return item and item.orientation == v end,
+                        function(v)
+                            local updates = { orientation = v }
+                            if v == "VERTICAL" and item and item.direction == "LEFT_TO_RIGHT" then
+                                updates.direction = "BOTTOM_TO_TOP"
+                            elseif v == "VERTICAL" and item and item.direction == "RIGHT_TO_LEFT" then
+                                updates.direction = "TOP_TO_BOTTOM"
+                            elseif v == "HORIZONTAL" and item and item.direction == "TOP_TO_BOTTOM" then
+                                updates.direction = "RIGHT_TO_LEFT"
+                            elseif v == "HORIZONTAL" and item and item.direction == "BOTTOM_TO_TOP" then
+                                updates.direction = "LEFT_TO_RIGHT"
+                            end
+                            UpdateSelectedItem(updates)
+                        end,
+                        choice.value
+                    )
+                end
+            end)
+        end
+
+        local function RefreshExpiringModeDropdown(item)
+            if not expiringModeDropdown then return end
+            expiringModeDropdown:SetupMenu(function(_, rootDescription)
+                local choices = {
+                    { label = "Percent", value = "PERCENT" },
+                    { label = "Seconds", value = "SECONDS" },
+                }
+                for _, choice in ipairs(choices) do
+                    rootDescription:CreateRadio(choice.label,
+                        function(v) return item and item.expiringThresholdMode == v end,
+                        function(v)
+                            UpdateSelectedItem({ expiringThresholdMode = v })
                         end,
                         choice.value
                     )
@@ -1124,89 +1216,192 @@ local function CreateConfigFrame()
 
             if widthSlider then widthSlider:SetSliderValue(item.width) end
             if heightSlider then heightSlider:SetSliderValue(item.height) end
-            if xSlider then xSlider:SetSliderValue(item.x) end
-            if ySlider then ySlider:SetSliderValue(item.y) end
-            if zSlider then zSlider:SetSliderValue(item.zOffset or 0) end
+            if sizeSlider then sizeSlider:SetSliderValue(item.size or item.width or 18) end
+            if alphaSlider then alphaSlider:SetSliderValue((item.alpha or 1) * 100) end
+            if scaleSlider then scaleSlider:SetSliderValue((item.scale or 1) * 100) end
+            if xSlider then xSlider:SetSliderValue(item.offsetX or 0) end
+            if ySlider then ySlider:SetSliderValue(item.offsetY or 0) end
+            if zSlider then zSlider:SetSliderValue(item.frameLevelOffset or 0) end
             if borderSizeSlider then borderSizeSlider:SetSliderValue(item.borderSize or 8) end
             if borderPaddingSlider then borderPaddingSlider:SetSliderValue(item.borderPadding or 0) end
+            if borderInsetSlider then borderInsetSlider:SetSliderValue(item.borderInset or 0) end
+            if stackMinimumSlider then stackMinimumSlider:SetSliderValue(item.stackMinimum or 2) end
+            if durationXSlider then durationXSlider:SetSliderValue(item.durationX or 0) end
+            if durationYSlider then durationYSlider:SetSliderValue(item.durationY or 0) end
+            if stackXSlider then stackXSlider:SetSliderValue(item.stackX or 0) end
+            if stackYSlider then stackYSlider:SetSliderValue(item.stackY or 0) end
+            if expiringThresholdSlider then expiringThresholdSlider:SetSliderValue(item.expiringThreshold or 30) end
 
             RefreshTypeDropdown(item)
+            RefreshAnchorDropdown(anchorDropdown, item, "anchor")
             RefreshDirectionDropdown(item)
+            RefreshOrientationDropdown(item)
             RefreshBarTextureDropdown(item)
             RefreshBarBorderDropdown(item)
             RefreshSpellDropdown(item)
+            RefreshAnchorDropdown(durationAnchorDropdown, item, "durationAnchor")
+            RefreshAnchorDropdown(stackAnchorDropdown, item, "stackAnchor")
+            RefreshExpiringModeDropdown(item)
 
             local supportsBarStyle = item.type == "bar"
-            local supportsColor = item.type ~= "spell-icon"
-            local supportsBorder = Addon:CustomIndicatorTypeSupportsBorder(item.type)
-            local supportsIconSquareCooldown = item.type == "spell-icon" or item.type == "square"
+            local supportsPlaced = item.type ~= "border"
+            local supportsColor = item.type ~= "icon"
+            local supportsTextureBorder = item.type == "bar" or item.type == "square"
+            local supportsAnyBorder = Addon:CustomIndicatorTypeSupportsBorder(item.type)
+            local supportsCooldown = item.type == "icon" or item.type == "square"
+            local supportsStacks = item.type == "icon" or item.type == "square"
+            local supportsDuration = item.type == "icon" or item.type == "square" or item.type == "bar" or item.type == "border"
 
             if colorContainer then
                 colorContainer:SetShown(true)
                 if colorContainer.swatchColor then
                     colorContainer.swatchColor:SetColorTexture(item.colorR, item.colorG, item.colorB, 1)
-                    colorContainer.swatchColor:SetAlpha(supportsColor and 1 or 0.4)
+                    colorContainer.swatchColor:SetAlpha((supportsColor or item.type == "border") and 1 or 0.4)
                 end
                 if colorContainer.colorSwatch then
-                    colorContainer.colorSwatch:SetEnabled(supportsColor)
-                    colorContainer.colorSwatch:SetAlpha(supportsColor and 1 or 0.4)
+                    colorContainer.colorSwatch:SetEnabled(supportsColor or item.type == "border")
+                    colorContainer.colorSwatch:SetAlpha((supportsColor or item.type == "border") and 1 or 0.4)
                 end
             end
 
+            if backgroundColorContainer then
+                backgroundColorContainer:SetShown(supportsBarStyle)
+                if backgroundColorContainer.swatchColor then
+                    backgroundColorContainer.swatchColor:SetColorTexture(item.barBackgroundColorR or 0,
+                        item.barBackgroundColorG or 0, item.barBackgroundColorB or 0, 1)
+                end
+            end
+
+            if anchorDropdown then anchorDropdown:SetShown(supportsPlaced) end
             if directionDropdown then
-                directionDropdown:SetShown(true)
+                directionDropdown:SetShown(supportsBarStyle)
                 directionDropdown:SetEnabled(supportsBarStyle)
+            end
+            if orientationDropdown then
+                orientationDropdown:SetShown(supportsBarStyle)
+                orientationDropdown:SetEnabled(supportsBarStyle)
             end
 
             if barTextureDropdown then
-                barTextureDropdown:SetShown(true)
+                barTextureDropdown:SetShown(supportsBarStyle)
                 barTextureDropdown:SetEnabled(supportsBarStyle)
             end
             if barBorderDropdown then
-                barBorderDropdown:SetShown(true)
-                barBorderDropdown:SetEnabled(supportsBorder)
+                barBorderDropdown:SetShown(supportsTextureBorder)
+                barBorderDropdown:SetEnabled(supportsTextureBorder)
+            end
+            if showBorderCheckbox then
+                showBorderCheckbox:SetShown(supportsAnyBorder)
+                showBorderCheckbox:SetChecked(item.showBorder ~= false)
+                showBorderCheckbox:SetEnabled(supportsAnyBorder)
             end
             if borderSizeSlider then
-                borderSizeSlider.container:SetShown(true)
-                borderSizeSlider:SetEnabled(supportsBorder)
+                borderSizeSlider.container:SetShown(supportsAnyBorder)
+                borderSizeSlider:SetEnabled(supportsAnyBorder)
             end
             if borderPaddingSlider then
-                borderPaddingSlider.container:SetShown(true)
-                borderPaddingSlider:SetEnabled(supportsBorder)
+                borderPaddingSlider.container:SetShown(supportsTextureBorder)
+                borderPaddingSlider:SetEnabled(supportsTextureBorder)
+            end
+            if borderInsetSlider then
+                borderInsetSlider.container:SetShown(supportsAnyBorder)
+                borderInsetSlider:SetEnabled(supportsAnyBorder)
             end
 
             if borderColorContainer then
-                borderColorContainer:SetShown(true)
+                borderColorContainer:SetShown(supportsAnyBorder)
                 if borderColorContainer.swatchColor then
                     borderColorContainer.swatchColor:SetColorTexture(item.borderColorR or 1, item.borderColorG or 1,
                         item.borderColorB or 1, 1)
-                    borderColorContainer.swatchColor:SetAlpha(supportsBorder and 1 or 0.4)
+                    borderColorContainer.swatchColor:SetAlpha(supportsAnyBorder and 1 or 0.4)
                 end
                 if borderColorContainer.colorSwatch then
-                    borderColorContainer.colorSwatch:SetEnabled(supportsBorder)
-                    borderColorContainer.colorSwatch:SetAlpha(supportsBorder and 1 or 0.4)
+                    borderColorContainer.colorSwatch:SetEnabled(supportsAnyBorder)
+                    borderColorContainer.colorSwatch:SetAlpha(supportsAnyBorder and 1 or 0.4)
                 end
             end
 
             if cooldownSwipeCheckbox then
-                cooldownSwipeCheckbox:SetShown(true)
-                cooldownSwipeCheckbox:SetEnabled(supportsIconSquareCooldown)
+                cooldownSwipeCheckbox:SetShown(supportsCooldown)
+                cooldownSwipeCheckbox:SetEnabled(supportsCooldown)
                 cooldownSwipeCheckbox:SetChecked(item.showCooldownSwipe ~= false)
-                cooldownSwipeCheckbox:SetAlpha(supportsIconSquareCooldown and 1 or 0.4)
+                cooldownSwipeCheckbox:SetAlpha(supportsCooldown and 1 or 0.4)
             end
 
             if invertSwipeCheckbox then
-                invertSwipeCheckbox:SetShown(true)
-                invertSwipeCheckbox:SetEnabled(supportsIconSquareCooldown)
+                invertSwipeCheckbox:SetShown(supportsCooldown)
+                invertSwipeCheckbox:SetEnabled(supportsCooldown)
                 invertSwipeCheckbox:SetChecked(item.invertCooldownSwipe == true)
-                invertSwipeCheckbox:SetAlpha(supportsIconSquareCooldown and 1 or 0.4)
+                invertSwipeCheckbox:SetAlpha(supportsCooldown and 1 or 0.4)
             end
 
             if cooldownTextCheckbox then
-                cooldownTextCheckbox:SetShown(true)
-                cooldownTextCheckbox:SetEnabled(supportsIconSquareCooldown)
-                cooldownTextCheckbox:SetChecked(item.showCooldownText ~= false)
-                cooldownTextCheckbox:SetAlpha(supportsIconSquareCooldown and 1 or 0.4)
+                cooldownTextCheckbox:SetShown(supportsCooldown)
+                cooldownTextCheckbox:SetEnabled(supportsCooldown)
+                cooldownTextCheckbox:SetChecked(item.hideSwipe ~= true)
+                cooldownTextCheckbox:SetAlpha(supportsCooldown and 1 or 0.4)
+            end
+
+            if widthSlider then widthSlider.container:SetShown(supportsBarStyle) end
+            if heightSlider then heightSlider.container:SetShown(supportsBarStyle) end
+            if sizeSlider then sizeSlider.container:SetShown(item.type == "icon" or item.type == "square") end
+            if alphaSlider then alphaSlider.container:SetShown(true) end
+            if scaleSlider then scaleSlider.container:SetShown(supportsPlaced) end
+            if xSlider then xSlider.container:SetShown(supportsPlaced) end
+            if ySlider then ySlider.container:SetShown(supportsPlaced) end
+
+            if showDurationCheckbox then
+                showDurationCheckbox:SetShown(supportsDuration)
+                showDurationCheckbox:SetChecked(item.showDuration ~= false)
+            end
+            if durationAnchorDropdown then durationAnchorDropdown:SetShown(supportsDuration) end
+            if durationXSlider then durationXSlider.container:SetShown(supportsDuration) end
+            if durationYSlider then durationYSlider.container:SetShown(supportsDuration) end
+            if durationColorByTimeCheckbox then
+                durationColorByTimeCheckbox:SetShown(supportsDuration)
+                durationColorByTimeCheckbox:SetChecked(item.durationColorByTime ~= false)
+            end
+            if durationColorContainer then
+                durationColorContainer:SetShown(supportsDuration)
+                if durationColorContainer.swatchColor then
+                    durationColorContainer.swatchColor:SetColorTexture(item.durationColorR or 1, item.durationColorG or 1,
+                        item.durationColorB or 1, 1)
+                    durationColorContainer.swatchColor:SetAlpha((item.durationColorByTime ~= false) and 0.4 or 1)
+                end
+                if durationColorContainer.colorSwatch then
+                    durationColorContainer.colorSwatch:SetEnabled(item.durationColorByTime == false)
+                    durationColorContainer.colorSwatch:SetAlpha((item.durationColorByTime ~= false) and 0.4 or 1)
+                end
+            end
+
+            if showStacksCheckbox then
+                showStacksCheckbox:SetShown(supportsStacks)
+                showStacksCheckbox:SetChecked(item.showStacks ~= false)
+            end
+            if stackMinimumSlider then stackMinimumSlider.container:SetShown(supportsStacks) end
+            if stackAnchorDropdown then stackAnchorDropdown:SetShown(supportsStacks) end
+            if stackXSlider then stackXSlider.container:SetShown(supportsStacks) end
+            if stackYSlider then stackYSlider.container:SetShown(supportsStacks) end
+            if stackColorContainer then
+                stackColorContainer:SetShown(supportsStacks)
+                if stackColorContainer.swatchColor then
+                    stackColorContainer.swatchColor:SetColorTexture(item.stackColorR or 1, item.stackColorG or 1,
+                        item.stackColorB or 1, 1)
+                end
+            end
+
+            if expiringCheckbox then
+                expiringCheckbox:SetShown(true)
+                expiringCheckbox:SetChecked(item.expiringEnabled == true)
+            end
+            if expiringThresholdSlider then expiringThresholdSlider.container:SetShown(true) end
+            if expiringModeDropdown then expiringModeDropdown:SetShown(true) end
+            if expiringColorContainer then
+                expiringColorContainer:SetShown(true)
+                if expiringColorContainer.swatchColor then
+                    expiringColorContainer.swatchColor:SetColorTexture(item.expiringColorR or 1, item.expiringColorG or 0.2,
+                        item.expiringColorB or 0.2, 1)
+                end
             end
         end
 
@@ -1319,6 +1514,16 @@ local function CreateConfigFrame()
         table.insert(options, typeDropdown)
         y = y - 34
 
+        local anchorLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        anchorLabel:SetPoint("TOPLEFT", 16, y)
+        anchorLabel:SetText("Anchor:")
+
+        anchorDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        anchorDropdown:SetPoint("LEFT", anchorLabel, "RIGHT", 20, 0)
+        anchorDropdown:SetWidth(180)
+        table.insert(options, anchorDropdown)
+        y = y - 34
+
         local directionLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         directionLabel:SetPoint("TOPLEFT", 16, y)
         directionLabel:SetText("Direction:")
@@ -1327,6 +1532,16 @@ local function CreateConfigFrame()
         directionDropdown:SetPoint("LEFT", directionLabel, "RIGHT", 8, 0)
         directionDropdown:SetWidth(220)
         table.insert(options, directionDropdown)
+        y = y - 34
+
+        local orientationLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        orientationLabel:SetPoint("TOPLEFT", 16, y)
+        orientationLabel:SetText("Orientation:")
+
+        orientationDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        orientationDropdown:SetPoint("LEFT", orientationLabel, "RIGHT", 8, 0)
+        orientationDropdown:SetWidth(220)
+        table.insert(options, orientationDropdown)
         y = y - 34
 
         local textureLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -1361,6 +1576,22 @@ local function CreateConfigFrame()
         table.insert(options, borderPaddingSlider.container)
         y = y - 34
 
+        borderInsetSlider = CreateValueSlider(content, "Border inset:", -20, 20, 1, y, function(v)
+            UpdateSelectedItem({ borderInset = Clamp(math.floor(v + 0.5), -20, 20) })
+        end)
+        table.insert(options, borderInsetSlider.container)
+        y = y - 34
+
+        showBorderCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        showBorderCheckbox:SetPoint("TOPLEFT", 32, y)
+        showBorderCheckbox.Text:SetText("Show border")
+        showBorderCheckbox.Text:SetFontObject("GameFontHighlight")
+        showBorderCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ showBorder = self:GetChecked() })
+        end)
+        table.insert(options, showBorderCheckbox)
+        y = y - 28
+
         colorContainer = CreateColorPicker(content, "Color:", "_dummy_unused_customIndicatorColorR",
             "_dummy_unused_customIndicatorColorG", "_dummy_unused_customIndicatorColorB", y, function() end)
         colorContainer.colorSwatch:SetScript("OnClick", function()
@@ -1389,6 +1620,36 @@ local function CreateConfigFrame()
             ColorPickerFrame:SetupColorPickerAndShow(info)
         end)
         table.insert(options, colorContainer)
+        y = y - 34
+
+        backgroundColorContainer = CreateColorPicker(content, "Bar bg:", "_dummy_unused_customIndicatorBgR",
+            "_dummy_unused_customIndicatorBgG", "_dummy_unused_customIndicatorBgB", y, function() end)
+        backgroundColorContainer.colorSwatch:SetScript("OnClick", function()
+            local _, item = GetSelectedItem()
+            if not item then return end
+
+            local currentR = item.barBackgroundColorR or 0
+            local currentG = item.barBackgroundColorG or 0
+            local currentB = item.barBackgroundColorB or 0
+
+            local info = {
+                swatchFunc = function()
+                    local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                    UpdateSelectedItem({ barBackgroundColorR = newR, barBackgroundColorG = newG, barBackgroundColorB = newB })
+                    RefreshEditorState()
+                end,
+                cancelFunc = function()
+                    UpdateSelectedItem({ barBackgroundColorR = currentR, barBackgroundColorG = currentG, barBackgroundColorB = currentB })
+                    RefreshEditorState()
+                end,
+                r = currentR,
+                g = currentG,
+                b = currentB,
+                hasOpacity = false,
+            }
+            ColorPickerFrame:SetupColorPickerAndShow(info)
+        end)
+        table.insert(options, backgroundColorContainer)
         y = y - 34
 
         borderColorContainer = CreateColorPicker(content, "Border color:", "_dummy_unused_customIndicatorBorderColorR",
@@ -1421,6 +1682,96 @@ local function CreateConfigFrame()
         table.insert(options, borderColorContainer)
         y = y - 42
 
+        durationColorContainer = CreateColorPicker(content, "Duration color:", "_dummy_unused_customIndicatorDurationR",
+            "_dummy_unused_customIndicatorDurationG", "_dummy_unused_customIndicatorDurationB", y, function() end)
+        durationColorContainer.colorSwatch:SetScript("OnClick", function()
+            local _, item = GetSelectedItem()
+            if not item then return end
+
+            local currentR = item.durationColorR or 1
+            local currentG = item.durationColorG or 1
+            local currentB = item.durationColorB or 1
+
+            local info = {
+                swatchFunc = function()
+                    local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                    UpdateSelectedItem({ durationColorR = newR, durationColorG = newG, durationColorB = newB })
+                    RefreshEditorState()
+                end,
+                cancelFunc = function()
+                    UpdateSelectedItem({ durationColorR = currentR, durationColorG = currentG, durationColorB = currentB })
+                    RefreshEditorState()
+                end,
+                r = currentR,
+                g = currentG,
+                b = currentB,
+                hasOpacity = false,
+            }
+            ColorPickerFrame:SetupColorPickerAndShow(info)
+        end)
+        table.insert(options, durationColorContainer)
+        y = y - 34
+
+        stackColorContainer = CreateColorPicker(content, "Stack color:", "_dummy_unused_customIndicatorStackR",
+            "_dummy_unused_customIndicatorStackG", "_dummy_unused_customIndicatorStackB", y, function() end)
+        stackColorContainer.colorSwatch:SetScript("OnClick", function()
+            local _, item = GetSelectedItem()
+            if not item then return end
+
+            local currentR = item.stackColorR or 1
+            local currentG = item.stackColorG or 1
+            local currentB = item.stackColorB or 1
+
+            local info = {
+                swatchFunc = function()
+                    local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                    UpdateSelectedItem({ stackColorR = newR, stackColorG = newG, stackColorB = newB })
+                    RefreshEditorState()
+                end,
+                cancelFunc = function()
+                    UpdateSelectedItem({ stackColorR = currentR, stackColorG = currentG, stackColorB = currentB })
+                    RefreshEditorState()
+                end,
+                r = currentR,
+                g = currentG,
+                b = currentB,
+                hasOpacity = false,
+            }
+            ColorPickerFrame:SetupColorPickerAndShow(info)
+        end)
+        table.insert(options, stackColorContainer)
+        y = y - 34
+
+        expiringColorContainer = CreateColorPicker(content, "Expiring color:", "_dummy_unused_customIndicatorExpiringR",
+            "_dummy_unused_customIndicatorExpiringG", "_dummy_unused_customIndicatorExpiringB", y, function() end)
+        expiringColorContainer.colorSwatch:SetScript("OnClick", function()
+            local _, item = GetSelectedItem()
+            if not item then return end
+
+            local currentR = item.expiringColorR or 1
+            local currentG = item.expiringColorG or 0.2
+            local currentB = item.expiringColorB or 0.2
+
+            local info = {
+                swatchFunc = function()
+                    local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                    UpdateSelectedItem({ expiringColorR = newR, expiringColorG = newG, expiringColorB = newB })
+                    RefreshEditorState()
+                end,
+                cancelFunc = function()
+                    UpdateSelectedItem({ expiringColorR = currentR, expiringColorG = currentG, expiringColorB = currentB })
+                    RefreshEditorState()
+                end,
+                r = currentR,
+                g = currentG,
+                b = currentB,
+                hasOpacity = false,
+            }
+            ColorPickerFrame:SetupColorPickerAndShow(info)
+        end)
+        table.insert(options, expiringColorContainer)
+        y = y - 42
+
         widthSlider = CreateValueSlider(content, "Width:", 4, 250, 1, y, function(v)
             UpdateSelectedItem({ width = Clamp(math.floor(v + 0.5), 4, 250) })
         end)
@@ -1433,27 +1784,45 @@ local function CreateConfigFrame()
         table.insert(options, heightSlider.container)
         y = y - 26
 
+        sizeSlider = CreateValueSlider(content, "Size:", 4, 250, 1, y, function(v)
+            UpdateSelectedItem({ size = Clamp(math.floor(v + 0.5), 4, 250) })
+        end)
+        table.insert(options, sizeSlider.container)
+        y = y - 26
+
+        alphaSlider = CreateValueSlider(content, "Alpha %:", 0, 100, 1, y, function(v)
+            UpdateSelectedItem({ alpha = Clamp(v / 100, 0, 1) })
+        end)
+        table.insert(options, alphaSlider.container)
+        y = y - 26
+
+        scaleSlider = CreateValueSlider(content, "Scale %:", 20, 400, 1, y, function(v)
+            UpdateSelectedItem({ scale = Clamp(v / 100, 0.2, 4) })
+        end)
+        table.insert(options, scaleSlider.container)
+        y = y - 26
+
         xSlider = CreateValueSlider(content, "X:", -250, 250, 1, y, function(v)
-            UpdateSelectedItem({ x = Clamp(math.floor(v + 0.5), -250, 250) })
+            UpdateSelectedItem({ offsetX = Clamp(math.floor(v + 0.5), -250, 250) })
         end)
         table.insert(options, xSlider.container)
         y = y - 26
 
         ySlider = CreateValueSlider(content, "Y:", -250, 250, 1, y, function(v)
-            UpdateSelectedItem({ y = Clamp(math.floor(v + 0.5), -250, 250) })
+            UpdateSelectedItem({ offsetY = Clamp(math.floor(v + 0.5), -250, 250) })
         end)
         table.insert(options, ySlider.container)
         y = y - 30
 
         zSlider = CreateValueSlider(content, "Z:", -30, 30, 1, y, function(v)
-            UpdateSelectedItem({ zOffset = Clamp(math.floor(v + 0.5), -30, 30) })
+            UpdateSelectedItem({ frameLevelOffset = Clamp(math.floor(v + 0.5), -30, 30) })
         end)
         table.insert(options, zSlider.container)
         y = y - 30
 
         cooldownSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         cooldownSwipeCheckbox:SetPoint("TOPLEFT", 32, y)
-        cooldownSwipeCheckbox.Text:SetText("Cooldown swipe")
+        cooldownSwipeCheckbox.Text:SetText("Show swipe")
         cooldownSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
         cooldownSwipeCheckbox:SetScript("OnClick", function(self)
             UpdateSelectedItem({ showCooldownSwipe = self:GetChecked() })
@@ -1473,15 +1842,119 @@ local function CreateConfigFrame()
 
         cooldownTextCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         cooldownTextCheckbox:SetPoint("TOPLEFT", 32, y)
-        cooldownTextCheckbox.Text:SetText("Cooldown number")
+        cooldownTextCheckbox.Text:SetText("Hide swipe")
         cooldownTextCheckbox.Text:SetFontObject("GameFontHighlight")
         cooldownTextCheckbox:SetScript("OnClick", function(self)
-            UpdateSelectedItem({ showCooldownText = self:GetChecked() })
+            UpdateSelectedItem({ hideSwipe = self:GetChecked(), showCooldownSwipe = not self:GetChecked() })
         end)
         table.insert(options, cooldownTextCheckbox)
         y = y - 28
 
-        content:SetHeight(math.abs(y) + 120)
+        showDurationCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        showDurationCheckbox:SetPoint("TOPLEFT", 32, y)
+        showDurationCheckbox.Text:SetText("Show duration text")
+        showDurationCheckbox.Text:SetFontObject("GameFontHighlight")
+        showDurationCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ showDuration = self:GetChecked() })
+        end)
+        table.insert(options, showDurationCheckbox)
+        y = y - 24
+
+        local durationAnchorLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        durationAnchorLabel:SetPoint("TOPLEFT", 16, y)
+        durationAnchorLabel:SetText("Duration anchor:")
+        durationAnchorDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        durationAnchorDropdown:SetPoint("LEFT", durationAnchorLabel, "RIGHT", 8, 0)
+        durationAnchorDropdown:SetWidth(180)
+        table.insert(options, durationAnchorDropdown)
+        y = y - 34
+
+        durationXSlider = CreateValueSlider(content, "Duration X:", -100, 100, 1, y, function(v)
+            UpdateSelectedItem({ durationX = Clamp(math.floor(v + 0.5), -100, 100) })
+        end)
+        table.insert(options, durationXSlider.container)
+        y = y - 26
+
+        durationYSlider = CreateValueSlider(content, "Duration Y:", -100, 100, 1, y, function(v)
+            UpdateSelectedItem({ durationY = Clamp(math.floor(v + 0.5), -100, 100) })
+        end)
+        table.insert(options, durationYSlider.container)
+        y = y - 26
+
+        durationColorByTimeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        durationColorByTimeCheckbox:SetPoint("TOPLEFT", 32, y)
+        durationColorByTimeCheckbox.Text:SetText("Duration color by time")
+        durationColorByTimeCheckbox.Text:SetFontObject("GameFontHighlight")
+        durationColorByTimeCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ durationColorByTime = self:GetChecked() })
+            RefreshEditorState()
+        end)
+        table.insert(options, durationColorByTimeCheckbox)
+        y = y - 28
+
+        showStacksCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        showStacksCheckbox:SetPoint("TOPLEFT", 32, y)
+        showStacksCheckbox.Text:SetText("Show stack text")
+        showStacksCheckbox.Text:SetFontObject("GameFontHighlight")
+        showStacksCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ showStacks = self:GetChecked() })
+        end)
+        table.insert(options, showStacksCheckbox)
+        y = y - 24
+
+        stackMinimumSlider = CreateValueSlider(content, "Min stacks:", 1, 99, 1, y, function(v)
+            UpdateSelectedItem({ stackMinimum = Clamp(math.floor(v + 0.5), 1, 99) })
+        end)
+        table.insert(options, stackMinimumSlider.container)
+        y = y - 26
+
+        local stackAnchorLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        stackAnchorLabel:SetPoint("TOPLEFT", 16, y)
+        stackAnchorLabel:SetText("Stack anchor:")
+        stackAnchorDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        stackAnchorDropdown:SetPoint("LEFT", stackAnchorLabel, "RIGHT", 20, 0)
+        stackAnchorDropdown:SetWidth(180)
+        table.insert(options, stackAnchorDropdown)
+        y = y - 34
+
+        stackXSlider = CreateValueSlider(content, "Stack X:", -100, 100, 1, y, function(v)
+            UpdateSelectedItem({ stackX = Clamp(math.floor(v + 0.5), -100, 100) })
+        end)
+        table.insert(options, stackXSlider.container)
+        y = y - 26
+
+        stackYSlider = CreateValueSlider(content, "Stack Y:", -100, 100, 1, y, function(v)
+            UpdateSelectedItem({ stackY = Clamp(math.floor(v + 0.5), -100, 100) })
+        end)
+        table.insert(options, stackYSlider.container)
+        y = y - 28
+
+        expiringCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        expiringCheckbox:SetPoint("TOPLEFT", 32, y)
+        expiringCheckbox.Text:SetText("Enable expiring color")
+        expiringCheckbox.Text:SetFontObject("GameFontHighlight")
+        expiringCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ expiringEnabled = self:GetChecked() })
+        end)
+        table.insert(options, expiringCheckbox)
+        y = y - 24
+
+        local expiringModeLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        expiringModeLabel:SetPoint("TOPLEFT", 16, y)
+        expiringModeLabel:SetText("Expiring mode:")
+        expiringModeDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        expiringModeDropdown:SetPoint("LEFT", expiringModeLabel, "RIGHT", 12, 0)
+        expiringModeDropdown:SetWidth(180)
+        table.insert(options, expiringModeDropdown)
+        y = y - 34
+
+        expiringThresholdSlider = CreateValueSlider(content, "Expire at:", 1, 300, 1, y, function(v)
+            UpdateSelectedItem({ expiringThreshold = Clamp(math.floor(v + 0.5), 1, 300) })
+        end)
+        table.insert(options, expiringThresholdSlider.container)
+        y = y - 30
+
+        content:SetHeight(math.abs(y) + 160)
         RefreshIndicatorDropdown()
         UpdatePreviewTarget()
         RefreshEditorState()

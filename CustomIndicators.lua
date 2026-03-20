@@ -40,6 +40,8 @@ local SPELL_CATALOG = {
 
 local VALID_TYPES = {
     ["bar"] = true,
+    ["border"] = true,
+    ["icon"] = true,
     ["spell-icon"] = true,
     ["square"] = true,
 }
@@ -86,6 +88,18 @@ local VALID_DIRECTIONS = {
     RIGHT_TO_LEFT = true,
     TOP_TO_BOTTOM = true,
     BOTTOM_TO_TOP = true,
+}
+
+local VALID_ANCHORS = {
+    CENTER = true,
+    TOP = true,
+    BOTTOM = true,
+    LEFT = true,
+    RIGHT = true,
+    TOPLEFT = true,
+    TOPRIGHT = true,
+    BOTTOMLEFT = true,
+    BOTTOMRIGHT = true,
 }
 
 local DIRECTION_CONFIGS = {
@@ -197,28 +211,70 @@ function Addon:GetDefaultCustomIndicators()
 end
 
 local function BuildDefaultItem(id, indicatorType)
+    local normalizedType = indicatorType == "spell-icon" and "icon" or indicatorType
+    local isBar = normalizedType == "bar"
+    local isIcon = normalizedType == "icon"
+
     return {
         id = id,
         enabled = true,
-        type = indicatorType,
+        type = normalizedType,
         spellId = 0,
-        x = 0,
-        y = 0,
-        width = indicatorType == "bar" and 40 or 14,
-        height = indicatorType == "bar" and 4 or 14,
-        zOffset = 0,
+        anchor = isBar and "BOTTOM" or "CENTER",
+        offsetX = 0,
+        offsetY = 0,
+        width = isBar and 60 or 18,
+        height = isBar and 6 or 18,
+        size = isBar and 18 or 18,
+        scale = 1,
+        alpha = 1,
+        frameLevelOffset = 0,
+        frameStrata = "INHERIT",
+        orientation = "HORIZONTAL",
         direction = "RIGHT_TO_LEFT",
         barTexture = "BLIZZARD",
+        barBackgroundColorR = 0,
+        barBackgroundColorG = 0,
+        barBackgroundColorB = 0,
+        barBackgroundColorA = 0.5,
         barBorder = "NONE",
-        borderSize = 8,
+        showBorder = normalizedType ~= "icon",
+        borderSize = isBar and 1 or 1,
         borderPadding = 0,
+        borderInset = 0,
         borderColorR = 1,
         borderColorG = 1,
         borderColorB = 1,
         borderColorA = 1,
-        showCooldownSwipe = true,
+        showCooldownSwipe = isIcon,
+        hideSwipe = false,
         invertCooldownSwipe = false,
-        showCooldownText = true,
+        showCooldownText = false,
+        showDuration = true,
+        durationAnchor = "CENTER",
+        durationX = 0,
+        durationY = 0,
+        durationColorByTime = true,
+        durationColorR = 1,
+        durationColorG = 1,
+        durationColorB = 1,
+        durationColorA = 1,
+        showStacks = normalizedType ~= "bar",
+        stackMinimum = 2,
+        stackAnchor = "BOTTOMRIGHT",
+        stackX = 0,
+        stackY = 0,
+        stackColorR = 1,
+        stackColorG = 1,
+        stackColorB = 1,
+        stackColorA = 1,
+        expiringEnabled = false,
+        expiringThreshold = isBar and 5 or 30,
+        expiringThresholdMode = isBar and "SECONDS" or "PERCENT",
+        expiringColorR = 1,
+        expiringColorG = 0.2,
+        expiringColorB = 0.2,
+        expiringColorA = 1,
         colorR = 0.2,
         colorG = 0.8,
         colorB = 0.2,
@@ -267,11 +323,17 @@ function Addon:NormalizeCustomIndicatorsConfig(cfg)
             normalized.enabled = item.enabled ~= false
             normalized.spellId = Round(item.spellId or 0)
             if normalized.spellId < 0 then normalized.spellId = 0 end
-            normalized.x = Clamp(Round(item.x or normalized.x), -250, 250)
-            normalized.y = Clamp(Round(item.y or normalized.y), -250, 250)
+            normalized.anchor = VALID_ANCHORS[item.anchor] and item.anchor or normalized.anchor
+            normalized.offsetX = Clamp(Round((item.offsetX ~= nil and item.offsetX) or item.x or normalized.offsetX), -250, 250)
+            normalized.offsetY = Clamp(Round((item.offsetY ~= nil and item.offsetY) or item.y or normalized.offsetY), -250, 250)
             normalized.width = Clamp(Round(item.width or normalized.width), 4, 250)
             normalized.height = Clamp(Round(item.height or normalized.height), 2, 250)
-            normalized.zOffset = Clamp(Round(item.zOffset or normalized.zOffset), -30, 30)
+            normalized.size = Clamp(Round(item.size or normalized.size), 4, 250)
+            normalized.scale = Clamp(tonumber(item.scale) or normalized.scale, 0.2, 4)
+            normalized.alpha = Clamp(tonumber(item.alpha) or item.colorA or normalized.alpha, 0, 1)
+            normalized.frameLevelOffset = Clamp(Round((item.frameLevelOffset ~= nil and item.frameLevelOffset) or item.zOffset or normalized.frameLevelOffset), -30, 60)
+            normalized.frameStrata = type(item.frameStrata) == "string" and item.frameStrata or normalized.frameStrata
+            normalized.orientation = item.orientation == "VERTICAL" and "VERTICAL" or "HORIZONTAL"
             normalized.direction = VALID_DIRECTIONS[item.direction] and item.direction or normalized.direction
             normalized.barTexture = item.barTexture
             if not self:GetCustomIndicatorBarTexturePath(normalized.barTexture) then
@@ -285,15 +347,52 @@ function Addon:NormalizeCustomIndicatorsConfig(cfg)
             if not borderSpec then
                 normalized.barBorder = "NONE"
             end
+            normalized.showBorder = item.showBorder ~= false
             normalized.borderSize = Clamp(Round(item.borderSize or normalized.borderSize), 1, 24)
             normalized.borderPadding = Clamp(Round(item.borderPadding or normalized.borderPadding), -20, 20)
+            normalized.borderInset = Clamp(Round(item.borderInset or normalized.borderInset), -20, 20)
             normalized.borderColorR = Clamp(item.borderColorR or normalized.borderColorR, 0, 1)
             normalized.borderColorG = Clamp(item.borderColorG or normalized.borderColorG, 0, 1)
             normalized.borderColorB = Clamp(item.borderColorB or normalized.borderColorB, 0, 1)
             normalized.borderColorA = Clamp(item.borderColorA or normalized.borderColorA, 0, 1)
-            normalized.showCooldownSwipe = item.showCooldownSwipe ~= false
+            normalized.barBackgroundColorR = Clamp(item.barBackgroundColorR or normalized.barBackgroundColorR, 0, 1)
+            normalized.barBackgroundColorG = Clamp(item.barBackgroundColorG or normalized.barBackgroundColorG, 0, 1)
+            normalized.barBackgroundColorB = Clamp(item.barBackgroundColorB or normalized.barBackgroundColorB, 0, 1)
+            normalized.barBackgroundColorA = Clamp(item.barBackgroundColorA or normalized.barBackgroundColorA, 0, 1)
+            normalized.showCooldownSwipe = item.hideSwipe == true and false or item.showCooldownSwipe ~= false
+            normalized.hideSwipe = normalized.showCooldownSwipe == false
             normalized.invertCooldownSwipe = item.invertCooldownSwipe == true
-            normalized.showCooldownText = item.showCooldownText ~= false
+            normalized.showCooldownText = item.showCooldownText == true
+            normalized.showDuration = item.showDuration ~= false
+            normalized.durationAnchor = VALID_ANCHORS[item.durationAnchor] and item.durationAnchor or normalized.durationAnchor
+            normalized.durationX = Clamp(Round(item.durationX or normalized.durationX), -100, 100)
+            normalized.durationY = Clamp(Round(item.durationY or normalized.durationY), -100, 100)
+            normalized.durationColorByTime = item.durationColorByTime ~= false
+            normalized.durationColorR = Clamp(item.durationColorR or normalized.durationColorR, 0, 1)
+            normalized.durationColorG = Clamp(item.durationColorG or normalized.durationColorG, 0, 1)
+            normalized.durationColorB = Clamp(item.durationColorB or normalized.durationColorB, 0, 1)
+            normalized.durationColorA = Clamp(item.durationColorA or normalized.durationColorA, 0, 1)
+            normalized.showStacks = item.showStacks ~= false
+            normalized.stackMinimum = Clamp(Round(item.stackMinimum or normalized.stackMinimum), 1, 99)
+            normalized.stackAnchor = VALID_ANCHORS[item.stackAnchor] and item.stackAnchor or normalized.stackAnchor
+            normalized.stackX = Clamp(Round(item.stackX or normalized.stackX), -100, 100)
+            normalized.stackY = Clamp(Round(item.stackY or normalized.stackY), -100, 100)
+            normalized.stackColorR = Clamp(item.stackColorR or normalized.stackColorR, 0, 1)
+            normalized.stackColorG = Clamp(item.stackColorG or normalized.stackColorG, 0, 1)
+            normalized.stackColorB = Clamp(item.stackColorB or normalized.stackColorB, 0, 1)
+            normalized.stackColorA = Clamp(item.stackColorA or normalized.stackColorA, 0, 1)
+            normalized.expiringEnabled = item.expiringEnabled == true
+            normalized.expiringThreshold = Clamp(Round(item.expiringThreshold or normalized.expiringThreshold), 1, 300)
+            normalized.expiringThresholdMode = item.expiringThresholdMode == "SECONDS" and "SECONDS" or normalized.expiringThresholdMode
+            if normalized.type ~= "bar" and item.expiringThresholdMode == "PERCENT" then
+                normalized.expiringThresholdMode = "PERCENT"
+            elseif normalized.type == "bar" and item.expiringThresholdMode == "PERCENT" then
+                normalized.expiringThresholdMode = "PERCENT"
+            end
+            normalized.expiringColorR = Clamp(item.expiringColorR or normalized.expiringColorR, 0, 1)
+            normalized.expiringColorG = Clamp(item.expiringColorG or normalized.expiringColorG, 0, 1)
+            normalized.expiringColorB = Clamp(item.expiringColorB or normalized.expiringColorB, 0, 1)
+            normalized.expiringColorA = Clamp(item.expiringColorA or normalized.expiringColorA, 0, 1)
             normalized.colorR = Clamp(item.colorR or normalized.colorR, 0, 1)
             normalized.colorG = Clamp(item.colorG or normalized.colorG, 0, 1)
             normalized.colorB = Clamp(item.colorB or normalized.colorB, 0, 1)
@@ -435,7 +534,86 @@ function Addon:GetCustomIndicatorSpellDisplay(spellId)
 end
 
 function Addon:CustomIndicatorTypeSupportsBorder(indicatorType)
-    return indicatorType == "bar" or indicatorType == "square"
+    return indicatorType == "bar" or indicatorType == "square" or indicatorType == "border"
+end
+
+function Addon:GetCustomIndicatorAnchorOptions()
+    return {
+        { label = "Top Left", value = "TOPLEFT" },
+        { label = "Top", value = "TOP" },
+        { label = "Top Right", value = "TOPRIGHT" },
+        { label = "Left", value = "LEFT" },
+        { label = "Center", value = "CENTER" },
+        { label = "Right", value = "RIGHT" },
+        { label = "Bottom Left", value = "BOTTOMLEFT" },
+        { label = "Bottom", value = "BOTTOM" },
+        { label = "Bottom Right", value = "BOTTOMRIGHT" },
+    }
+end
+
+local function GetExpiringState(item, aura, now)
+    if item.expiringEnabled ~= true or not aura then
+        return false
+    end
+
+    local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
+    local expirationTime = tonumber(aura.expirationTime)
+    if not effectiveDuration or not expirationTime or expirationTime <= 0 then
+        return false
+    end
+
+    local remaining = expirationTime - (now or 0)
+    if remaining <= 0 then
+        return true
+    end
+
+    local threshold = tonumber(item.expiringThreshold) or 0
+    if item.expiringThresholdMode == "SECONDS" then
+        return remaining <= threshold
+    end
+
+    if effectiveDuration <= 0 then
+        return false
+    end
+
+    return (remaining / effectiveDuration) <= (threshold / 100)
+end
+
+local function FormatRemainingTime(aura, now)
+    local expirationTime = tonumber(aura and aura.expirationTime)
+    if not expirationTime or expirationTime <= 0 then
+        return nil
+    end
+
+    local remaining = math.max(0, expirationTime - (now or 0))
+    if remaining >= 60 then
+        return string.format("%dm", math.ceil(remaining / 60))
+    end
+    if remaining >= 10 then
+        return tostring(math.ceil(remaining))
+    end
+    return string.format("%.1f", remaining)
+end
+
+local function GetDurationTextColor(item, aura, now)
+    if GetExpiringState(item, aura, now) then
+        return item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+    end
+
+    if item.durationColorByTime ~= false and aura and Addon:CustomIndicatorHasReliableTiming(aura) then
+        local effectiveDuration = Addon:CustomIndicatorGetEffectiveDuration(aura)
+        local expirationTime = tonumber(aura.expirationTime)
+        if effectiveDuration and expirationTime then
+            local remaining = math.max(0, expirationTime - (now or 0))
+            if remaining <= 5 then
+                return 1, 0.2, 0.2, 1
+            elseif remaining <= 10 then
+                return 1, 0.82, 0.2, 1
+            end
+        end
+    end
+
+    return item.durationColorR, item.durationColorG, item.durationColorB, item.durationColorA
 end
 
 function Addon:CustomIndicatorComputeFill(now, expirationTime, duration)
@@ -759,6 +937,59 @@ local function EnsureCooldown(parent)
     return parent.BRFIndicatorCooldown
 end
 
+local function EnsureText(parent, key, layer)
+    if not parent[key] then
+        local text = parent:CreateFontString(nil, layer or "OVERLAY", "GameFontNormalSmall")
+        parent[key] = text
+    end
+    return parent[key]
+end
+
+local function ApplyFontStringPosition(text, parent, anchor, x, y)
+    if not text then return end
+    text:ClearAllPoints()
+    text:SetPoint(anchor or "CENTER", parent, anchor or "CENTER", x or 0, y or 0)
+end
+
+local function ApplyTextState(text, shown, value, r, g, b, a)
+    if not text then return end
+    if shown and value and value ~= "" then
+        text:SetText(value)
+        text:SetTextColor(r or 1, g or 1, b or 1, a or 1)
+        text:Show()
+    else
+        text:SetText("")
+        text:Hide()
+    end
+end
+
+local function GetIndicatorDisplaySize(item)
+    local scale = tonumber(item.scale) or 1
+    if item.type == "bar" then
+        return math.max(4, (item.width or 60) * scale), math.max(2, (item.height or 6) * scale)
+    end
+
+    local size = math.max(4, (item.size or item.width or 18) * scale)
+    return size, size
+end
+
+local function ApplyVisualFrameLevel(frame, visual, item)
+    if not frame or not visual or not visual.frame or not visual.frame.SetFrameLevel then return end
+
+    local baseLevel = frame.GetFrameLevel and frame:GetFrameLevel() or 0
+    visual.frame:SetFrameLevel(ClampFrameLevel(baseLevel + (item.frameLevelOffset or 0)))
+
+    if item.frameStrata and item.frameStrata ~= "INHERIT" and visual.frame.SetFrameStrata then
+        visual.frame:SetFrameStrata(item.frameStrata)
+    elseif frame.GetFrameStrata and visual.frame.SetFrameStrata then
+        visual.frame:SetFrameStrata(frame:GetFrameStrata())
+    end
+
+    if visual.border and visual.border.SetFrameLevel then
+        visual.border:SetFrameLevel(ClampFrameLevel(visual.frame:GetFrameLevel() + 1))
+    end
+end
+
 local function EnsureVisual(frame, item)
     if not frame.BRFCustomIndicators then
         frame.BRFCustomIndicators = {}
@@ -789,6 +1020,9 @@ local function EnsureVisual(frame, item)
         bar:SetMinMaxValues(0, 1)
         bar:EnableMouse(false)
 
+        local background = bar:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints(bar)
+
         local border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
         border:SetPoint("TOPLEFT", -1, 1)
         border:SetPoint("BOTTOMRIGHT", 1, -1)
@@ -796,7 +1030,15 @@ local function EnsureVisual(frame, item)
 
         data.frame = bar
         data.bar = bar
+        data.background = background
         data.border = border
+        data.durationText = EnsureText(bar, "BRFIndicatorDurationText")
+    elseif item.type == "border" then
+        local holder = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+        holder:EnableMouse(false)
+        data.frame = holder
+        data.border = holder
+        data.durationText = EnsureText(holder, "BRFIndicatorDurationText")
     else
         local holder = CreateFrame("Frame", nil, parent)
         holder:EnableMouse(false)
@@ -810,6 +1052,8 @@ local function EnsureVisual(frame, item)
         data.texture = holder.texture
         data.border = border
         data.cooldown = EnsureCooldown(holder)
+        data.durationText = EnsureText(holder, "BRFIndicatorDurationText")
+        data.stackText = EnsureText(holder, "BRFIndicatorStackText")
     end
 
     frame.BRFCustomIndicators[item.id] = data
@@ -819,7 +1063,7 @@ end
 local function ApplyCooldown(visual, item, aura)
     if not visual or not visual.cooldown then return end
     if visual.cooldown.SetDrawSwipe then
-        visual.cooldown:SetDrawSwipe(item.showCooldownSwipe ~= false)
+        visual.cooldown:SetDrawSwipe(item.hideSwipe ~= true and item.showCooldownSwipe ~= false)
     end
     if visual.cooldown.SetReverse then
         visual.cooldown:SetReverse(Addon:CustomIndicatorShouldReverseCooldown(item))
@@ -853,9 +1097,68 @@ local function ApplyCooldown(visual, item, aura)
     end
 end
 
+local function ApplyDurationText(visual, item, aura, now)
+    if not visual or not visual.durationText then return end
+
+    ApplyFontStringPosition(visual.durationText, visual.frame, item.durationAnchor, item.durationX, item.durationY)
+
+    if item.showDuration == false or not aura or not Addon:CustomIndicatorHasReliableTiming(aura) then
+        ApplyTextState(visual.durationText, false)
+        return
+    end
+
+    local text = FormatRemainingTime(aura, now)
+    local r, g, b, a = GetDurationTextColor(item, aura, now)
+    ApplyTextState(visual.durationText, text ~= nil, text, r, g, b, a)
+end
+
+local function ApplyStackText(visual, item, aura)
+    if not visual or not visual.stackText then return end
+
+    ApplyFontStringPosition(visual.stackText, visual.frame, item.stackAnchor, item.stackX, item.stackY)
+
+    local stacks = aura and tonumber(aura.applications) or 0
+    local minimum = tonumber(item.stackMinimum) or 2
+    local show = item.showStacks ~= false and stacks and stacks >= minimum
+    ApplyTextState(visual.stackText, show, show and tostring(stacks) or nil,
+        item.stackColorR, item.stackColorG, item.stackColorB, item.stackColorA)
+end
+
+local ApplyBorderBackdrop
+
+local function ApplyPlacedIndicatorBorder(visual, item, r, g, b, a)
+    if not visual or not visual.border or not visual.border.SetBackdrop then return end
+
+    if item.showBorder == false then
+        ClearBackdrop(visual.border)
+        visual.border:Hide()
+        return
+    end
+
+    local borderSpec = Addon:GetCustomIndicatorBarBorderSpec(item.barBorder)
+    if borderSpec and borderSpec.path and borderSpec.path ~= "" then
+        local edgeSize = item.borderSize or borderSpec.edgeSize or 1
+        local padding = (item.borderPadding or 0) - (item.borderInset or 0)
+        local total = edgeSize + padding
+        if total < 0 then total = 0 end
+        visual.border:SetPoint("TOPLEFT", -total, total)
+        visual.border:SetPoint("BOTTOMRIGHT", total, -total)
+        if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, r, g, b, a) then
+            visual.border:Show()
+        else
+            visual.border:Hide()
+        end
+    else
+        ClearBackdrop(visual.border)
+        visual.border:Hide()
+    end
+end
+
 local function HideVisual(data)
     if not data or not data.frame then return end
     data.frame:Hide()
+    if data.durationText then data.durationText:Hide() end
+    if data.stackText then data.stackText:Hide() end
 end
 
 local function IsBackdropSafe(frame)
@@ -876,7 +1179,7 @@ local function ClearBackdrop(frame)
     pcall(frame.SetBackdrop, frame, nil)
 end
 
-local function ApplyBorderBackdrop(frame, edgeFile, edgeSize, r, g, b, a)
+ApplyBorderBackdrop = function(frame, edgeFile, edgeSize, r, g, b, a)
     if not IsBackdropSafe(frame) then
         return false
     end
@@ -907,6 +1210,7 @@ local function UpdateIndicatorVisual(frame, item)
     if usePreviewTiming then
         aura = {
             icon = GetSpellTexture and GetSpellTexture(item.spellId > 0 and item.spellId or 136243),
+            applications = 3,
             duration = PREVIEW_PERIOD,
             expirationTime = now + (PREVIEW_PERIOD - (now % PREVIEW_PERIOD)),
         }
@@ -922,16 +1226,18 @@ local function UpdateIndicatorVisual(frame, item)
     end
 
     visual.frame:ClearAllPoints()
-    visual.frame:SetPoint("CENTER", frame, "CENTER", item.x, item.y)
-    visual.frame:SetSize(item.width, item.height)
-    local parent = frame
-    if parent and parent.GetFrameLevel and visual.frame.SetFrameLevel then
-        local baseLevel = parent:GetFrameLevel()
-        visual.frame:SetFrameLevel(ClampFrameLevel(baseLevel + (item.zOffset or 0)))
-        if visual.border and visual.border.SetFrameLevel then
-            visual.border:SetFrameLevel(ClampFrameLevel(visual.frame:GetFrameLevel() + 1))
-        end
+    local width, height = GetIndicatorDisplaySize(item)
+    if item.type == "border" then
+        local inset = item.borderInset or 0
+        visual.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", -inset, inset)
+        visual.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", inset, -inset)
+    else
+        local point = item.anchor or "CENTER"
+        visual.frame:SetPoint(point, frame, point, item.offsetX or 0, item.offsetY or 0)
+        visual.frame:SetSize(width, height)
     end
+    ApplyVisualFrameLevel(frame, visual, item)
+    visual.frame:SetAlpha(item.alpha or 1)
     visual.frame:Show()
 
     local fillForColor
@@ -942,66 +1248,62 @@ local function UpdateIndicatorVisual(frame, item)
         fillForColor = Addon:CustomIndicatorComputeFill(now, aura.expirationTime, effectiveDuration or aura.duration)
     end
 
+    local isExpiring = GetExpiringState(item, aura, now)
+
     if item.type == "bar" and visual.bar then
         visual.bar:SetStatusBarTexture(Addon:GetCustomIndicatorBarTexturePath(item.barTexture) or BAR_TEXTURES.BLIZZARD.path)
-        local dirCfg = Addon:GetCustomIndicatorBarDirectionConfig(item.direction)
+        local direction = item.orientation == "VERTICAL"
+            and ((item.direction == "TOP_TO_BOTTOM" or item.direction == "BOTTOM_TO_TOP") and item.direction or "BOTTOM_TO_TOP")
+            or ((item.direction == "LEFT_TO_RIGHT" or item.direction == "RIGHT_TO_LEFT") and item.direction or "RIGHT_TO_LEFT")
+        local dirCfg = Addon:GetCustomIndicatorBarDirectionConfig(direction)
         visual.bar:SetOrientation(dirCfg.orientation)
         visual.bar:SetReverseFill(dirCfg.reverseFill)
-        visual.bar:SetStatusBarColor(item.colorR, item.colorG, item.colorB, item.colorA)
+        local barR, barG, barB, barA = item.colorR, item.colorG, item.colorB, item.colorA
+        if isExpiring then
+            barR, barG, barB, barA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+        end
+        visual.bar:SetStatusBarColor(barR, barG, barB, barA)
+        if visual.background then
+            visual.background:SetColorTexture(item.barBackgroundColorR, item.barBackgroundColorG,
+                item.barBackgroundColorB, item.barBackgroundColorA)
+        end
         local fill = fillForColor
         visual.bar:SetValue(fill)
 
-        if visual.border and visual.border.SetBackdrop then
-            local borderSpec = Addon:GetCustomIndicatorBarBorderSpec(item.barBorder)
-            if borderSpec and borderSpec.path and borderSpec.path ~= "" then
-                local edgeSize = item.borderSize or borderSpec.edgeSize or 8
-                local padding = item.borderPadding or 0
-                local total = edgeSize + padding
-                if total < 0 then total = 0 end
-                visual.border:SetPoint("TOPLEFT", -total, total)
-                visual.border:SetPoint("BOTTOMRIGHT", total, -total)
-                if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA) then
-                    visual.border:Show()
-                else
-                    visual.border:Hide()
-                end
-            else
-                ClearBackdrop(visual.border)
-                visual.border:Hide()
-            end
-        end
-    elseif item.type == "spell-icon" and visual.texture then
+        ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
+        ApplyDurationText(visual, item, aura, now)
+    elseif item.type == "icon" and visual.texture then
         local icon = aura.icon or (GetSpellTexture and GetSpellTexture(item.spellId))
         if icon then
             visual.texture:SetTexture(icon)
         end
-        if visual.border then
-            ClearBackdrop(visual.border)
+        ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
+        ApplyCooldown(visual, item, aura)
+        ApplyDurationText(visual, item, aura, now)
+        ApplyStackText(visual, item, aura)
+    elseif item.type == "square" and visual.texture then
+        local squareR, squareG, squareB, squareA = item.colorR, item.colorG, item.colorB, item.colorA
+        if isExpiring then
+            squareR, squareG, squareB, squareA = item.expiringColorR, item.expiringColorG, item.expiringColorB, item.expiringColorA
+        end
+        visual.texture:SetColorTexture(squareR, squareG, squareB, squareA)
+        ApplyPlacedIndicatorBorder(visual, item, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA)
+        ApplyCooldown(visual, item, aura)
+        ApplyDurationText(visual, item, aura, now)
+        ApplyStackText(visual, item, aura)
+    elseif item.type == "border" and visual.border then
+        local borderR, borderG, borderB, borderA = item.colorR, item.colorG, item.colorB, item.alpha or 1
+        if isExpiring then
+            borderR, borderG, borderB, borderA = item.expiringColorR, item.expiringColorG, item.expiringColorB,
+                item.expiringColorA
+        end
+        local edgeSize = item.borderSize or 1
+        if ApplyBorderBackdrop(visual.border, "Interface\\Buttons\\WHITE8X8", edgeSize, borderR, borderG, borderB, borderA) then
+            visual.border:Show()
+        else
             visual.border:Hide()
         end
-        ApplyCooldown(visual, item, aura)
-    elseif item.type == "square" and visual.texture then
-        visual.texture:SetColorTexture(item.colorR, item.colorG, item.colorB, item.colorA)
-        if visual.border and visual.border.SetBackdrop then
-            local borderSpec = Addon:GetCustomIndicatorBarBorderSpec(item.barBorder)
-            if borderSpec and borderSpec.path and borderSpec.path ~= "" then
-                local edgeSize = item.borderSize or borderSpec.edgeSize or 8
-                local padding = item.borderPadding or 0
-                local total = edgeSize + padding
-                if total < 0 then total = 0 end
-                visual.border:SetPoint("TOPLEFT", -total, total)
-                visual.border:SetPoint("BOTTOMRIGHT", total, -total)
-                if ApplyBorderBackdrop(visual.border, borderSpec.path, edgeSize, item.borderColorR, item.borderColorG, item.borderColorB, item.borderColorA) then
-                    visual.border:Show()
-                else
-                    visual.border:Hide()
-                end
-            else
-                ClearBackdrop(visual.border)
-                visual.border:Hide()
-            end
-        end
-        ApplyCooldown(visual, item, aura)
+        ApplyDurationText(visual, item, aura, now)
     end
 
     return true, Addon:CustomIndicatorHasReliableTiming(aura) and true or false
@@ -1075,11 +1377,32 @@ local function RefreshTickerState()
     end
 end
 
+local HideBlizzardBuffs
+
+local function UpdateFrameAndTicker(frame, hideBlizzardBuffs)
+    if not Addon:IsRaidOrPartyFrame(frame) then return end
+
+    local hasTimed = Addon:UpdateCustomIndicators(frame)
+    if hideBlizzardBuffs then
+        HideBlizzardBuffs(frame)
+    end
+
+    if hasTimed then
+        if not runtime.ticker and C_Timer and C_Timer.NewTicker then
+            runtime.ticker = C_Timer.NewTicker(TICKER_INTERVAL, function()
+                RefreshTickerState()
+            end)
+        end
+    elseif runtime.ticker then
+        RefreshTickerState()
+    end
+end
+
 function Addon:RefreshCustomIndicators()
     RefreshTickerState()
 end
 
-local function HideBlizzardBuffs(frame)
+HideBlizzardBuffs = function(frame)
     if not Addon:GetSetting("hideBlizzardAuras") then return end
 
     if frame.buffFrames then
@@ -1091,21 +1414,16 @@ end
 
 function Addon:HookCustomIndicators()
     hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
-        if not Addon:IsRaidOrPartyFrame(frame) then return end
-        Addon:UpdateCustomIndicators(frame)
-        HideBlizzardBuffs(frame)
+        UpdateFrameAndTicker(frame, true)
     end)
 
     if CompactUnitFrame_UpdateAuras then
         hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-            if not Addon:IsRaidOrPartyFrame(frame) then return end
-            Addon:UpdateCustomIndicators(frame)
-            HideBlizzardBuffs(frame)
+            UpdateFrameAndTicker(frame, true)
         end)
     end
 
     hooksecurefunc("CompactUnitFrame_UpdateHealth", function(frame)
-        if not Addon:IsRaidOrPartyFrame(frame) then return end
-        Addon:UpdateCustomIndicators(frame)
+        UpdateFrameAndTicker(frame, false)
     end)
 end

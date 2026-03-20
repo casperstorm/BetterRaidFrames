@@ -27,13 +27,17 @@ local normalized = Addon:NormalizeCustomIndicatorsConfig({
     enabled = true,
     nextId = 3,
     items = {
-        { id = "ci_1", type = "spell-icon", spellId = 17, invertCooldownSwipe = true },
+        { id = "ci_1", type = "spell-icon", spellId = 17, invertCooldownSwipe = true, x = 12, y = -8, zOffset = 4 },
         { id = "ci_2", type = "square", spellId = 17 },
     },
 })
 
+assertEqual(normalized.items[1].type, "icon", "spell-icon should normalize to icon")
 assertEqual(normalized.items[1].invertCooldownSwipe, true, "invertCooldownSwipe should preserve true")
 assertEqual(normalized.items[2].invertCooldownSwipe, false, "invertCooldownSwipe should default false")
+assertEqual(normalized.items[1].offsetX, 12, "legacy x should migrate to offsetX")
+assertEqual(normalized.items[1].offsetY, -8, "legacy y should migrate to offsetY")
+assertEqual(normalized.items[1].frameLevelOffset, 4, "legacy zOffset should migrate to frameLevelOffset")
 
 assertEqual(type(Addon.CustomIndicatorShouldReverseCooldown), "function", "reverse helper should exist")
 assertEqual(Addon:CustomIndicatorShouldReverseCooldown({ invertCooldownSwipe = true }), true,
@@ -67,12 +71,15 @@ assertEqual(cachedA, cachedB, "config reads should reuse cached normalized table
 Addon:SetCustomIndicatorsConfig({
     enabled = true,
     nextId = 9,
-    items = {},
+    items = {
+        { id = "ci_9", type = "border", spellId = 17 },
+    },
 })
 
 local cachedC = Addon:GetCustomIndicatorsConfig()
 local cachedD = Addon:GetCustomIndicatorsConfig()
 assertEqual(cachedC, cachedD, "config cache should stay stable after writes")
 assertEqual(cachedC.nextId, 9, "written config should remain normalized")
+assertEqual(cachedC.items[1].type, "border", "border type should normalize")
 
 print("PASS: custom_indicators_invert_swipe_test")
