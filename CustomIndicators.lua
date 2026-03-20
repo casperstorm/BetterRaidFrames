@@ -638,6 +638,29 @@ function Addon:CustomIndicatorHasReliableTiming(aura)
     return true
 end
 
+function Addon:CustomIndicatorIsPlayerAura(unitCaster, aura)
+    local sourceUnit = unitCaster
+    if type(aura) == "table" then
+        sourceUnit = aura.sourceUnit or aura.unitCaster or aura.casterUnit or sourceUnit
+    end
+
+    if type(sourceUnit) == "string" and sourceUnit ~= "" then
+        if UnitIsUnit then
+            local ok, matches = pcall(UnitIsUnit, sourceUnit, "player")
+            return ok and matches or false
+        end
+        return sourceUnit == "player"
+    end
+
+    if type(aura) == "table" then
+        if aura.isFromPlayerOrPlayerPet == true or aura.castByPlayer == true then
+            return true
+        end
+    end
+
+    return false
+end
+
 function Addon:CustomIndicatorShouldUsePreviewTiming(previewActive, aura)
     if previewActive ~= true then
         return false
@@ -653,14 +676,16 @@ local function FindAuraBySpellID(unit, spellId)
     local bestEffortAura = nil
 
     if AuraUtil and AuraUtil.FindAuraBySpellID then
-        local auraOrName, icon, count, _, duration, expirationTime, _, _, _, _, _, _, _, _, timeMod =
+        local auraOrName, icon, count, _, duration, expirationTime, sourceUnit, _, _, _, _, _, _, _, timeMod =
             AuraUtil.FindAuraBySpellID(spellId, unit, "HELPFUL")
         local normalized = Addon:CustomIndicatorNormalizeAuraData(auraOrName, icon, count, duration, expirationTime, timeMod)
         if normalized then
-            if Addon:CustomIndicatorHasReliableTiming(normalized) then
+            if Addon:CustomIndicatorIsPlayerAura(sourceUnit, auraOrName) and Addon:CustomIndicatorHasReliableTiming(normalized) then
                 return normalized
             end
-            bestEffortAura = normalized
+            if Addon:CustomIndicatorIsPlayerAura(sourceUnit, auraOrName) then
+                bestEffortAura = normalized
+            end
         end
     end
 
@@ -676,13 +701,15 @@ local function FindAuraBySpellID(unit, spellId)
             local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
             if not aura then break end
             if IsMatchingSpellId(aura.spellId, spellId) then
-                local normalized = Addon:CustomIndicatorNormalizeAuraData(aura)
-                if normalized then
-                    if Addon:CustomIndicatorHasReliableTiming(normalized) then
-                        return normalized
-                    end
-                    if not bestEffortAura then
-                        bestEffortAura = normalized
+                if Addon:CustomIndicatorIsPlayerAura(nil, aura) then
+                    local normalized = Addon:CustomIndicatorNormalizeAuraData(aura)
+                    if normalized then
+                        if Addon:CustomIndicatorHasReliableTiming(normalized) then
+                            return normalized
+                        end
+                        if not bestEffortAura then
+                            bestEffortAura = normalized
+                        end
                     end
                 end
             end
@@ -691,17 +718,19 @@ local function FindAuraBySpellID(unit, spellId)
 
     if UnitAura then
         for i = 1, 255 do
-            local name, icon, count, _, duration, expirationTime, _, _, _, auraSpellID, _, _, _, _, _, timeMod =
+            local name, icon, count, _, duration, expirationTime, unitCaster, _, _, auraSpellID, _, _, _, _, _, timeMod =
                 UnitAura(unit, i, "HELPFUL")
             if not name then break end
             if IsMatchingSpellId(auraSpellID, spellId) then
-                local normalized = Addon:CustomIndicatorNormalizeAuraData(name, icon, count, duration, expirationTime, timeMod)
-                if normalized then
-                    if Addon:CustomIndicatorHasReliableTiming(normalized) then
-                        return normalized
-                    end
-                    if not bestEffortAura then
-                        bestEffortAura = normalized
+                if Addon:CustomIndicatorIsPlayerAura(unitCaster) then
+                    local normalized = Addon:CustomIndicatorNormalizeAuraData(name, icon, count, duration, expirationTime, timeMod)
+                    if normalized then
+                        if Addon:CustomIndicatorHasReliableTiming(normalized) then
+                            return normalized
+                        end
+                        if not bestEffortAura then
+                            bestEffortAura = normalized
+                        end
                     end
                 end
             end

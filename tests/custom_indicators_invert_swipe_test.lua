@@ -32,4 +32,16 @@ assertEqual(Addon:IsCustomIndicatorPreviewAll(), true, "preview-all should turn 
 Addon:SetCustomIndicatorPreviewAll(false)
 assertEqual(Addon:IsCustomIndicatorPreviewAll(), false, "preview-all should turn off")
 
+assertEqual(type(Addon.CustomIndicatorIsPlayerAura), "function", "player aura helper should exist")
+assertEqual(Addon:CustomIndicatorIsPlayerAura("player"), true, "player auras should be accepted")
+assertEqual(Addon:CustomIndicatorIsPlayerAura("party1"), false, "other units should be rejected")
+assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, { sourceUnit = "player" }), true,
+    "sourceUnit player should be accepted")
+assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, { sourceUnit = "party1" }), false,
+    "sourceUnit non-player should be rejected")
+assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, { isFromPlayerOrPlayerPet = true }), true,
+    "player-owned aura flags should be accepted")
+assertEqual(Addon:CustomIndicatorIsPlayerAura(nil, {}), false,
+    "auras without ownership metadata should be rejected")
+
 print("PASS: custom_indicators_invert_swipe_test")
