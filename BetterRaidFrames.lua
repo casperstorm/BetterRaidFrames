@@ -64,6 +64,11 @@ local defaults = {
     },
 }
 
+local GLOBAL_DEFAULTS = {
+    partyProfile = "",
+    raidProfile = "",
+}
+
 function Addon:IsConfigOpen()
     return _G["BetterRaidFramesConfigFrame"] and _G["BetterRaidFramesConfigFrame"]:IsShown()
 end
@@ -170,6 +175,21 @@ local function GetCurrentProfile()
     return BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile]
 end
 
+local function GetGlobalSettings()
+    if not BetterRaidFramesDB.globalSettings then
+        BetterRaidFramesDB.globalSettings = {}
+    end
+
+    local settings = BetterRaidFramesDB.globalSettings
+    for key, value in pairs(GLOBAL_DEFAULTS) do
+        if settings[key] == nil then
+            settings[key] = value
+        end
+    end
+
+    return settings
+end
+
 local function InitializeDB()
     if not BetterRaidFramesDB then
         BetterRaidFramesDB = {}
@@ -220,6 +240,8 @@ local function InitializeDB()
             profile[key] = value
         end
     end
+
+    GetGlobalSettings()
 end
 
 local function HookRaidFrames()
@@ -268,6 +290,16 @@ function Addon:GetCurrentProfileName()
     return BetterRaidFramesDB.currentProfile
 end
 
+function Addon:GetGlobalSetting(key)
+    local settings = GetGlobalSettings()
+    return settings and settings[key]
+end
+
+function Addon:SetGlobalSetting(key, value)
+    local settings = GetGlobalSettings()
+    settings[key] = value
+end
+
 function Addon:GetProfileList()
     local list = {}
     for name in pairs(BetterRaidFramesDB.profiles) do
@@ -275,6 +307,62 @@ function Addon:GetProfileList()
     end
     table.sort(list)
     return list
+end
+
+function Addon:GetAutoProfileOptions()
+    local options = {
+        { value = "", label = "Disabled" },
+    }
+
+    for _, name in ipairs(self:GetProfileList()) do
+        table.insert(options, {
+            value = name,
+            label = name,
+        })
+    end
+
+    return options
+end
+
+function Addon:GetGroupProfileContext()
+    if IsInRaid and IsInRaid() then
+        return "raid"
+    end
+
+    if IsInGroup and IsInGroup() then
+        return "party"
+    end
+
+    return "solo"
+end
+
+function Addon:GetAssignedProfileForContext(context)
+    if context == "party" then
+        return self:GetGlobalSetting("partyProfile") or ""
+    end
+    if context == "raid" then
+        return self:GetGlobalSetting("raidProfile") or ""
+    end
+    return ""
+end
+
+function Addon:ApplyAutomaticProfile(forceRefreshConfig)
+    local context = self:GetGroupProfileContext()
+    local targetProfile = self:GetAssignedProfileForContext(context)
+
+    if targetProfile == "" or targetProfile == self:GetCurrentProfileName() then
+        return false
+    end
+
+    if not BetterRaidFramesDB.profiles[targetProfile] then
+        return false
+    end
+
+    local switched = self:SwitchProfile(targetProfile)
+    if switched and forceRefreshConfig and self.RefreshConfig and self:IsConfigOpen() then
+        self:RefreshConfig()
+    end
+    return switched
 end
 
 function Addon:SwitchProfile(name)
@@ -305,6 +393,15 @@ function Addon:DeleteProfile(name)
     if name == "Default" or not BetterRaidFramesDB.profiles[name] then
         return false
     end
+
+    local globals = GetGlobalSettings()
+    if globals.partyProfile == name then
+        globals.partyProfile = ""
+    end
+    if globals.raidProfile == name then
+        globals.raidProfile = ""
+    end
+
     BetterRaidFramesDB.profiles[name] = nil
     if BetterRaidFramesDB.currentProfile == name then
         BetterRaidFramesDB.currentProfile = "Default"
@@ -322,6 +419,13 @@ function Addon:RenameProfile(oldName, newName)
     end
     BetterRaidFramesDB.profiles[newName] = BetterRaidFramesDB.profiles[oldName]
     BetterRaidFramesDB.profiles[oldName] = nil
+    local globals = GetGlobalSettings()
+    if globals.partyProfile == oldName then
+        globals.partyProfile = newName
+    end
+    if globals.raidProfile == oldName then
+        globals.raidProfile = newName
+    end
     if BetterRaidFramesDB.currentProfile == oldName then
         BetterRaidFramesDB.currentProfile = newName
     end
@@ -343,6 +447,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 
 local function RegisterOptionsPanel()
     local panel = CreateFrame("Frame")
@@ -373,7 +478,11 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         Addon:HookEditMode()
         RegisterOptionsPanel()
     elseif event == "PLAYER_ENTERING_WORLD" then
-        Addon:UpdateAllFrames()
+        if not Addon:ApplyAutomaticProfile(true) then
+            Addon:UpdateAllFrames()
+        end
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        Addon:ApplyAutomaticProfile(true)
     end
 end)
 

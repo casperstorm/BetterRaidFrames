@@ -365,6 +365,68 @@ local function CreateConfigFrame()
 
         y = y - 40
 
+        local autoProfilesLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        autoProfilesLabel:SetPoint("TOPLEFT", 16, y)
+        autoProfilesLabel:SetText("Auto profile switching:")
+        y = y - 24
+
+        local partyProfileLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        partyProfileLabel:SetPoint("TOPLEFT", 32, y)
+        partyProfileLabel:SetText("Party:")
+
+        local partyProfileDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        partyProfileDropdown:SetPoint("LEFT", partyProfileLabel, "RIGHT", 6, 0)
+        partyProfileDropdown:SetWidth(140)
+
+        local raidProfileLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        raidProfileLabel:SetPoint("LEFT", partyProfileDropdown, "RIGHT", 20, 0)
+        raidProfileLabel:SetText("Raid:")
+
+        local raidProfileDropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+        raidProfileDropdown:SetPoint("LEFT", raidProfileLabel, "RIGHT", 6, 0)
+        raidProfileDropdown:SetWidth(140)
+
+        local function SetupAutoProfileDropdown(dropdown, context)
+            dropdown:SetupMenu(function(_, rootDescription)
+                for _, option in ipairs(Addon:GetAutoProfileOptions()) do
+                    rootDescription:CreateRadio(option.label,
+                        function(value) return Addon:GetAssignedProfileForContext(context) == value end,
+                        function(value)
+                            if context == "party" then
+                                Addon:SetGlobalSetting("partyProfile", value)
+                            else
+                                Addon:SetGlobalSetting("raidProfile", value)
+                            end
+
+                            local switched = Addon:ApplyAutomaticProfile(false)
+
+                            if switched then
+                                if frame.RefreshProfileDropdown then
+                                    frame.RefreshProfileDropdown()
+                                end
+                                if frame.UpdateProfileButtonsVisibility then
+                                    frame.UpdateProfileButtonsVisibility()
+                                end
+                            end
+
+                            dropdown:GenerateMenu()
+                        end,
+                        option.value
+                    )
+                end
+            end)
+        end
+
+        SetupAutoProfileDropdown(partyProfileDropdown, "party")
+        SetupAutoProfileDropdown(raidProfileDropdown, "raid")
+
+        local autoProfileNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        autoProfileNote:SetPoint("TOPLEFT", 32, y - 26)
+        autoProfileNote:SetText("When set, BetterRaidFrames switches to that profile on party or raid roster changes.")
+        autoProfileNote:SetTextColor(0.75, 0.75, 0.75)
+
+        y = y - 62
+
         local raidStyleCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         raidStyleCheckbox:SetPoint("TOPLEFT", 16, y)
         raidStyleCheckbox.Text:SetText("Use Raid-Style Party Frames")
