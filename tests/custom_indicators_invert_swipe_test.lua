@@ -82,4 +82,18 @@ assertEqual(cachedC, cachedD, "config cache should stay stable after writes")
 assertEqual(cachedC.nextId, 9, "written config should remain normalized")
 assertEqual(cachedC.items[1].type, "border", "border type should normalize")
 
+Addon:SetCustomIndicatorsConfig({
+    enabled = true,
+    nextId = 11,
+    items = {
+        { id = "ci_10", type = "square", spellId = 17, offsetX = 3, offsetY = -4 },
+    },
+})
+
+local duplicateId = Addon:DuplicateCustomIndicatorItem("ci_10")
+local duplicateConfig = Addon:GetCustomIndicatorsConfig()
+assertEqual(duplicateId, "ci_11", "duplicate should get next id")
+assertEqual(duplicateConfig.items[2].offsetX, 11, "duplicate should offset X position")
+assertEqual(duplicateConfig.items[2].offsetY, -12, "duplicate should offset Y position")
+
 print("PASS: custom_indicators_invert_swipe_test")

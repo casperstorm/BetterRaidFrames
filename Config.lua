@@ -1192,12 +1192,12 @@ local function CreateConfigFrame()
         RefreshEditorState = function()
             local cfg, item = GetSelectedItem()
             local hasItem = item ~= nil
-            local active = hasItem and cfg.enabled
+            local active = cfg.enabled
 
             if globalToggle then globalToggle:SetChecked(cfg.enabled) end
             if previewAllCheckbox then previewAllCheckbox:SetChecked(Addon:IsCustomIndicatorPreviewAll()) end
-            if duplicateBtn then duplicateBtn:SetEnabled(active) end
-            if deleteBtn then deleteBtn:SetEnabled(active) end
+            if duplicateBtn then duplicateBtn:SetEnabled(hasItem and active) end
+            if deleteBtn then deleteBtn:SetEnabled(hasItem and active) end
             SetControlsEnabled(options, active)
 
             if not hasItem then
@@ -1244,6 +1244,8 @@ local function CreateConfigFrame()
             RefreshExpiringModeDropdown(item)
 
             local supportsBarStyle = item.type == "bar"
+            local supportsWidthHeight = item.type == "bar" or item.type == "square"
+            local supportsSize = item.type == "icon"
             local supportsPlaced = item.type ~= "border"
             local supportsColor = item.type ~= "icon"
             local supportsTextureBorder = item.type == "bar" or item.type == "square"
@@ -1342,9 +1344,9 @@ local function CreateConfigFrame()
                 cooldownTextCheckbox:SetAlpha(supportsCooldown and 1 or 0.4)
             end
 
-            if widthSlider then widthSlider.container:SetShown(supportsBarStyle) end
-            if heightSlider then heightSlider.container:SetShown(supportsBarStyle) end
-            if sizeSlider then sizeSlider.container:SetShown(item.type == "icon" or item.type == "square") end
+            if widthSlider then widthSlider.container:SetShown(supportsWidthHeight) end
+            if heightSlider then heightSlider.container:SetShown(supportsWidthHeight) end
+            if sizeSlider then sizeSlider.container:SetShown(supportsSize) end
             if alphaSlider then alphaSlider.container:SetShown(true) end
             if scaleSlider then scaleSlider.container:SetShown(supportsPlaced) end
             if xSlider then xSlider.container:SetShown(supportsPlaced) end
@@ -1820,36 +1822,6 @@ local function CreateConfigFrame()
         table.insert(options, zSlider.container)
         y = y - 30
 
-        cooldownSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-        cooldownSwipeCheckbox:SetPoint("TOPLEFT", 32, y)
-        cooldownSwipeCheckbox.Text:SetText("Show swipe")
-        cooldownSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
-        cooldownSwipeCheckbox:SetScript("OnClick", function(self)
-            UpdateSelectedItem({ showCooldownSwipe = self:GetChecked() })
-        end)
-        table.insert(options, cooldownSwipeCheckbox)
-
-        invertSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-        invertSwipeCheckbox:SetPoint("LEFT", cooldownSwipeCheckbox, "RIGHT", 120, 0)
-        invertSwipeCheckbox.Text:SetText("Inverse Swipe")
-        invertSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
-        invertSwipeCheckbox:SetScript("OnClick", function(self)
-            UpdateSelectedItem({ invertCooldownSwipe = self:GetChecked() })
-        end)
-        table.insert(options, invertSwipeCheckbox)
-
-        y = y - 24
-
-        cooldownTextCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-        cooldownTextCheckbox:SetPoint("TOPLEFT", 32, y)
-        cooldownTextCheckbox.Text:SetText("Hide swipe")
-        cooldownTextCheckbox.Text:SetFontObject("GameFontHighlight")
-        cooldownTextCheckbox:SetScript("OnClick", function(self)
-            UpdateSelectedItem({ hideSwipe = self:GetChecked(), showCooldownSwipe = not self:GetChecked() })
-        end)
-        table.insert(options, cooldownTextCheckbox)
-        y = y - 28
-
         showDurationCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         showDurationCheckbox:SetPoint("TOPLEFT", 32, y)
         showDurationCheckbox.Text:SetText("Show duration text")
@@ -1858,7 +1830,7 @@ local function CreateConfigFrame()
             UpdateSelectedItem({ showDuration = self:GetChecked() })
         end)
         table.insert(options, showDurationCheckbox)
-        y = y - 24
+        y = y - 32
 
         local durationAnchorLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         durationAnchorLabel:SetPoint("TOPLEFT", 16, y)
@@ -1900,13 +1872,13 @@ local function CreateConfigFrame()
             UpdateSelectedItem({ showStacks = self:GetChecked() })
         end)
         table.insert(options, showStacksCheckbox)
-        y = y - 24
+        y = y - 32
 
         stackMinimumSlider = CreateValueSlider(content, "Min stacks:", 1, 99, 1, y, function(v)
             UpdateSelectedItem({ stackMinimum = Clamp(math.floor(v + 0.5), 1, 99) })
         end)
         table.insert(options, stackMinimumSlider.container)
-        y = y - 26
+        y = y - 34
 
         local stackAnchorLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         stackAnchorLabel:SetPoint("TOPLEFT", 16, y)
@@ -1929,6 +1901,36 @@ local function CreateConfigFrame()
         table.insert(options, stackYSlider.container)
         y = y - 28
 
+        cooldownSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        cooldownSwipeCheckbox:SetPoint("TOPLEFT", 32, y)
+        cooldownSwipeCheckbox.Text:SetText("Show swipe")
+        cooldownSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
+        cooldownSwipeCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ showCooldownSwipe = self:GetChecked() })
+        end)
+        table.insert(options, cooldownSwipeCheckbox)
+
+        invertSwipeCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        invertSwipeCheckbox:SetPoint("LEFT", cooldownSwipeCheckbox, "RIGHT", 120, 0)
+        invertSwipeCheckbox.Text:SetText("Inverse Swipe")
+        invertSwipeCheckbox.Text:SetFontObject("GameFontHighlight")
+        invertSwipeCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ invertCooldownSwipe = self:GetChecked() })
+        end)
+        table.insert(options, invertSwipeCheckbox)
+
+        y = y - 24
+
+        cooldownTextCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        cooldownTextCheckbox:SetPoint("TOPLEFT", 32, y)
+        cooldownTextCheckbox.Text:SetText("Hide swipe")
+        cooldownTextCheckbox.Text:SetFontObject("GameFontHighlight")
+        cooldownTextCheckbox:SetScript("OnClick", function(self)
+            UpdateSelectedItem({ hideSwipe = self:GetChecked(), showCooldownSwipe = not self:GetChecked() })
+        end)
+        table.insert(options, cooldownTextCheckbox)
+        y = y - 28
+
         expiringCheckbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         expiringCheckbox:SetPoint("TOPLEFT", 32, y)
         expiringCheckbox.Text:SetText("Enable expiring color")
@@ -1937,7 +1939,7 @@ local function CreateConfigFrame()
             UpdateSelectedItem({ expiringEnabled = self:GetChecked() })
         end)
         table.insert(options, expiringCheckbox)
-        y = y - 24
+        y = y - 32
 
         local expiringModeLabel = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         expiringModeLabel:SetPoint("TOPLEFT", 16, y)

@@ -455,8 +455,21 @@ function Addon:DuplicateCustomIndicatorItem(id)
             local copy = DeepCopy(item)
             copy.id = "ci_" .. tostring(cfg.nextId)
             cfg.nextId = cfg.nextId + 1
-            copy.x = Clamp(copy.x + 8, -250, 250)
-            copy.y = Clamp(copy.y - 8, -250, 250)
+
+            local offsetX = copy.offsetX
+            if type(offsetX) ~= "number" then
+                offsetX = copy.x or 0
+            end
+            local offsetY = copy.offsetY
+            if type(offsetY) ~= "number" then
+                offsetY = copy.y or 0
+            end
+
+            copy.offsetX = Clamp(offsetX + 8, -250, 250)
+            copy.offsetY = Clamp(offsetY - 8, -250, 250)
+            copy.x = nil
+            copy.y = nil
+
             table.insert(cfg.items, copy)
             self:SetCustomIndicatorsConfig(cfg)
             return copy.id
@@ -969,6 +982,12 @@ local function GetIndicatorDisplaySize(item)
         return math.max(4, (item.width or 60) * scale), math.max(2, (item.height or 6) * scale)
     end
 
+    if item.type == "square" then
+        local width = math.max(4, (item.width or item.size or 18) * scale)
+        local height = math.max(4, (item.height or item.size or 18) * scale)
+        return width, height
+    end
+
     local size = math.max(4, (item.size or item.width or 18) * scale)
     return size, size
 end
@@ -1125,6 +1144,7 @@ local function ApplyStackText(visual, item, aura)
 end
 
 local ApplyBorderBackdrop
+local ClearBackdrop
 
 local function ApplyPlacedIndicatorBorder(visual, item, r, g, b, a)
     if not visual or not visual.border or not visual.border.SetBackdrop then return end
@@ -1174,7 +1194,7 @@ local function IsBackdropSafe(frame)
     return true
 end
 
-local function ClearBackdrop(frame)
+ClearBackdrop = function(frame)
     if not frame or not frame.SetBackdrop then return end
     pcall(frame.SetBackdrop, frame, nil)
 end
