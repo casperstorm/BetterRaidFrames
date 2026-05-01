@@ -1768,7 +1768,6 @@ local function RefreshTickerState()
     end
 end
 
-local HideBlizzardBuffs
 local eventFrame
 
 local function FindFrameByUnit(unit)
@@ -1783,7 +1782,7 @@ local function FindFrameByUnit(unit)
     return matched
 end
 
-local function UpdateFrameAndTicker(frame, hideBlizzardBuffs, forced)
+local function UpdateFrameAndTicker(frame, forced)
     if not Addon:IsRaidOrPartyFrame(frame) then return end
 
     local now = GetTime and GetTime() or 0
@@ -1795,11 +1794,8 @@ local function UpdateFrameAndTicker(frame, hideBlizzardBuffs, forced)
             if delay < 0 then delay = 0 end
             C_Timer.After(delay, function()
                 frame.BRFCustomIndicatorRefreshPending = false
-                UpdateFrameAndTicker(frame, hideBlizzardBuffs, true)
+                UpdateFrameAndTicker(frame, true)
             end)
-        end
-        if hideBlizzardBuffs then
-            HideBlizzardBuffs(frame)
         end
         return
     end
@@ -1807,9 +1803,6 @@ local function UpdateFrameAndTicker(frame, hideBlizzardBuffs, forced)
     frame.BRFCustomIndicatorLastFullRefresh = now
 
     local hasTimed = Addon:UpdateCustomIndicators(frame)
-    if hideBlizzardBuffs then
-        HideBlizzardBuffs(frame)
-    end
 
     if hasTimed then
         if not runtime.ticker and C_Timer and C_Timer.NewTicker then
@@ -1842,25 +1835,7 @@ function Addon:RefreshCustomIndicators()
     end
 end
 
-HideBlizzardBuffs = function(frame)
-    if not Addon:GetSetting("hideBlizzardAuras") then return end
-
-    if frame.buffFrames then
-        for _, buffFrame in ipairs(frame.buffFrames) do
-            buffFrame:Hide()
-        end
-    end
-end
-
 function Addon:HookCustomIndicators()
-    if CompactUnitFrame_UpdateAuras then
-        hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-            if Addon:IsRaidOrPartyFrame(frame) then
-                HideBlizzardBuffs(frame)
-            end
-        end)
-    end
-
     if not eventFrame then
         eventFrame = CreateFrame("Frame")
         eventFrame:RegisterEvent("UNIT_AURA")
