@@ -150,12 +150,14 @@ local function ProcessFrameAuras(frame)
 end
 
 function Addon:HookAuraBorders()
-    hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
-        if not Addon:IsRaidOrPartyFrame(frame) then return end
-        if Addon:GetSetting("hideAuraBorders") then
-            ProcessFrameAuras(frame)
-        end
-    end)
+    if CompactUnitFrame_UpdateAuras then -- does not exist in 12.0.5. hideAuraBorders does not work currently
+        hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
+            if not Addon:IsRaidOrPartyFrame(frame) then return end
+            if Addon:GetSetting("hideAuraBorders") then
+                ProcessFrameAuras(frame)
+            end
+        end)
+    end
 
     if CompactUnitFrame_UtilSetBuff then
         hooksecurefunc("CompactUnitFrame_UtilSetBuff", function(buffFrame)

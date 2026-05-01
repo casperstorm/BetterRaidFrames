@@ -1444,9 +1444,9 @@ local function CreateConfigFrame()
         hideBlizzAurasToggle:SetPoint("TOPLEFT", 16, y)
         hideBlizzAurasToggle.Text:SetText("Hide Blizzard buffs on raid frames")
         hideBlizzAurasToggle.Text:SetFontObject("GameFontHighlight")
-        hideBlizzAurasToggle:SetChecked(Addon:GetSetting("hideBlizzardAuras") == true)
+        hideBlizzAurasToggle:SetChecked(not GetCVar("raidFramesDisplayBuffs"))
         hideBlizzAurasToggle:SetScript("OnClick", function(self)
-            Addon:SetSetting("hideBlizzardAuras", self:GetChecked())
+           SetCVar("raidFramesDisplayBuffs", not self:GetChecked())
         end)
         y = y - 32
 

@@ -56,7 +56,6 @@ local defaults = {
     partyLeaderY = -2,
     partyLeaderSize = 16,
     partyLeaderHideInCombat = false,
-    hideBlizzardAuras = false,
     customIndicators = {
         enabled = true,
         nextId = 1,
