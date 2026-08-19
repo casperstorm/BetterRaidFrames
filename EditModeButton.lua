@@ -1,4 +1,4 @@
-local ADDON_NAME, Addon = ...
+local _, Addon = ...
 
 local editModeButton = nil
 
@@ -45,14 +45,14 @@ local function OnEditModeEnter()
     local button = CreateEditModeButton()
     PositionButton()
     button:Show()
-    Addon:UpdateAllFrames()
+    Addon:RequestFeatureUpdate("threatIndicator")
 end
 
 local function OnEditModeExit()
     if editModeButton then
         editModeButton:Hide()
     end
-    Addon:UpdateAllFrames()
+    Addon:RequestFeatureUpdate("threatIndicator")
 end
 
 function Addon:HookEditMode()

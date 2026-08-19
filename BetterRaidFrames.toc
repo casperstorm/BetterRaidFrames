@@ -1,5 +1,5 @@
-## Interface: 120001, 120000
-## Interface-Retail: 120001, 120000
+## Interface: 120100
+## Interface-Retail: 120100
 ## Title: BetterRaidFrames
 ## Notes: Customize the default raid frames
 ## Author: casperstorm
@@ -13,15 +13,10 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 
 BetterRaidFrames.lua
 Utils.lua
+RaidFrameLayout.lua
 RaidMarkers.lua
 RoleIcons.lua
 ThreatIndicator.lua
-AuraBorders.lua
-Name.lua
-HealthText.lua
-FriendlyAbsorb.lua
-HostileAbsorb.lua
 PartyLeader.lua
-CustomIndicators.lua
 EditModeButton.lua
 Config.lua

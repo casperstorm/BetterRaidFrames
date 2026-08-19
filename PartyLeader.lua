@@ -1,4 +1,10 @@
-local ADDON_NAME, Addon = ...
+local _, Addon = ...
+local CreateFrame = CreateFrame
+local UnitAffectingCombat = UnitAffectingCombat
+local UnitExists = UnitExists
+local UnitIsGroupLeader = UnitIsGroupLeader
+
+local partyLeaderHooked = false
 
 local function GetOrCreateLeaderIndicator(frame)
     if frame.BRFLeaderIndicator then
@@ -13,67 +19,61 @@ local function GetOrCreateLeaderIndicator(frame)
     return indicator
 end
 
-local function ApplyLeaderIndicatorSettings(indicator, parentFrame)
-    local offsetX = Addon:GetSetting("partyLeaderX") or 2
-    local offsetY = Addon:GetSetting("partyLeaderY") or -2
-    local size = Addon:GetSetting("partyLeaderSize") or 16
-    
-    indicator:SetSize(size, size)
-    indicator:ClearAllPoints()
-    indicator:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", offsetX, offsetY)
+local function ApplyLeaderIndicatorSettings(indicator, parentFrame, settings)
+    local point = Addon:GetValidAnchor(settings.partyLeaderPoint, "TOPLEFT")
+    local relativePoint = Addon:GetValidAnchor(settings.partyLeaderRelativePoint, "TOPLEFT")
+    local offsetX = settings.partyLeaderOffsetX or 2
+    local offsetY = settings.partyLeaderOffsetY or -2
+    local size = settings.partyLeaderSize or 16
+
+    Addon:ApplyRegionLayout(indicator, parentFrame, point, relativePoint, offsetX, offsetY, size)
 end
 
-local function UpdatePartyLeader(frame)
-    if not frame or not frame.unit then return end
-    if not UnitExists(frame.unit) then return end
-    
-    if not Addon:GetSetting("showPartyLeader") then
-        if frame.BRFLeaderIndicator then
+local function UpdatePartyLeader(frame, settings, inCombat)
+    if not frame then return end
+    settings = settings or Addon:GetSettings()
+
+    if not settings.showPartyLeader then
+        if frame.BRFLeaderIndicator and frame.BRFLeaderIndicator:IsShown() then
             frame.BRFLeaderIndicator:Hide()
         end
         return
     end
-    
-    local unit = frame.unit
+
+    local unit = frame.displayedUnit or frame.unit
+    if not unit or not UnitExists(unit) then
+        if frame.BRFLeaderIndicator and frame.BRFLeaderIndicator:IsShown() then
+            frame.BRFLeaderIndicator:Hide()
+        end
+        return
+    end
+
     local indicator = GetOrCreateLeaderIndicator(frame)
-    ApplyLeaderIndicatorSettings(indicator, frame)
+    ApplyLeaderIndicatorSettings(indicator, frame, settings)
+
+    if inCombat == nil then inCombat = UnitAffectingCombat("player") end
     
-    local hideInCombat = Addon:GetSetting("partyLeaderHideInCombat")
-    local inCombat = UnitAffectingCombat("player")
-    
-    -- Safely check if unit is group leader
-    local isLeader = UnitExists(unit) and UnitIsGroupLeader(unit)
-    
-    if isLeader and not (hideInCombat and inCombat) then
-        indicator:Show()
-    else
+    local isLeader = UnitIsGroupLeader(unit)
+
+    if isLeader and not (settings.partyLeaderHideInCombat and inCombat) then
+        if not indicator:IsShown() then indicator:Show() end
+    elseif indicator:IsShown() then
         indicator:Hide()
     end
 end
 
 function Addon:HookPartyLeader()
-    hooksecurefunc("CompactUnitFrame_UpdateAll", function(frame)
-        if not Addon:IsRaidOrPartyFrame(frame) then return end
-        UpdatePartyLeader(frame)
-    end)
-    
+    if partyLeaderHooked then return end
+    partyLeaderHooked = true
+
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
     eventFrame:SetScript("OnEvent", function()
-        Addon:RefreshPartyLeaders()
+        Addon:RequestFeatureUpdate("partyLeader")
     end)
 end
 
-function Addon:UpdatePartyLeader(frame)
-    UpdatePartyLeader(frame)
-end
-
-function Addon:RefreshPartyLeaders()
-    Addon:ForEachFrame(function(frame)
-        if frame.BRFLeaderIndicator then
-            ApplyLeaderIndicatorSettings(frame.BRFLeaderIndicator, frame)
-        end
-        UpdatePartyLeader(frame)
-    end)
+function Addon:UpdatePartyLeader(frame, settings, inCombat)
+    UpdatePartyLeader(frame, settings, inCombat)
 end

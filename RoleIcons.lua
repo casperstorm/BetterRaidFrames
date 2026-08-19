@@ -1,4 +1,7 @@
-local ADDON_NAME, Addon = ...
+local _, Addon = ...
+local UnitExists = UnitExists
+local UnitGroupRolesAssigned = UnitGroupRolesAssigned
+local hooksecurefunc = hooksecurefunc
 
 Addon.RoleIconOptions = {
     { value = "ALL", label = "All" },
@@ -8,14 +11,23 @@ Addon.RoleIconOptions = {
     { value = "NONE", label = "None" },
 }
 
-local function UpdateRoleIcon(frame)
+local function UpdateRoleIcon(frame, settings)
     if not frame or not frame.roleIcon then return end
-    
-    local unit = frame.unit
-    if not unit then return end
-    
+    settings = settings or Addon:GetSettings()
+
+    local setting = settings.showRoleIcons
+    if setting == "NONE" then
+        if frame.roleIcon:IsShown() then frame.roleIcon:Hide() end
+        return
+    end
+
+    local unit = frame.displayedUnit or frame.unit
+    if not unit or not UnitExists(unit) then
+        if frame.roleIcon:IsShown() then frame.roleIcon:Hide() end
+        return
+    end
+
     local role = UnitGroupRolesAssigned(unit)
-    local setting = Addon:GetSetting("showRoleIcons")
     local shouldShow = false
     
     if setting == "ALL" then
@@ -29,8 +41,8 @@ local function UpdateRoleIcon(frame)
     end
     
     if shouldShow and role and role ~= "NONE" then
-        frame.roleIcon:Show()
-    else
+        if not frame.roleIcon:IsShown() then frame.roleIcon:Show() end
+    elseif frame.roleIcon:IsShown() then
         frame.roleIcon:Hide()
     end
 end
@@ -42,6 +54,6 @@ function Addon:HookRoleIcons()
     end)
 end
 
-function Addon:UpdateRoleIcon(frame)
-    UpdateRoleIcon(frame)
+function Addon:UpdateRoleIcon(frame, settings)
+    UpdateRoleIcon(frame, settings)
 end

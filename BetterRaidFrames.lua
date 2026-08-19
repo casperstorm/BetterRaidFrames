@@ -1,67 +1,80 @@
 local ADDON_NAME, Addon = ...
 
 local defaults = {
+    raidFrameGrowth = "RIGHT",
     showRaidMarkers = false,
-    raidMarkerX = 0,
-    raidMarkerY = 2,
+    raidMarkerPoint = "TOP",
+    raidMarkerRelativePoint = "TOP",
+    raidMarkerOffsetX = 0,
+    raidMarkerOffsetY = 2,
     raidMarkerSize = 16,
     showRoleIcons = "ALL",
     showThreatIndicator = false,
     threatIndicatorBlink = true,
-    threatIndicatorX = 0,
-    threatIndicatorY = 0,
+    threatIndicatorShape = "SQUARE",
+    threatIndicatorPoint = "CENTER",
+    threatIndicatorRelativePoint = "CENTER",
+    threatIndicatorOffsetX = 0,
+    threatIndicatorOffsetY = 0,
     threatIndicatorSize = 8,
-    hideAuraBorders = false,
-    nameX = 0,
-    nameY = 0,
-    nameSize = 11,
-    nameHideServer = false,
-    nameTruncate = false,
-    nameTruncateLength = 8,
-    nameClassColor = false,
-    nameCyrillicToLatin = false,
-    nameHideOnDead = false,
-    nameHideOnOffline = false,
-    nameTextShadow = false,
-    nameTextShadowColorR = 0,
-    nameTextShadowColorG = 0,
-    nameTextShadowColorB = 0,
-    nameTextShadowOffset = 1,
-    nameTextOutline = "NONE",
-    healthTextX = 0,
-    healthTextY = 0,
-    healthTextSize = 11,
-    healthTextClassColor = false,
-    healthTextColorR = 1,
-    healthTextColorG = 1,
-    healthTextColorB = 1,
-    healthTextShadow = false,
-    healthTextShadowColorR = 0,
-    healthTextShadowColorG = 0,
-    healthTextShadowColorB = 0,
-    healthTextShadowOffset = 1,
-    healthTextOutline = "NONE",
-    showFriendlyAbsorb = false,
-    friendlyAbsorbOpacity = 0.8,
-    friendlyAbsorbColorR = 1,
-    friendlyAbsorbColorG = 1,
-    friendlyAbsorbColorB = 1,
-    showHostileAbsorb = false,
-    hostileAbsorbOpacity = 0.7,
-    hostileAbsorbColorR = 0.4,
-    hostileAbsorbColorG = 0.1,
-    hostileAbsorbColorB = 0.1,
     showPartyLeader = false,
-    partyLeaderX = 2,
-    partyLeaderY = -2,
+    partyLeaderPoint = "TOPLEFT",
+    partyLeaderRelativePoint = "TOPLEFT",
+    partyLeaderOffsetX = 2,
+    partyLeaderOffsetY = -2,
     partyLeaderSize = 16,
     partyLeaderHideInCombat = false,
-    hideBlizzardAuras = false,
-    customIndicators = {
-        enabled = true,
-        nextId = 1,
-        items = {},
-    },
+}
+
+local POSITION_SETTING_MIGRATIONS = {
+    raidMarkerX = "raidMarkerOffsetX",
+    raidMarkerY = "raidMarkerOffsetY",
+    threatIndicatorX = "threatIndicatorOffsetX",
+    threatIndicatorY = "threatIndicatorOffsetY",
+    partyLeaderX = "partyLeaderOffsetX",
+    partyLeaderY = "partyLeaderOffsetY",
+}
+
+local RAID_GROWTH_MIGRATIONS = {
+    DEFAULT = "RIGHT",
+    HORIZONTAL = "RIGHT",
+    VERTICAL = "RIGHT",
+    DOWN = "RIGHT",
+    UP = "LEFT",
+}
+
+local SETTING_FEATURES = {
+    raidFrameGrowth = "frameLayout",
+    showRaidMarkers = "raidMarker",
+    raidMarkerPoint = "raidMarker",
+    raidMarkerRelativePoint = "raidMarker",
+    raidMarkerOffsetX = "raidMarker",
+    raidMarkerOffsetY = "raidMarker",
+    raidMarkerSize = "raidMarker",
+    showRoleIcons = "roleIcon",
+    showThreatIndicator = "threatIndicator",
+    threatIndicatorBlink = "threatIndicator",
+    threatIndicatorShape = "threatIndicator",
+    threatIndicatorPoint = "threatIndicator",
+    threatIndicatorRelativePoint = "threatIndicator",
+    threatIndicatorOffsetX = "threatIndicator",
+    threatIndicatorOffsetY = "threatIndicator",
+    threatIndicatorSize = "threatIndicator",
+    showPartyLeader = "partyLeader",
+    partyLeaderPoint = "partyLeader",
+    partyLeaderRelativePoint = "partyLeader",
+    partyLeaderOffsetX = "partyLeader",
+    partyLeaderOffsetY = "partyLeader",
+    partyLeaderSize = "partyLeader",
+    partyLeaderHideInCombat = "partyLeader",
+}
+
+local VALID_FEATURES = {
+    frameLayout = true,
+    raidMarker = true,
+    roleIcon = true,
+    threatIndicator = true,
+    partyLeader = true,
 }
 
 local GLOBAL_DEFAULTS = {
@@ -147,30 +160,6 @@ function Addon:SetUseRaidStylePartyFrames(enabled, retryCount)
     return true
 end
 
-local function CopyDefaults()
-    local copy = {}
-    for key, value in pairs(defaults) do
-        if type(value) == "table" then
-            local t = {}
-            for k, v in pairs(value) do
-                if type(v) == "table" then
-                    local inner = {}
-                    for ik, iv in pairs(v) do
-                        inner[ik] = iv
-                    end
-                    t[k] = inner
-                else
-                    t[k] = v
-                end
-            end
-            copy[key] = t
-        else
-            copy[key] = value
-        end
-    end
-    return copy
-end
-
 local function DeepCopy(value)
     if type(value) ~= "table" then
         return value
@@ -183,18 +172,46 @@ local function DeepCopy(value)
     return copy
 end
 
+local function NormalizeProfile(profile)
+    for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
+        if profile[newKey] == nil and profile[oldKey] ~= nil then
+            profile[newKey] = profile[oldKey]
+        end
+    end
+
+    profile.raidFrameGrowth = RAID_GROWTH_MIGRATIONS[profile.raidFrameGrowth]
+        or profile.raidFrameGrowth
+
+    for key in pairs(profile) do
+        if defaults[key] == nil then
+            profile[key] = nil
+        end
+    end
+
+    for key, value in pairs(defaults) do
+        if type(profile[key]) ~= type(value) then
+            profile[key] = DeepCopy(value)
+        end
+    end
+end
+
 local function GetCurrentProfile()
     return BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile]
 end
 
 local function GetGlobalSettings()
-    if not BetterRaidFramesDB.globalSettings then
+    if type(BetterRaidFramesDB.globalSettings) ~= "table" then
         BetterRaidFramesDB.globalSettings = {}
     end
 
     local settings = BetterRaidFramesDB.globalSettings
+    for key in pairs(settings) do
+        if GLOBAL_DEFAULTS[key] == nil then
+            settings[key] = nil
+        end
+    end
     for key, value in pairs(GLOBAL_DEFAULTS) do
-        if settings[key] == nil then
+        if type(settings[key]) ~= "string" then
             settings[key] = value
         end
     end
@@ -203,12 +220,12 @@ local function GetGlobalSettings()
 end
 
 local function InitializeDB()
-    if not BetterRaidFramesDB then
+    if type(BetterRaidFramesDB) ~= "table" then
         BetterRaidFramesDB = {}
     end
 
     -- Migrate from old flat structure to profiles
-    if not BetterRaidFramesDB.profiles then
+    if type(BetterRaidFramesDB.profiles) ~= "table" then
         local oldSettings = {}
         local hasOldSettings = false
 
@@ -220,11 +237,12 @@ local function InitializeDB()
             end
         end
 
-        -- Clean up old migration keys
-        BetterRaidFramesDB.showAbsorbShield = nil
-        BetterRaidFramesDB.customThreatBorder = nil
-        BetterRaidFramesDB.namePosition = nil
-        BetterRaidFramesDB.threatIndicatorPosition = nil
+        for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
+            if oldSettings[newKey] == nil and BetterRaidFramesDB[oldKey] ~= nil then
+                oldSettings[newKey] = BetterRaidFramesDB[oldKey]
+                hasOldSettings = true
+            end
+        end
 
         BetterRaidFramesDB.profiles = {}
         BetterRaidFramesDB.currentProfile = "Default"
@@ -232,24 +250,30 @@ local function InitializeDB()
         if hasOldSettings then
             BetterRaidFramesDB.profiles["Default"] = oldSettings
         else
-            BetterRaidFramesDB.profiles["Default"] = CopyDefaults()
+            BetterRaidFramesDB.profiles["Default"] = DeepCopy(defaults)
         end
     end
 
-    -- Ensure current profile exists
-    if not BetterRaidFramesDB.currentProfile then
-        BetterRaidFramesDB.currentProfile = "Default"
+    for name, profile in pairs(BetterRaidFramesDB.profiles) do
+        if type(name) ~= "string" or type(profile) ~= "table" then
+            BetterRaidFramesDB.profiles[name] = nil
+        else
+            NormalizeProfile(profile)
+        end
     end
-    if not BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile] then
-        BetterRaidFramesDB.profiles["Default"] = CopyDefaults()
+
+    if not BetterRaidFramesDB.profiles.Default then
+        BetterRaidFramesDB.profiles.Default = DeepCopy(defaults)
+    end
+    if type(BetterRaidFramesDB.currentProfile) ~= "string"
+        or not BetterRaidFramesDB.profiles[BetterRaidFramesDB.currentProfile]
+    then
         BetterRaidFramesDB.currentProfile = "Default"
     end
 
-    -- Fill in missing defaults for current profile
-    local profile = GetCurrentProfile()
-    for key, value in pairs(defaults) do
-        if profile[key] == nil then
-            profile[key] = value
+    for key in pairs(BetterRaidFramesDB) do
+        if key ~= "profiles" and key ~= "currentProfile" and key ~= "globalSettings" then
+            BetterRaidFramesDB[key] = nil
         end
     end
 
@@ -257,32 +281,85 @@ local function InitializeDB()
 end
 
 local function HookRaidFrames()
+    Addon:InitializeRaidFrameLayout()
     Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
-    Addon:HookAuraBorders()
-    Addon:HookName()
-    Addon:HookHealthText()
-    Addon:HookFriendlyAbsorb()
-    Addon:HookHostileAbsorb()
     Addon:HookPartyLeader()
-    Addon:HookCustomIndicators()
+end
+
+local pendingFeatureUpdates = {}
+local updateThrottleFrame
+local activeFeatures
+local activeSettings
+local activeConfigOpen
+local activeInCombat
+
+local function UpdateFrame(frame)
+    if not activeFeatures or activeFeatures.raidMarker then Addon:UpdateRaidMarker(frame, activeSettings) end
+    if not activeFeatures or activeFeatures.roleIcon then Addon:UpdateRoleIcon(frame, activeSettings) end
+    if not activeFeatures or activeFeatures.threatIndicator then
+        Addon:UpdateThreatIndicator(frame, activeSettings, activeConfigOpen)
+    end
+    if not activeFeatures or activeFeatures.partyLeader then
+        Addon:UpdatePartyLeader(frame, activeSettings, activeInCombat)
+    end
+end
+
+local function UpdateFrames(features)
+    local updateAll = features == nil
+    local updateLayout = updateAll or features.frameLayout
+    local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
+        or features.threatIndicator or features.partyLeader
+    local updateThreat = updateAll or features.threatIndicator
+    local updatePartyLeader = updateAll or features.partyLeader
+
+    activeFeatures = features
+    activeSettings = GetCurrentProfile()
+    if updateLayout and Addon.UpdateRaidFrameLayout then
+        Addon:UpdateRaidFrameLayout(activeSettings)
+    end
+    activeConfigOpen = updateThreat and Addon:IsConfigOpen() or false
+    activeInCombat = updatePartyLeader and UnitAffectingCombat and UnitAffectingCombat("player") or false
+    if updateUnitFrames then
+        Addon:ForEachFrame(UpdateFrame)
+    end
+    activeFeatures = nil
+    activeSettings = nil
+end
+
+local function ClearPendingFeatureUpdates()
+    for feature in pairs(pendingFeatureUpdates) do
+        pendingFeatureUpdates[feature] = nil
+    end
+end
+
+local function FlushPendingFeatureUpdates()
+    if updateThrottleFrame then updateThrottleFrame:Hide() end
+    UpdateFrames(pendingFeatureUpdates)
+    ClearPendingFeatureUpdates()
+end
+
+local function RequestFeatureUpdate(feature)
+    pendingFeatureUpdates[feature] = true
+    if not updateThrottleFrame then
+        updateThrottleFrame = CreateFrame("Frame")
+        updateThrottleFrame:Hide()
+        updateThrottleFrame:SetScript("OnUpdate", FlushPendingFeatureUpdates)
+    end
+    updateThrottleFrame:Show()
+end
+
+function Addon:RequestFeatureUpdate(feature)
+    if not VALID_FEATURES[feature] then return false end
+    RequestFeatureUpdate(feature)
+    return true
 end
 
 function Addon:UpdateAllFrames()
-    Addon:ForEachFrame(function(frame)
-        Addon:UpdateRaidMarker(frame)
-        Addon:UpdateRoleIcon(frame)
-        Addon:UpdateThreatIndicator(frame)
-        Addon:UpdateAuraBorders(frame)
-        Addon:UpdateName(frame)
-        Addon:UpdateHealthText(frame)
-        Addon:UpdateFriendlyAbsorb(frame)
-        Addon:UpdateHostileAbsorb(frame)
-        Addon:UpdatePartyLeader(frame)
-        Addon:UpdateCustomIndicators(frame)
-    end)
-    
+    if updateThrottleFrame then updateThrottleFrame:Hide() end
+    ClearPendingFeatureUpdates()
+    UpdateFrames(nil)
 end
 
 function Addon:GetSetting(key)
@@ -290,12 +367,23 @@ function Addon:GetSetting(key)
     return profile and profile[key]
 end
 
+function Addon:GetSettings()
+    return GetCurrentProfile()
+end
+
 function Addon:SetSetting(key, value)
     local profile = GetCurrentProfile()
-    if profile then
-        profile[key] = value
+    if not profile or defaults[key] == nil then return false end
+    if profile[key] == value then return true end
+
+    profile[key] = value
+    local feature = SETTING_FEATURES[key]
+    if feature then
+        RequestFeatureUpdate(feature)
+    else
+        self:UpdateAllFrames()
     end
-    self:UpdateAllFrames()
+    return true
 end
 
 function Addon:GetCurrentProfileName()
@@ -303,13 +391,15 @@ function Addon:GetCurrentProfileName()
 end
 
 function Addon:GetGlobalSetting(key)
-    local settings = GetGlobalSettings()
-    return settings and settings[key]
+    return GetGlobalSettings()[key]
 end
 
 function Addon:SetGlobalSetting(key, value)
+    if GLOBAL_DEFAULTS[key] == nil or type(value) ~= "string" then return false end
+
     local settings = GetGlobalSettings()
     settings[key] = value
+    return true
 end
 
 function Addon:GetProfileList()
@@ -380,32 +470,30 @@ end
 function Addon:SwitchProfile(name)
     if BetterRaidFramesDB.profiles[name] then
         BetterRaidFramesDB.currentProfile = name
-        -- Fill in missing defaults
-        local profile = GetCurrentProfile()
-        for key, value in pairs(defaults) do
-            if profile[key] == nil then
-                profile[key] = value
-            end
-        end
+        NormalizeProfile(GetCurrentProfile())
         self:UpdateAllFrames()
         return true
     end
     return false
 end
 
+local function IsValidProfileName(name)
+    return type(name) == "string" and name:find("%S") ~= nil
+end
+
 function Addon:CreateProfile(name)
-    if not name or name == "" or BetterRaidFramesDB.profiles[name] then
+    if not IsValidProfileName(name) or BetterRaidFramesDB.profiles[name] then
         return false
     end
-    BetterRaidFramesDB.profiles[name] = CopyDefaults()
+    BetterRaidFramesDB.profiles[name] = DeepCopy(defaults)
     return true
 end
 
 function Addon:DuplicateProfile(sourceName, targetName)
-    if not sourceName or sourceName == "" or not BetterRaidFramesDB.profiles[sourceName] then
+    if not IsValidProfileName(sourceName) or not BetterRaidFramesDB.profiles[sourceName] then
         return false
     end
-    if not targetName or targetName == "" or BetterRaidFramesDB.profiles[targetName] then
+    if not IsValidProfileName(targetName) or BetterRaidFramesDB.profiles[targetName] then
         return false
     end
 
@@ -435,7 +523,7 @@ function Addon:DeleteProfile(name)
 end
 
 function Addon:RenameProfile(oldName, newName)
-    if oldName == "Default" or not newName or newName == "" then
+    if oldName == "Default" or not IsValidProfileName(newName) then
         return false
     end
     if not BetterRaidFramesDB.profiles[oldName] or BetterRaidFramesDB.profiles[newName] then
@@ -455,18 +543,6 @@ function Addon:RenameProfile(oldName, newName)
     end
     return true
 end
-
-function Addon:CopyToProfile(targetName)
-    if not BetterRaidFramesDB.profiles[targetName] then
-        return false
-    end
-    local currentProfile = GetCurrentProfile()
-    for key, value in pairs(currentProfile) do
-        BetterRaidFramesDB.profiles[targetName][key] = value
-    end
-    return true
-end
-
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
@@ -495,25 +571,28 @@ local function RegisterOptionsPanel()
     Settings.RegisterAddOnCategory(category)
 end
 
-frame:SetScript("OnEvent", function(self, event, arg1)
+frame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         InitializeDB()
         HookRaidFrames()
         Addon:HookEditMode()
         RegisterOptionsPanel()
     elseif event == "PLAYER_ENTERING_WORLD" then
+        Addon:InitializeRaidFrameLayout()
         if not Addon:ApplyAutomaticProfile(true) then
             Addon:UpdateAllFrames()
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
-        Addon:ApplyAutomaticProfile(true)
+        if not Addon:ApplyAutomaticProfile(true) then
+            Addon:RequestFeatureUpdate("partyLeader")
+        end
     end
 end)
 
 SLASH_BETTERRAIDFRAMES1 = "/brf"
 SLASH_BETTERRAIDFRAMES2 = "/betterraidframes"
 
-SlashCmdList["BETTERRAIDFRAMES"] = function(msg)
+SlashCmdList["BETTERRAIDFRAMES"] = function()
     Addon:OpenConfig()
 end
 
