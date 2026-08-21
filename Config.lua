@@ -146,9 +146,9 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
     return sliderFrame
 end
 
-local function CreateSubCheckbox(parent, label, settingKey, yOffset)
+local function CreateSubCheckbox(parent, label, settingKey, yOffset, xOffset)
     local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
-    checkbox:SetPoint("TOPLEFT", 24, yOffset)
+    checkbox:SetPoint("TOPLEFT", xOffset or 24, yOffset)
     checkbox.Text:SetText(label)
     checkbox.Text:SetFontObject("GameFontHighlight")
 
@@ -161,6 +161,73 @@ local function CreateSubCheckbox(parent, label, settingKey, yOffset)
         checkbox:SetChecked(Addon:GetSetting(settingKey))
     end)
     return checkbox
+end
+
+local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settingKeyB, yOffset)
+    local container = CreateFrame("Frame", nil, parent)
+    container:SetPoint("TOPLEFT", 24, yOffset)
+    container:SetSize(CONTROL_WIDTH, 26)
+
+    local labelText = container:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    labelText:SetPoint("LEFT", 0, 0)
+    labelText:SetWidth(CONTROL_LABEL_WIDTH)
+    labelText:SetJustifyH("LEFT")
+    labelText:SetText(label)
+
+    local colorSwatch = CreateFrame("Button", nil, container)
+    colorSwatch:SetSize(20, 20)
+    colorSwatch:SetPoint("LEFT", labelText, "RIGHT", 8, 0)
+
+    local border = colorSwatch:CreateTexture(nil, "BACKGROUND")
+    border:SetAllPoints()
+    border:SetColorTexture(0, 0, 0, 1)
+
+    local color = colorSwatch:CreateTexture(nil, "ARTWORK")
+    color:SetPoint("TOPLEFT", 1, -1)
+    color:SetPoint("BOTTOMRIGHT", -1, 1)
+
+    local function RefreshColor()
+        color:SetColorTexture(
+            Addon:GetSetting(settingKeyR) or 0,
+            Addon:GetSetting(settingKeyG) or 0,
+            Addon:GetSetting(settingKeyB) or 0,
+            1
+        )
+    end
+
+    colorSwatch:SetScript("OnClick", function()
+        local originalR = Addon:GetSetting(settingKeyR) or 0
+        local originalG = Addon:GetSetting(settingKeyG) or 0
+        local originalB = Addon:GetSetting(settingKeyB) or 0
+
+        local function SetColor(r, g, b)
+            Addon:SetSetting(settingKeyR, r)
+            Addon:SetSetting(settingKeyG, g)
+            Addon:SetSetting(settingKeyB, b)
+            color:SetColorTexture(r, g, b, 1)
+        end
+
+        ColorPickerFrame:SetupColorPickerAndShow({
+            swatchFunc = function()
+                SetColor(ColorPickerFrame:GetColorRGB())
+            end,
+            cancelFunc = function()
+                SetColor(originalR, originalG, originalB)
+            end,
+            r = originalR,
+            g = originalG,
+            b = originalB,
+            hasOpacity = false,
+        })
+    end)
+
+    container.SetEnabled = function(_, enabled)
+        colorSwatch:SetEnabled(enabled)
+    end
+
+    RegisterSettingRefresher(RefreshColor)
+    RefreshColor()
+    return container
 end
 
 local function CreateConfigFrame()
@@ -195,6 +262,7 @@ local function CreateConfigFrame()
         { id = "frameLayout",      label = "Frame Layout" },
         { id = "raidMarkers",      label = "Raid Markers" },
         { id = "roleIcons",        label = "Role Icons" },
+        { id = "names",            label = "Name" },
         { id = "partyLeader",      label = "Party Leader" },
         { id = "threatIndicator",  label = "Threat Indicator" },
     }
@@ -520,6 +588,75 @@ local function CreateConfigFrame()
         CreateDropdown(content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y)
     end
 
+    local function BuildNamesTab(content)
+        local y = BeginPage(content, "Name")
+        local options = {}
+        local updateOptions
+
+        CreateCheckbox(content, "Customize names", "customizeNames", y, function(checked)
+            updateOptions(checked)
+        end)
+
+        local resetNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        resetNote:SetPoint("TOPLEFT", 214, y - 4)
+        resetNote:SetText("Disable to restore Blizzard's default style.")
+        resetNote:SetTextColor(0.75, 0.75, 0.75)
+        y = y - 34
+
+        local xSlider = CreateHorizontalSlider(content, "Relative X:",
+            "nameOffsetX", -250, 250, 1, y)
+        table.insert(options, xSlider.container)
+        y = y - 32
+
+        local ySlider = CreateHorizontalSlider(content, "Relative Y:",
+            "nameOffsetY", -250, 250, 1, y)
+        table.insert(options, ySlider.container)
+        y = y - 32
+
+        local sizeSlider = CreateHorizontalSlider(content, "Font size:", "nameSize", 6, 20, 1, y)
+        table.insert(options, sizeSlider.container)
+        y = y - 32
+
+        local maxLengthSlider = CreateHorizontalSlider(content, "Max length:",
+            "nameTruncateLength", 3, 20, 1, y)
+        table.insert(options, maxLengthSlider.container)
+        y = y - 30
+
+        table.insert(options, CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, 24))
+        table.insert(options, CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, 230))
+        y = y - 28
+
+        table.insert(options, CreateSubCheckbox(content, "Use class color", "nameClassColor", y, 24))
+        table.insert(options, CreateSubCheckbox(content, "Cyrillic to Latin", "nameCyrillicToLatin", y, 230))
+        y = y - 28
+
+        table.insert(options, CreateSubCheckbox(content, "Hide when dead", "nameHideOnDead", y, 24))
+        table.insert(options, CreateSubCheckbox(content, "Hide when offline", "nameHideOnOffline", y, 230))
+        y = y - 30
+
+        table.insert(options, CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y))
+        y = y - 30
+
+        table.insert(options, CreateColorPicker(content, "Shadow color:",
+            "nameTextShadowColorR", "nameTextShadowColorG", "nameTextShadowColorB", y))
+        y = y - 30
+
+        local shadowOffsetSlider = CreateHorizontalSlider(content, "Shadow offset:",
+            "nameTextShadowOffset", 1, 3, 1, y)
+        table.insert(options, shadowOffsetSlider.container)
+        y = y - 34
+
+        local outlineDropdown = CreateDropdown(content, "Outline:", "nameTextOutline",
+            Addon.NameOutlineOptions, y)
+        AddDropdownControl(options, outlineDropdown)
+
+        updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
+        RegisterSettingRefresher(function()
+            updateOptions(Addon:GetSetting("customizeNames"))
+        end)
+        updateOptions(Addon:GetSetting("customizeNames"))
+    end
+
     local function BuildPartyLeaderTab(content)
         local y = BeginPage(content, "Party Leader")
         local options = {}
@@ -583,6 +720,7 @@ local function CreateConfigFrame()
         frameLayout = BuildFrameLayoutTab,
         raidMarkers = BuildRaidMarkersTab,
         roleIcons = BuildRoleIconsTab,
+        names = BuildNamesTab,
         partyLeader = BuildPartyLeaderTab,
         threatIndicator = BuildThreatTab,
     }

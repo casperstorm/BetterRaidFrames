@@ -17,6 +17,7 @@ Discord username: `async`
 - Raid target markers with configurable anchors, offsets, and sizing
 - Role icon display options
 - Party leader indicator with configurable anchor, offsets, sizing, and combat visibility
+- Optional name styling with positioning, sizing, truncation, class colors, transliteration, and text effects
 - Square or circular threat indicator with configurable anchor, offsets, sizing, and optional blinking
 - Compact, Blizzard-style configuration window
 - Event-driven updates designed to avoid unnecessary frame processing

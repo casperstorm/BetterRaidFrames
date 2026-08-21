@@ -24,6 +24,23 @@ local defaults = {
     partyLeaderOffsetY = -2,
     partyLeaderSize = 16,
     partyLeaderHideInCombat = false,
+    customizeNames = false,
+    nameOffsetX = 0,
+    nameOffsetY = 0,
+    nameSize = 11,
+    nameHideServer = false,
+    nameTruncate = false,
+    nameTruncateLength = 8,
+    nameClassColor = false,
+    nameCyrillicToLatin = false,
+    nameHideOnDead = false,
+    nameHideOnOffline = false,
+    nameTextShadow = false,
+    nameTextShadowColorR = 0,
+    nameTextShadowColorG = 0,
+    nameTextShadowColorB = 0,
+    nameTextShadowOffset = 1,
+    nameTextOutline = "NONE",
 }
 
 local POSITION_SETTING_MIGRATIONS = {
@@ -33,6 +50,8 @@ local POSITION_SETTING_MIGRATIONS = {
     threatIndicatorY = "threatIndicatorOffsetY",
     partyLeaderX = "partyLeaderOffsetX",
     partyLeaderY = "partyLeaderOffsetY",
+    nameX = "nameOffsetX",
+    nameY = "nameOffsetY",
 }
 
 local RAID_GROWTH_MIGRATIONS = {
@@ -67,6 +86,23 @@ local SETTING_FEATURES = {
     partyLeaderOffsetY = "partyLeader",
     partyLeaderSize = "partyLeader",
     partyLeaderHideInCombat = "partyLeader",
+    customizeNames = "name",
+    nameOffsetX = "name",
+    nameOffsetY = "name",
+    nameSize = "name",
+    nameHideServer = "name",
+    nameTruncate = "name",
+    nameTruncateLength = "name",
+    nameClassColor = "name",
+    nameCyrillicToLatin = "name",
+    nameHideOnDead = "name",
+    nameHideOnOffline = "name",
+    nameTextShadow = "name",
+    nameTextShadowColorR = "name",
+    nameTextShadowColorG = "name",
+    nameTextShadowColorB = "name",
+    nameTextShadowOffset = "name",
+    nameTextOutline = "name",
 }
 
 local VALID_FEATURES = {
@@ -75,6 +111,7 @@ local VALID_FEATURES = {
     roleIcon = true,
     threatIndicator = true,
     partyLeader = true,
+    name = true,
 }
 
 local GLOBAL_DEFAULTS = {
@@ -286,6 +323,7 @@ local function HookRaidFrames()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
     Addon:HookPartyLeader()
+    Addon:HookName()
 end
 
 local pendingFeatureUpdates = {}
@@ -304,13 +342,14 @@ local function UpdateFrame(frame)
     if not activeFeatures or activeFeatures.partyLeader then
         Addon:UpdatePartyLeader(frame, activeSettings, activeInCombat)
     end
+    if not activeFeatures or activeFeatures.name then Addon:UpdateName(frame, activeSettings) end
 end
 
 local function UpdateFrames(features)
     local updateAll = features == nil
     local updateLayout = updateAll or features.frameLayout
     local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
-        or features.threatIndicator or features.partyLeader
+        or features.threatIndicator or features.partyLeader or features.name
     local updateThreat = updateAll or features.threatIndicator
     local updatePartyLeader = updateAll or features.partyLeader
 

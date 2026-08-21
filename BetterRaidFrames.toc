@@ -13,6 +13,7 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 
 BetterRaidFrames.lua
 Utils.lua
+Name.lua
 RaidFrameLayout.lua
 RaidMarkers.lua
 RoleIcons.lua

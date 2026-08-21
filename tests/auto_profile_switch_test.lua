@@ -23,6 +23,7 @@ local featureUpdates = {
     roleIcon = 0,
     threatIndicator = 0,
     partyLeader = 0,
+    name = 0,
 }
 
 function framePrototype:RegisterEvent() end
@@ -58,12 +59,14 @@ local Addon = {
     UpdateRoleIcon = function() featureUpdates.roleIcon = featureUpdates.roleIcon + 1 end,
     UpdateThreatIndicator = function() featureUpdates.threatIndicator = featureUpdates.threatIndicator + 1 end,
     UpdatePartyLeader = function() featureUpdates.partyLeader = featureUpdates.partyLeader + 1 end,
+    UpdateName = function() featureUpdates.name = featureUpdates.name + 1 end,
     UpdateRaidFrameLayout = function() featureUpdates.frameLayout = featureUpdates.frameLayout + 1 end,
     InitializeRaidFrameLayout = function() end,
     HookRaidMarkers = function() end,
     HookRoleIcons = function() end,
     HookThreatIndicator = function() end,
     HookPartyLeader = function() end,
+    HookName = function() end,
     HookEditMode = function() end,
 }
 
@@ -79,6 +82,8 @@ BetterRaidFramesDB = {
             threatIndicatorY = -3,
             partyLeaderX = 4,
             partyLeaderY = -5,
+            nameX = 6,
+            nameY = -7,
             raidFrameGrowth = "HORIZONTAL",
             removedSetting = true,
         },
@@ -110,6 +115,10 @@ assertEqual(BetterRaidFramesDB.profiles.Default.partyLeaderOffsetY, -5,
     "legacy party leader Y should migrate to a relative offset")
 assertEqual(BetterRaidFramesDB.profiles.Default.partyLeaderPoint, "TOPLEFT",
     "legacy party leader position should retain its top-left anchor")
+assertEqual(BetterRaidFramesDB.profiles.Default.nameOffsetX, 6,
+    "legacy name X should migrate to a relative offset")
+assertEqual(BetterRaidFramesDB.profiles.Default.nameOffsetY, -7,
+    "legacy name Y should migrate to a relative offset")
 assertEqual(BetterRaidFramesDB.profiles.Default.raidFrameGrowth, "RIGHT",
     "legacy horizontal growth should migrate to right")
 assertEqual(BetterRaidFramesDB.profiles.Default.removedSetting, nil,
@@ -129,6 +138,14 @@ assertEqual(featureUpdates.raidMarker, 1, "a raid marker setting should only upd
 assertEqual(featureUpdates.roleIcon, 0, "a raid marker setting should not update role icons")
 assertEqual(featureUpdates.threatIndicator, 0, "a raid marker setting should not update threat indicators")
 assertEqual(featureUpdates.partyLeader, 0, "a raid marker setting should not update party leader indicators")
+assertEqual(featureUpdates.name, 0, "a raid marker setting should not update names")
+
+local passesBeforeName = framePasses
+assertEqual(Addon:SetSetting("customizeNames", true), true, "name customization should be configurable")
+assertEqual(Addon:SetSetting("nameSize", 14), true, "name styling should be configurable")
+onUpdateHandler()
+assertEqual(framePasses, passesBeforeName + 1, "name settings should coalesce into one frame pass")
+assertEqual(featureUpdates.name, 1, "name settings should only update names")
 
 local passesBeforeLayout = framePasses
 local layoutUpdatesBefore = featureUpdates.frameLayout
