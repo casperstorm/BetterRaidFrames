@@ -47,14 +47,14 @@ Open Blizzard Edit Mode and select the Party or Raid Frames.
 
 **How do I highlight a buff such as Echo?**
 
-Open **Buff Indicators** in `/brf`, enter the buff's name or spell ID (Echo: `364343`), and select **Add Buff**. Each buff gets its own segment inside every Raid-Style Party or Raid Frame. Click its colour swatch to choose a colour. **Mine** tracks your casts (including your pet); uncheck it to include any caster. The buff list scrolls when needed, and the animated preview reflects the display settings.
+Open **Buff Indicators** in `/brf`, enter the buff's name or spell ID (Echo: `364343`), and select **Add Buff**. Each buff gets its own segment inside every Raid-Style Party or Raid Frame. Click **Settings** beside a buff to expand its display controls. Each buff has its own position, thickness, progress direction, and frame level, so you can put Echo on the left and another buff on the right. Click its colour swatch to choose a colour. **Mine** tracks your casts (including your pet); uncheck it to include any caster. The buff list scrolls when needed, and the animated preview shows all buffs together.
 
 - **Progress:** Fill shows elapsed time; Drain starts full and shrinks as time runs out. Top and Bottom fill left to right and drain right to left. Left and Right fill top to bottom and drain bottom to top. A faint coloured track marks the active buff even when its fill is near zero.
 - **Position:** Top, Bottom, Left, or Right, inset two pixels from the frame edge. Left and Right use vertical bars.
-- **Thickness:** 1–12 pixels (default: 2). This controls bar height on the top/bottom edges and bar width on the left/right edges. Existing Height settings are preserved.
+- **Thickness:** 1–12 pixels (default: 2). This controls bar height on the top/bottom edges and bar width on the left/right edges.
 - **Frame level:** Adjust the drawing order relative to the raid frame, from -10 to 200 (default: 10). Higher values draw above other elements; lower values can place indicators behind them. This changes the indicators' level within the raid frame's existing frame strata.
 
-One buff uses the full line. Multiple buffs divide the line into fixed segments in list order: left to right for horizontal edges, top to bottom for vertical edges. Space is reserved for disabled or absent buffs. Removing a buff redistributes the segments. Settings belong to the current profile. Blizzard's normal buff and debuff icons remain in place.
+One buff on an edge uses the full line. Multiple buffs on the same edge divide it into fixed segments in list order: left to right for horizontal edges, top to bottom for vertical edges. Space is reserved for disabled or absent buffs. Moving or removing a buff redistributes the affected edges. Settings belong to the current profile. Existing shared display settings are copied into each saved buff when you update. Blizzard's normal buff and debuff icons remain in place.
 
 These indicators use the Retail 12.1 aura container API; Blizzard handles aura matching, visibility, and duration progress. Buffs without a duration still have a visible track while present. If an existing display cannot be restyled during aura restrictions, changes are saved and applied when restrictions end. Indicators awaiting new settings are hidden. Use the buff's spell ID when it differs from the spell that applies it.
 

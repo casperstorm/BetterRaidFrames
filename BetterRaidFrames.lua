@@ -2,10 +2,6 @@ local ADDON_NAME, Addon = ...
 
 local defaults = {
     buffIndicators = {},
-    buffIndicatorHeight = 2,
-    buffIndicatorDirection = "ELAPSED",
-    buffIndicatorPosition = "TOP",
-    buffIndicatorFrameLevel = 10,
     raidFrameGrowth = "RIGHT",
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -69,10 +65,6 @@ local RAID_GROWTH_MIGRATIONS = {
 
 local SETTING_FEATURES = {
     buffIndicators = "buffIndicators",
-    buffIndicatorHeight = "buffIndicators",
-    buffIndicatorDirection = "buffIndicators",
-    buffIndicatorPosition = "buffIndicators",
-    buffIndicatorFrameLevel = "buffIndicators",
     raidFrameGrowth = "frameLayout",
     showRaidMarkers = "raidMarker",
     raidMarkerPoint = "raidMarker",
@@ -221,6 +213,8 @@ local function DeepCopy(value)
 end
 
 local function NormalizeProfile(profile)
+    -- Copy the former shared display settings into each buff before removing them.
+    profile.buffIndicators = Addon:NormalizeBuffIndicators(profile.buffIndicators, profile)
     for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
         if profile[newKey] == nil and profile[oldKey] ~= nil then
             profile[newKey] = profile[oldKey]
@@ -241,11 +235,6 @@ local function NormalizeProfile(profile)
             profile[key] = DeepCopy(value)
         end
     end
-    profile.buffIndicators = Addon:NormalizeBuffIndicators(profile.buffIndicators)
-    profile.buffIndicatorHeight = Addon:NormalizeBuffIndicatorHeight(profile.buffIndicatorHeight)
-    profile.buffIndicatorDirection = Addon:NormalizeBuffIndicatorDirection(profile.buffIndicatorDirection)
-    profile.buffIndicatorPosition = Addon:NormalizeBuffIndicatorPosition(profile.buffIndicatorPosition)
-    profile.buffIndicatorFrameLevel = Addon:NormalizeBuffIndicatorFrameLevel(profile.buffIndicatorFrameLevel)
 end
 
 local function GetCurrentProfile()

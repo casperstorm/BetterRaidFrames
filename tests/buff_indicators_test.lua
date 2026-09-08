@@ -148,6 +148,9 @@ end
 assert(loadfile("Utils.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("BuffIndicators.lua"))("BetterRaidFrames", Addon)
 Addon:HookBuffIndicators()
+local function ChangeAll(changes)
+    for index in ipairs(settings.buffIndicators) do Addon:ChangeBuffIndicator(index, changes) end
+end
 local frame = UnitFrame("party1")
 Addon:UpdateBuffIndicators(frame)
 equal(#containers, 0, "empty profiles should allocate no aura displays")
@@ -223,15 +226,15 @@ assert(not Addon:HasPendingBuffIndicators())
 frame.width = 120
 frame.scripts.OnSizeChanged()
 equal(rejuv.button.x, 60, "resizing should redistribute the segments")
-settings.buffIndicatorHeight = 7
+ChangeAll({ thickness = 7 })
 Addon:UpdateBuffIndicators(frame)
 equal(echo.button.height, 7, "height changes should resize every segment")
 equal(rejuv.button.height, 7)
 restricted = true
-settings.buffIndicatorHeight = 10
-settings.buffIndicatorDirection = "REMAINING"
-settings.buffIndicatorPosition = "BOTTOM"
-settings.buffIndicatorFrameLevel = 40
+ChangeAll({ thickness = 10 })
+ChangeAll({ direction = "REMAINING" })
+ChangeAll({ position = "BOTTOM" })
+ChangeAll({ frameLevel = 40 })
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.height, 7, "height changes must wait while aura buttons are forbidden")
 equal(rejuv.button.point, "TOPLEFT", "position changes must wait while forbidden")
@@ -252,7 +255,7 @@ equal(rejuv.button.level, 46)
 equal(rejuv.button.bar.level, 47)
 equal(container.shown, true)
 
-settings.buffIndicatorPosition = "LEFT"
+ChangeAll({ position = "LEFT" })
 Addon:UpdateBuffIndicators(frame)
 equal(echo.button.point, "TOPLEFT")
 equal(echo.button.x, 2)
@@ -265,7 +268,7 @@ equal(rejuv.button.bar.orientation, "VERTICAL")
 equal(rejuv.button.bar.reverseFill, false)
 equal(rejuv.button.durationOptions.direction, Enum.StatusBarTimerDirection.RemainingTime)
 equal(next(echo.filters.includeSpellIDs), nil, "disabled buffs should keep their vertical segment")
-settings.buffIndicatorPosition = "RIGHT"
+ChangeAll({ position = "RIGHT" })
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.point, "TOPRIGHT")
 equal(rejuv.button.relativePoint, "TOPRIGHT")
@@ -276,7 +279,7 @@ frame.scripts.OnSizeChanged()
 equal(rejuv.button.height, 48, "vertical segments must follow frame height changes")
 equal(rejuv.button.y, -50)
 restricted = true
-settings.buffIndicatorPosition = "LEFT"
+ChangeAll({ position = "LEFT" })
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.point, "TOPRIGHT", "edge changes must wait while buttons are forbidden")
 equal(container.shown, false)
@@ -284,7 +287,7 @@ restricted = false
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.point, "TOPLEFT")
 equal(container.shown, true)
-settings.buffIndicatorPosition = "BOTTOM"
+ChangeAll({ position = "BOTTOM" })
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.bar.orientation, "HORIZONTAL", "returning to top/bottom must restore horizontal progress")
 equal(rejuv.button.width, 58)
@@ -296,19 +299,19 @@ equal(echo.button.width, 116)
 equal(next(rejuv.filters.includeSpellIDs), nil, "removed slots must not retain their old buffs")
 equal(buttonCount, 2, "editing or removing entries must not leak aura buttons")
 
-settings.buffIndicatorDirection = "ELAPSED"
+ChangeAll({ direction = "ELAPSED" })
 Addon:UpdateBuffIndicators(frame)
 assert(Addon:AddBuffIndicator("Echo"))
 Addon:UpdateBuffIndicators(frame)
 equal(rejuv.button.durationOptions.direction, Enum.StatusBarTimerDirection.ElapsedTime,
     "reusing a previously removed slot must apply the current direction")
 Addon:RemoveBuffIndicator(2)
-settings.buffIndicatorDirection = "REMAINING"
+ChangeAll({ direction = "REMAINING" })
 frame.level = 8
 Addon:UpdateBuffIndicators(frame)
 equal(container.level, 48, "layering should follow changes to the parent frame level")
 equal(echo.button.bar.level, 50)
-settings.buffIndicatorPosition = "RIGHT"
+ChangeAll({ position = "RIGHT" })
 Addon:UpdateBuffIndicators(frame)
 equal(echo.button.width, 10)
 equal(echo.button.height, 96, "a single vertical indicator should span the selected edge")
@@ -343,6 +346,90 @@ Addon:RemoveBuffIndicator(1)
 Addon:UpdateBuffIndicators(anotherFrame)
 equal(containers[2].enabled, false, "empty profiles should disable their containers even in combat")
 
+restricted = false
+settings.buffIndicators = Addon:NormalizeBuffIndicators({
+    { spellID = 364343, position = "TOP", thickness = 3, frameLevel = 20 },
+    { spellID = 774, position = "LEFT", thickness = 5, direction = "REMAINING", frameLevel = 7 },
+    { spellID = 8936, position = "TOP", thickness = 7, direction = "REMAINING", frameLevel = 80 },
+    { spellID = 355936, position = "RIGHT", thickness = 6, frameLevel = -10 },
+})
+local mixedFrame = UnitFrame("party3")
+Addon:UpdateBuffIndicators(mixedFrame)
+local mixed = containers[#containers]
+local top = mixed.slots["1"].button
+local left = mixed.slots["2"].button
+local secondTop = mixed.slots["3"].button
+local right = mixed.slots["4"].button
+equal(top.width, 47, "only buffs on the same edge should share its length")
+equal(top.height, 3)
+equal(secondTop.x, 50, "interleaved edges must not leave gaps on the top edge")
+equal(secondTop.height, 7, "thickness must belong to each buff")
+equal(left.width, 5)
+equal(left.height, 56, "a single left buff should span the full vertical edge")
+equal(left.point, "TOPLEFT")
+equal(right.point, "TOPRIGHT")
+equal(right.width, 6)
+equal(right.height, 56)
+equal(top.durationOptions.direction, Enum.StatusBarTimerDirection.ElapsedTime)
+equal(left.durationOptions.direction, Enum.StatusBarTimerDirection.RemainingTime)
+equal(secondTop.durationOptions.direction, Enum.StatusBarTimerDirection.RemainingTime)
+equal(right.durationOptions.direction, Enum.StatusBarTimerDirection.ElapsedTime)
+equal(top.bar.orientation, "HORIZONTAL")
+equal(left.bar.orientation, "VERTICAL")
+equal(mixed.level, 0, "the shared parent must stay below every individual frame level")
+equal(top.bar.level, 27)
+equal(left.bar.level, 14)
+equal(secondTop.bar.level, 87, "a high frame level must not raise other buffs")
+equal(right.bar.level, 2, "negative offsets must clamp without affecting other buffs")
+
+Addon:ChangeBuffIndicator(1, { enabled = false })
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(secondTop.x, 50, "disabled buffs should reserve their space on their own edge")
+equal(left.height, 56)
+Addon:ChangeBuffIndicator(2, { position = "TOP" })
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(left.x, 34, "moving a buff should redistribute only its old and new edges")
+equal(left.width, 31)
+equal(left.height, 5)
+equal(left.bar.orientation, "HORIZONTAL")
+equal(secondTop.x, 66)
+equal(right.height, 56)
+Addon:ChangeBuffIndicator(1, { position = "BOTTOM" })
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(left.x, 2)
+equal(left.width, 47)
+equal(secondTop.x, 50)
+restricted = true
+Addon:ChangeBuffIndicator(2, { position = "RIGHT", frameLevel = 50 })
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(mixed.shown, false)
+equal(left.bar.level, 14, "per-buff edits must wait for forbidden children to become accessible")
+restricted = false
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(left.bar.level, 57)
+equal(left.point, "TOPRIGHT")
+equal(left.height, 27)
+equal(right.y, -30)
+equal(right.height, 28)
+equal(secondTop.width, 96)
+Addon:RemoveBuffIndicator(1)
+Addon:UpdateBuffIndicators(mixedFrame)
+equal(mixed.slots["1"].filters.includeSpellIDs[774], true)
+equal(top.point, "TOPRIGHT", "removing another buff must preserve this buff's settings in a reused slot")
+equal(top.width, 5)
+equal(top.bar.level, 57)
+equal(top.durationOptions.direction, Enum.StatusBarTimerDirection.RemainingTime)
+equal(mixed.slots["2"].button.bar.level, 87)
+restricted = true
+local coldMixedFrame = UnitFrame("raid2")
+Addon:UpdateBuffIndicators(coldMixedFrame)
+local coldMixed = containers[#containers]
+equal(coldMixed.slots["1"].button.point, "TOPRIGHT", "mixed layouts must initialize safely under restrictions")
+equal(coldMixed.slots["2"].button.point, "TOPLEFT")
+equal(coldMixed.slots["1"].button.bar.level, 57)
+equal(coldMixed.slots["2"].button.bar.level, 87)
+equal(coldMixed.slots["3"].button.bar.level, 2)
+
 local normalized = Addon:NormalizeBuffIndicators({
     { spellID = 364343, r = -5, g = 2, b = 0 / 0 },
     { spellID = 364343 },
@@ -355,6 +442,17 @@ equal(#normalized, 1, "invalid or duplicate saved entries must be discarded")
 equal(normalized[1].r, 0)
 equal(normalized[1].g, 1)
 equal(normalized[1].b, 0.4)
+equal(normalized[1].thickness, 2)
+equal(normalized[1].direction, "ELAPSED")
+equal(normalized[1].position, "TOP")
+equal(normalized[1].frameLevel, 10)
+local malformed = Addon:NormalizeBuffIndicators({
+    { spellID = 364343, thickness = 100, direction = "invalid", position = false, frameLevel = -500 },
+})[1]
+equal(malformed.thickness, 12)
+equal(malformed.direction, "ELAPSED")
+equal(malformed.position, "TOP")
+equal(malformed.frameLevel, -10)
 local many = {}
 for index = 1, 20 do many[index] = { spellID = index } end
 equal(#Addon:NormalizeBuffIndicators(many), Addon.MAX_BUFF_INDICATORS)

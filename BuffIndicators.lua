@@ -70,7 +70,12 @@ function Addon:SetBuffIndicatorBarColor(bar, entry)
     bar.background:SetColorTexture(entry.r, entry.g, entry.b, 0.25)
 end
 
-function Addon:NormalizeBuffIndicators(entries)
+local function EntrySetting(entry, key, legacy, legacyKey)
+    if entry[key] ~= nil then return entry[key] end
+    return legacy and legacy[legacyKey]
+end
+
+function Addon:NormalizeBuffIndicators(entries, legacy)
     local result, seen = {}, {}
     if type(entries) ~= "table" then return result end
     for _, entry in ipairs(entries) do
@@ -83,6 +88,10 @@ function Addon:NormalizeBuffIndicators(entries)
                 r = ColorComponent(entry.r, color[1]),
                 g = ColorComponent(entry.g, color[2]),
                 b = ColorComponent(entry.b, color[3]),
+                thickness = self:NormalizeBuffIndicatorHeight(EntrySetting(entry, "thickness", legacy, "buffIndicatorHeight")),
+                direction = self:NormalizeBuffIndicatorDirection(EntrySetting(entry, "direction", legacy, "buffIndicatorDirection")),
+                position = self:NormalizeBuffIndicatorPosition(EntrySetting(entry, "position", legacy, "buffIndicatorPosition")),
+                frameLevel = self:NormalizeBuffIndicatorFrameLevel(EntrySetting(entry, "frameLevel", legacy, "buffIndicatorFrameLevel")),
             }
             seen[entry.spellID] = true
             if #result == self.MAX_BUFF_INDICATORS then break end
@@ -132,9 +141,27 @@ function Addon:GetBuffIndicatorSegment(length, count, index)
     return 2 + start, math.max(1, finish - start - (index < count and 1 or 0))
 end
 
-function Addon:LayoutBuffIndicator(region, frame, layout, count, index)
+function Addon:GetBuffIndicatorLayouts(entries, width, height, frameLevel)
+    local counts, indices, layouts = {}, {}, {}
+    for _, entry in ipairs(entries) do
+        counts[entry.position] = (counts[entry.position] or 0) + 1
+    end
+    for index, entry in ipairs(entries) do
+        local position = entry.position
+        indices[position] = (indices[position] or 0) + 1
+        layouts[index] = {
+            width = width, height = height, position = position,
+            thickness = entry.thickness, direction = entry.direction,
+            frameLevel = math.max(0, frameLevel + entry.frameLevel),
+            count = counts[position], index = indices[position],
+        }
+    end
+    return layouts
+end
+
+function Addon:LayoutBuffIndicator(region, frame, layout)
     local vertical = self:IsBuffIndicatorVertical(layout.position)
-    local offset, length = self:GetBuffIndicatorSegment(vertical and layout.height or layout.width, count, index)
+    local offset, length = self:GetBuffIndicatorSegment(vertical and layout.height or layout.width, layout.count, layout.index)
     region:ClearAllPoints()
     if vertical then
         local right = layout.position == "RIGHT"
@@ -172,13 +199,15 @@ local function EntriesEqual(a, b)
         local other = b[index]
         if entry.spellID ~= other.spellID or entry.enabled ~= other.enabled
             or entry.mineOnly ~= other.mineOnly or entry.r ~= other.r
-            or entry.g ~= other.g or entry.b ~= other.b then return false end
+            or entry.g ~= other.g or entry.b ~= other.b
+            or entry.thickness ~= other.thickness or entry.direction ~= other.direction
+            or entry.position ~= other.position or entry.frameLevel ~= other.frameLevel then return false end
     end
     return true
 end
 
-local function LayoutSlot(slot, frame, layout, count, index)
-    Addon:LayoutBuffIndicator(slot.button, frame, layout, count, index)
+local function LayoutSlot(slot, frame, layout)
+    Addon:LayoutBuffIndicator(slot.button, frame, layout)
     slot.button:SetFrameLevel(layout.frameLevel + 1)
 end
 
@@ -193,7 +222,7 @@ local function BindDurationBar(slot, direction)
     slot.direction = direction
 end
 
-local function CreateSlot(state, frame, layout, count, index, entry)
+local function CreateSlot(state, frame, layout, index, entry)
     local slot = {}
     -- initializeFrame is Blizzard's configuration window before the button
     -- becomes inaccessible. This also works for frames created during combat.
@@ -202,7 +231,7 @@ local function CreateSlot(state, frame, layout, count, index, entry)
         initializeFrame = function(button)
             slot.button = button
             button:EnableMouse(false)
-            LayoutSlot(slot, frame, layout, count, index)
+            LayoutSlot(slot, frame, layout)
             slot.bar = Addon:CreateBuffIndicatorBar(button)
             Addon:SetBuffIndicatorBarOrientation(slot.bar, layout.position)
             slot.bar:SetFrameLevel(layout.frameLevel + 2)
@@ -275,15 +304,9 @@ function Addon:UpdateBuffIndicators(frame, settings)
     BindUnit(state, unit)
     local width = frame:GetWidth()
     local height = frame:GetHeight()
-    local thickness = self:NormalizeBuffIndicatorHeight(settings.buffIndicatorHeight)
-    local direction = self:NormalizeBuffIndicatorDirection(settings.buffIndicatorDirection)
-    local position = self:NormalizeBuffIndicatorPosition(settings.buffIndicatorPosition)
-    local frameLevel = math.max(0, frame:GetFrameLevel()
-        + self:NormalizeBuffIndicatorFrameLevel(settings.buffIndicatorFrameLevel))
-    local layout = state.layout
-    if not EntriesEqual(state.entries, entries) or not layout or layout.width ~= width or layout.height ~= height
-        or layout.thickness ~= thickness or layout.direction ~= direction
-        or layout.position ~= position or layout.frameLevel ~= frameLevel then
+    local frameLevel = frame:GetFrameLevel()
+    if not EntriesEqual(state.entries, entries) or state.width ~= width or state.height ~= height
+        or state.frameLevel ~= frameLevel then
         for _, slot in ipairs(state.slots) do
             if slot.button:IsForbidden() then
                 -- Do not display the previous profile's colours under new settings.
@@ -294,24 +317,26 @@ function Addon:UpdateBuffIndicators(frame, settings)
             end
         end
 
-        layout = {
-            width = width, height = height, thickness = thickness,
-            direction = direction, position = position, frameLevel = frameLevel,
-        }
-        -- Update all three levels together only while the aura children are accessible.
-        state.container:SetFrameLevel(frameLevel)
+        local layouts = self:GetBuffIndicatorLayouts(entries, width, height, frameLevel)
+        local containerLevel = math.huge
+        for _, layout in ipairs(layouts) do
+            containerLevel = math.min(containerLevel, layout.frameLevel)
+        end
+        -- Keep the shared parent below every buff, then set each child's own level.
+        state.container:SetFrameLevel(containerLevel)
         for index, entry in ipairs(entries) do
             local slot = state.slots[index]
+            local layout = layouts[index]
             if slot then
-                LayoutSlot(slot, frame, layout, #entries, index)
-                self:SetBuffIndicatorBarOrientation(slot.bar, position)
-                slot.bar:SetFrameLevel(frameLevel + 2)
+                LayoutSlot(slot, frame, layout)
+                self:SetBuffIndicatorBarOrientation(slot.bar, layout.position)
+                slot.bar:SetFrameLevel(layout.frameLevel + 2)
                 self:SetBuffIndicatorBarColor(slot.bar, entry)
-                if slot.direction ~= direction then
-                    BindDurationBar(slot, direction)
+                if slot.direction ~= layout.direction then
+                    BindDurationBar(slot, layout.direction)
                 end
             else
-                CreateSlot(state, frame, layout, #entries, index, entry)
+                CreateSlot(state, frame, layout, index, entry)
             end
             local filters = { includeSpellIDs = {} }
             if entry.enabled then filters.includeSpellIDs[entry.spellID] = true end
@@ -322,7 +347,7 @@ function Addon:UpdateBuffIndicators(frame, settings)
         for index = #entries + 1, #state.slots do
             state.container:SetAuraSlotCandidateFilters(tostring(index), { includeSpellIDs = {} })
         end
-        state.layout = layout
+        state.width, state.height, state.frameLevel = width, height, frameLevel
     end
     state.entries = entries
     SetPending(state, false)

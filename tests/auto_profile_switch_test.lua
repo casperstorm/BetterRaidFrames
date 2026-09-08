@@ -98,6 +98,16 @@ BetterRaidFramesDB = {
             raidFrameGrowth = "HORIZONTAL",
             removedSetting = true,
         },
+        ["Legacy Buffs"] = {
+            buffIndicatorHeight = 4,
+            buffIndicatorDirection = "REMAINING",
+            buffIndicatorPosition = "RIGHT",
+            buffIndicatorFrameLevel = 112,
+            buffIndicators = {
+                { spellID = 364343 },
+                { spellID = 774, thickness = 8, direction = "ELAPSED", position = "LEFT", frameLevel = 0 },
+            },
+        },
         Party = {},
         Raid = {},
     },
@@ -111,10 +121,23 @@ eventHandler(nil, "ADDON_LOADED", "BetterRaidFrames")
 assertEqual(#Addon:GetSetting("buffIndicators"), 1, "saved buffs should be normalized on load")
 assertEqual(Addon:GetSetting("buffIndicators")[1].obsolete, nil, "unknown buff fields should be removed")
 assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, true, "saved buffs should default to own casts")
-assertEqual(Addon:GetSetting("buffIndicatorHeight"), 2, "existing profiles should keep the two-pixel height")
-assertEqual(Addon:GetSetting("buffIndicatorDirection"), "ELAPSED")
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "TOP")
-assertEqual(Addon:GetSetting("buffIndicatorFrameLevel"), 10)
+assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 2, "existing profiles should keep the two-pixel height")
+assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "ELAPSED")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "TOP")
+assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 10)
+local legacy = BetterRaidFramesDB.profiles["Legacy Buffs"]
+assertEqual(legacy.buffIndicators[1].thickness, 4, "shared thickness should migrate into existing buffs")
+assertEqual(legacy.buffIndicators[1].direction, "REMAINING")
+assertEqual(legacy.buffIndicators[1].position, "RIGHT")
+assertEqual(legacy.buffIndicators[1].frameLevel, 112)
+assertEqual(legacy.buffIndicators[2].thickness, 8, "per-buff choices must take precedence during migration")
+assertEqual(legacy.buffIndicators[2].direction, "ELAPSED")
+assertEqual(legacy.buffIndicators[2].position, "LEFT")
+assertEqual(legacy.buffIndicators[2].frameLevel, 0)
+assertEqual(legacy.buffIndicatorHeight, nil, "obsolete shared settings should be removed")
+assertEqual(legacy.buffIndicatorDirection, nil)
+assertEqual(legacy.buffIndicatorPosition, nil)
+assertEqual(legacy.buffIndicatorFrameLevel, nil)
 
 assertEqual(BetterRaidFramesDB.profiles.Default.threatIndicatorOffsetX, 7,
     "legacy threat X should migrate to a relative offset")
@@ -220,34 +243,34 @@ assertEqual(Addon:SwitchProfile("Buff Copy"), true)
 local beforeBuffUpdate = featureUpdates.buffIndicators
 local beforeNameUpdate = featureUpdates.name
 Addon:ChangeBuffIndicator(1, { mineOnly = false, r = 0.2 })
-Addon:SetSetting("buffIndicatorHeight", 6)
-Addon:SetSetting("buffIndicatorDirection", "REMAINING")
-Addon:SetSetting("buffIndicatorPosition", "BOTTOM")
-Addon:SetSetting("buffIndicatorFrameLevel", 50)
+Addon:ChangeBuffIndicator(1, { thickness = 6 })
+Addon:ChangeBuffIndicator(1, { direction = "REMAINING" })
+Addon:ChangeBuffIndicator(1, { position = "BOTTOM" })
+Addon:ChangeBuffIndicator(1, { frameLevel = 50 })
 onUpdateHandler()
 assertEqual(featureUpdates.buffIndicators, beforeBuffUpdate + 1, "buff edits should refresh buff indicators")
 assertEqual(featureUpdates.name, beforeNameUpdate, "buff edits should not refresh unrelated features")
 assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, false)
-assertEqual(Addon:GetSetting("buffIndicatorHeight"), 6)
-assertEqual(Addon:GetSetting("buffIndicatorDirection"), "REMAINING")
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "BOTTOM")
-assertEqual(Addon:GetSetting("buffIndicatorFrameLevel"), 50)
+assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 6)
+assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "REMAINING")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "BOTTOM")
+assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 50)
 assertEqual(Addon:SwitchProfile("Default"), true)
 assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, true, "profile copies must not share buff entries")
 assertEqual(Addon:GetSetting("buffIndicators")[1].r, 1, "profile copies must not share buff colours")
-assertEqual(Addon:GetSetting("buffIndicatorHeight"), 2, "height settings should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicatorDirection"), "ELAPSED", "direction should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "TOP", "position should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicatorFrameLevel"), 10, "layering should belong to each profile")
-Addon:SetSetting("buffIndicatorPosition", "LEFT")
+assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 2, "height settings should belong to each profile")
+assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "ELAPSED", "direction should belong to each profile")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "TOP", "position should belong to each profile")
+assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 10, "layering should belong to each profile")
+Addon:ChangeBuffIndicator(1, { position = "LEFT" })
 assertEqual(Addon:DuplicateProfile("Default", "Vertical Buffs"), true)
 assertEqual(Addon:SwitchProfile("Vertical Buffs"), true)
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "LEFT", "left placement should survive profile normalization")
-Addon:SetSetting("buffIndicatorPosition", "RIGHT")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "LEFT", "left placement should survive profile normalization")
+Addon:ChangeBuffIndicator(1, { position = "RIGHT" })
 assertEqual(Addon:SwitchProfile("Default"), true)
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "LEFT", "vertical placement should remain profile-specific")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "LEFT", "vertical placement should remain profile-specific")
 assertEqual(Addon:SwitchProfile("Vertical Buffs"), true)
-assertEqual(Addon:GetSetting("buffIndicatorPosition"), "RIGHT", "right placement should survive profile normalization")
+assertEqual(Addon:GetSetting("buffIndicators")[1].position, "RIGHT", "right placement should survive profile normalization")
 assertEqual(Addon:CreateProfile("Empty Buffs"), true)
 assertEqual(Addon:SwitchProfile("Empty Buffs"), true)
 assertEqual(#Addon:GetSetting("buffIndicators"), 0, "new profiles should have no indicators enabled")
