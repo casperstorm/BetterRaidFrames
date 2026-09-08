@@ -265,6 +265,7 @@ local function CreateConfigFrame()
         { id = "names",            label = "Name" },
         { id = "partyLeader",      label = "Party Leader" },
         { id = "threatIndicator",  label = "Threat Indicator" },
+        { id = "buffIndicators",   label = "Buff Indicators" },
     }
 
     local function CreateTabPage(id)
@@ -716,6 +717,10 @@ local function CreateConfigFrame()
     end
 
     local builders = {
+        buffIndicators = function(content)
+            local y = BeginPage(content, "Buff Indicators")
+            RegisterSettingRefresher(Addon:BuildBuffIndicatorsOptions(content, y))
+        end,
         general = BuildGeneralTab,
         frameLayout = BuildFrameLayoutTab,
         raidMarkers = BuildRaidMarkersTab,

@@ -1,6 +1,11 @@
 local ADDON_NAME, Addon = ...
 
 local defaults = {
+    buffIndicators = {},
+    buffIndicatorHeight = 2,
+    buffIndicatorDirection = "ELAPSED",
+    buffIndicatorPosition = "TOP",
+    buffIndicatorFrameLevel = 10,
     raidFrameGrowth = "RIGHT",
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -63,6 +68,11 @@ local RAID_GROWTH_MIGRATIONS = {
 }
 
 local SETTING_FEATURES = {
+    buffIndicators = "buffIndicators",
+    buffIndicatorHeight = "buffIndicators",
+    buffIndicatorDirection = "buffIndicators",
+    buffIndicatorPosition = "buffIndicators",
+    buffIndicatorFrameLevel = "buffIndicators",
     raidFrameGrowth = "frameLayout",
     showRaidMarkers = "raidMarker",
     raidMarkerPoint = "raidMarker",
@@ -106,6 +116,7 @@ local SETTING_FEATURES = {
 }
 
 local VALID_FEATURES = {
+    buffIndicators = true,
     frameLayout = true,
     raidMarker = true,
     roleIcon = true,
@@ -230,6 +241,11 @@ local function NormalizeProfile(profile)
             profile[key] = DeepCopy(value)
         end
     end
+    profile.buffIndicators = Addon:NormalizeBuffIndicators(profile.buffIndicators)
+    profile.buffIndicatorHeight = Addon:NormalizeBuffIndicatorHeight(profile.buffIndicatorHeight)
+    profile.buffIndicatorDirection = Addon:NormalizeBuffIndicatorDirection(profile.buffIndicatorDirection)
+    profile.buffIndicatorPosition = Addon:NormalizeBuffIndicatorPosition(profile.buffIndicatorPosition)
+    profile.buffIndicatorFrameLevel = Addon:NormalizeBuffIndicatorFrameLevel(profile.buffIndicatorFrameLevel)
 end
 
 local function GetCurrentProfile()
@@ -324,6 +340,7 @@ local function HookRaidFrames()
     Addon:HookThreatIndicator()
     Addon:HookPartyLeader()
     Addon:HookName()
+    Addon:HookBuffIndicators()
 end
 
 local pendingFeatureUpdates = {}
@@ -343,13 +360,14 @@ local function UpdateFrame(frame)
         Addon:UpdatePartyLeader(frame, activeSettings, activeInCombat)
     end
     if not activeFeatures or activeFeatures.name then Addon:UpdateName(frame, activeSettings) end
+    if not activeFeatures or activeFeatures.buffIndicators then Addon:UpdateBuffIndicators(frame, activeSettings) end
 end
 
 local function UpdateFrames(features)
     local updateAll = features == nil
     local updateLayout = updateAll or features.frameLayout
     local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
-        or features.threatIndicator or features.partyLeader or features.name
+        or features.threatIndicator or features.partyLeader or features.name or features.buffIndicators
     local updateThreat = updateAll or features.threatIndicator
     local updatePartyLeader = updateAll or features.partyLeader
 
