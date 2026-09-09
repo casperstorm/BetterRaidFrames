@@ -5,7 +5,7 @@ The local stress tests found avoidable allocation and background animation work.
 - Cooldown frames, text hosts, font strings, and glow textures now allocate only when enabled, then remain available for reuse.
 - Pulsing uses one native bouncing alpha animation instead of two sequential animations. It adds no Lua callback to an aura button.
 - Stable updates reuse the prepared indicator layout and make no native container/style writes. Editing one indicator restyles only that indicator's reserved buttons; unchanged filters and layout settings are retained.
-- Moving a group can reuse an inactive anchor's container. Removing indicators clears their native bindings and stops their pulses. Hidden unit frames disable their containers; cleanup that touches restricted aura buttons waits until those restrictions end.
+- Moving a group can reuse an inactive anchor's container. Removing indicators clears their native bindings and stops their pulses. Hidden unit frames disable their containers; cleanup checks current-context access to every visual object and waits while any is restricted. Restriction-ending events also finish cleanup for hidden raid frames that are no longer in the current party/raid layout.
 - Hidden previews allocate no indicator visuals and stop their pulse animations and timer. Static previews need no Lua update callback. Removed preview IDs are discarded.
 - Editing one specialization replaces only that set. Untouched specialization sets stay shared and immutable, and the prepared-layout cache uses weak keys so obsolete settings snapshots can be collected.
 

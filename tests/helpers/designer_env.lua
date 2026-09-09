@@ -6,6 +6,7 @@ local function guard(frame)
     if env.internal then return end
     local ancestor = frame
     while ancestor do
+        assert(not ancestor.forbidden and not ancestor.accessDenied, "access to forbidden or context-restricted object")
         if ancestor.aura then assert(not env.restricted or ancestor.initializing, "access to forbidden aura descendant"); return end
         ancestor = ancestor.parent
     end
@@ -30,7 +31,20 @@ function methods:SetFrameLevel(v)
     assert(env.internal or not (env.restricted and self.kind == "AuraContainer" and #self.groups > 0), "propagating levels to forbidden children")
     self.level = v
 end
-function methods:IsForbidden() return self.aura and env.restricted and not self.initializing end
+-- Explicitly forbidden and conditionally inaccessible are different states.
+-- Custom aura objects remain IsForbidden()==false while aura restrictions deny
+-- calls from addon code; this is why IsForbidden alone is not an access guard.
+function methods:IsForbidden() return self.forbidden == true end
+function methods:CanBeAccessedInContext()
+    if self.secretAccessResult then return "secret" end
+    local ancestor = self
+    while ancestor do
+        if ancestor.forbidden or ancestor.accessDenied then return false end
+        if ancestor.aura and env.restricted and not ancestor.initializing then return false end
+        ancestor = ancestor.parent
+    end
+    return true
+end
 function methods:EnableMouse(v) guard(self); self.mouse = v end
 function methods:SetMouseMotionEnabled(v) guard(self); self.motion = v end
 function methods:CreateTexture() guard(self); return widget("Texture", self) end

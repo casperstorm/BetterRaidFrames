@@ -216,11 +216,21 @@ local function BindUnit(state, unit)
     state.unit = unit
 end
 
+local function CanAccess(object)
+    if not object then return true end
+    -- IsForbidden only reports the explicit flag. Custom aura objects can
+    -- instead deny tainted access temporarily while aura information is secret.
+    local accessible = object:CanBeAccessedInContext()
+    return not (issecretvalue and issecretvalue(accessible)) and accessible
+end
+
 local function CanRestyle(state)
     for _, bucket in pairs(state.buckets) do
         for _, pool in ipairs(bucket.pools) do
             for _, visual in ipairs(pool.visuals) do
-                if visual.button:IsForbidden() then return false end
+                if not (CanAccess(visual.button) and CanAccess(visual.texture) and CanAccess(visual.cooldown)
+                    and CanAccess(visual.overlay) and CanAccess(visual.text) and CanAccess(visual.glow)
+                    and CanAccess(visual.glowPulse)) then return false end
             end
         end
     end
@@ -409,6 +419,11 @@ function Addon:HookDesignerIndicators()
     for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "ADDON_RESTRICTION_STATE_CHANGED",
         "ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED" }) do events:RegisterEvent(event) end
     events:SetScript("OnEvent", function()
+        -- Frames released by a raid layout may no longer be in ForEachFrame's
+        -- current party/raid context. Finish their deferred cleanup as well.
+        for _, state in pairs(states) do
+            if state.needsCleanup then Disable(state) end
+        end
         Addon:RequestFeatureUpdate("indicators")
         if Addon.RefreshConfig and Addon:IsConfigOpen() then Addon:RefreshConfig() end
     end)
