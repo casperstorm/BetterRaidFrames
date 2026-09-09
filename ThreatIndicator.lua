@@ -2,6 +2,7 @@ local _, Addon = ...
 local CreateFrame = CreateFrame
 local UnitExists = UnitExists
 local UnitThreatSituation = UnitThreatSituation
+local UnitGroupRolesAssigned = UnitGroupRolesAssigned
 local hooksecurefunc = hooksecurefunc
 
 local BLINK_DURATION = 0.5
@@ -10,7 +11,20 @@ local CIRCLE_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 Addon.ThreatIndicatorShapeOptions = {
     { value = "SQUARE", label = "Square" },
     { value = "CIRCLE", label = "Circle" },
+    { value = "BORDER", label = "Frame border" },
 }
+
+Addon.ThreatLevels = {
+    { label = "High threat", key = "threatIndicatorHighColor", color = { 1, 1, 0 } },
+    { label = "Insecure threat", key = "threatIndicatorInsecureColor", color = { 1, 0.6, 0 } },
+    { label = "Secure threat", key = "threatIndicatorSecureColor", color = { 1, 0, 0 } },
+}
+
+function Addon:GetThreatIndicatorColor(settings, status)
+    local level = self.ThreatLevels[status] or self.ThreatLevels[3]
+    return settings[level.key .. "R"] or level.color[1], settings[level.key .. "G"] or level.color[2],
+        settings[level.key .. "B"] or level.color[3]
+end
 
 local validShapes = {}
 for _, option in ipairs(Addon.ThreatIndicatorShapeOptions) do
@@ -61,6 +75,7 @@ local function GetOrCreateThreatIndicator(frame)
 
     local indicator = CreateFrame("Frame", nil, frame)
     indicator:SetFrameLevel(frame:GetFrameLevel() + 10)
+    indicator:EnableMouse(false)
 
     local border = indicator:CreateTexture(nil, "BACKGROUND")
     border:SetPoint("TOPLEFT", -1, 1)
@@ -72,6 +87,9 @@ local function GetOrCreateThreatIndicator(frame)
     texture:SetAllPoints()
     texture:SetColorTexture(1, 0, 0, 1)
     indicator.texture = texture
+
+    indicator.edge = CreateFrame("Frame", nil, indicator, "BackdropTemplate")
+    indicator.edge:EnableMouse(false)
 
     local animGroup = indicator:CreateAnimationGroup()
     animGroup:SetLooping("REPEAT")
@@ -103,8 +121,17 @@ local function ApplyIndicatorSettings(indicator, parentFrame, settings)
     local offsetY = settings.threatIndicatorOffsetY or 0
     local size = settings.threatIndicatorSize or 8
 
-    indicator:SetBRFShape(GetShape(settings))
-    Addon:ApplyRegionLayout(indicator, parentFrame, point, relativePoint, offsetX, offsetY, size)
+    local shape = GetShape(settings)
+    if indicator.BRFShape ~= shape then
+        indicator.BRFPoint, indicator.BRFSize = nil, nil
+        indicator:ClearAllPoints()
+        if shape == "BORDER" then indicator:SetAllPoints(parentFrame) end
+    end
+    indicator:SetBRFShape(shape)
+    indicator.texture:SetShown(shape ~= "BORDER")
+    if shape ~= "BORDER" then
+        Addon:ApplyRegionLayout(indicator, parentFrame, point, relativePoint, offsetX, offsetY, size)
+    end
 end
 
 local function SetIndicatorVisible(indicator, visible, shouldBlink)
@@ -129,43 +156,82 @@ local function SetIndicatorVisible(indicator, visible, shouldBlink)
     end
 end
 
-local function UpdateThreatIndicator(frame, settings, configOpen)
+local function HideThreatIndicator(frame)
+    if frame.BRFThreatIndicator then
+        SetIndicatorVisible(frame.BRFThreatIndicator, false, false)
+    end
+end
+
+local function IsSecret(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+local function DisplayThreat(frame, settings, status, preview)
+    local indicator = GetOrCreateThreatIndicator(frame)
+    ApplyIndicatorSettings(indicator, frame, settings)
+    local colorStatus = (preview or settings.threatIndicatorColorByThreat) and status or 3
+    local r, g, b = Addon:GetThreatIndicatorColor(settings, colorStatus)
+    indicator.texture:SetColorTexture(r, g, b, 1)
+    Addon:StyleThreatBorder(indicator, settings, GetShape(settings) == "BORDER", r, g, b)
+    SetIndicatorVisible(indicator, true, settings.threatIndicatorBlink)
+end
+
+-- The three configuration samples use the same visual as the live frames,
+-- without querying a real unit or requiring a party to exist.
+function Addon:UpdateThreatPreview(frame, settings, status, visible)
+    if visible then DisplayThreat(frame, settings, status, true)
+    else HideThreatIndicator(frame) end
+end
+
+local function UpdateThreatIndicator(frame, settings, previewOpen)
     if not frame then return end
     settings = settings or Addon:GetSettings()
 
     if not settings.showThreatIndicator then
-        if frame.BRFThreatIndicator then
-            SetIndicatorVisible(frame.BRFThreatIndicator, false, false)
-        end
+        HideThreatIndicator(frame)
         return
     end
 
-    local unit = frame.displayedUnit or frame.unit
-    if not unit or not UnitExists(unit) then
-        if frame.BRFThreatIndicator then SetIndicatorVisible(frame.BRFThreatIndicator, false, false) end
-        return
+    local unit = frame.displayedUnit
+    if IsSecret(unit) then HideThreatIndicator(frame); return end
+    unit = unit or frame.unit
+    if IsSecret(unit) or not unit then HideThreatIndicator(frame); return end
+    local exists = UnitExists(unit)
+    if IsSecret(exists) or not exists then HideThreatIndicator(frame); return end
+
+    if settings.threatIndicatorHideForTanks then
+        -- A vehicle uses its owner's assigned role, not the vehicle's role.
+        local roleUnit = frame.unit
+        if IsSecret(roleUnit) then HideThreatIndicator(frame); return end
+        local role = UnitGroupRolesAssigned(roleUnit or unit)
+        if IsSecret(role) or role == "TANK" then HideThreatIndicator(frame); return end
     end
 
-    local indicator = GetOrCreateThreatIndicator(frame)
-    ApplyIndicatorSettings(indicator, frame, settings)
-
-    local visible = configOpen
-    if visible == nil then visible = Addon:IsConfigOpen() end
-    if not visible then
-        local status = UnitThreatSituation(unit)
-        visible = status ~= nil and status >= 1
+    local status = UnitThreatSituation(unit)
+    -- Restricted threat states cannot be compared or used as colour indices.
+    if IsSecret(status) then HideThreatIndicator(frame); return end
+    if previewOpen == nil then previewOpen = Addon:IsThreatPreviewOpen() end
+    local preview = false
+    if status == nil or status < 1 then
+        if not previewOpen then HideThreatIndicator(frame); return end
+        -- Spread samples across the group instead of making every frame red.
+        status = ((tonumber(unit:match("(%d+)$")) or 0) % 3) + 1
+        preview = true
     end
 
-    SetIndicatorVisible(indicator, visible, settings.threatIndicatorBlink)
+    DisplayThreat(frame, settings, status, preview)
 end
 
 function Addon:HookThreatIndicator()
-    hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", function(frame)
-        if Addon:IsEditModeActive() or not Addon:IsRaidOrPartyFrame(frame) then return end
+    local function Update(frame)
+        if not frame or Addon:IsEditModeActive() or not Addon:IsRaidOrPartyFrame(frame) then return end
         UpdateThreatIndicator(frame)
-    end)
+    end
+    hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", Update)
+    hooksecurefunc("CompactUnitFrame_UpdateRoleIcon", Update)
+    hooksecurefunc("CompactUnitFrame_SetUnit", Update)
 end
 
-function Addon:UpdateThreatIndicator(frame, settings, configOpen)
-    UpdateThreatIndicator(frame, settings, configOpen)
+function Addon:UpdateThreatIndicator(frame, settings, previewOpen)
+    UpdateThreatIndicator(frame, settings, previewOpen)
 end

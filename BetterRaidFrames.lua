@@ -1,8 +1,7 @@
 local ADDON_NAME, Addon = ...
 
 local defaults = {
-    buffIndicators = {},
-    raidFrameGrowth = "RIGHT",
+    indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
     raidMarkerRelativePoint = "TOP",
@@ -12,6 +11,25 @@ local defaults = {
     showRoleIcons = "ALL",
     showThreatIndicator = false,
     threatIndicatorBlink = true,
+    threatIndicatorHideForTanks = false,
+    threatIndicatorColorByThreat = false,
+    threatIndicatorHighColorR = 1,
+    threatIndicatorHighColorG = 1,
+    threatIndicatorHighColorB = 0,
+    threatIndicatorInsecureColorR = 1,
+    threatIndicatorInsecureColorG = 0.6,
+    threatIndicatorInsecureColorB = 0,
+    threatIndicatorSecureColorR = 1,
+    threatIndicatorSecureColorG = 0,
+    threatIndicatorSecureColorB = 0,
+    threatIndicatorBorderSize = 1,
+    threatIndicatorBorderStyle = "SOLID",
+    threatIndicatorGlowSize = 8,
+    threatIndicatorBorderOpacity = 100,
+    threatIndicatorBorderInset = 0,
+    threatIndicatorBorderColorR = 0,
+    threatIndicatorBorderColorG = 0,
+    threatIndicatorBorderColorB = 0,
     threatIndicatorShape = "SQUARE",
     threatIndicatorPoint = "CENTER",
     threatIndicatorRelativePoint = "CENTER",
@@ -26,6 +44,7 @@ local defaults = {
     partyLeaderSize = 16,
     partyLeaderHideInCombat = false,
     customizeNames = false,
+    nameAnchor = "CENTER",
     nameOffsetX = 0,
     nameOffsetY = 0,
     nameSize = 11,
@@ -55,17 +74,8 @@ local POSITION_SETTING_MIGRATIONS = {
     nameY = "nameOffsetY",
 }
 
-local RAID_GROWTH_MIGRATIONS = {
-    DEFAULT = "RIGHT",
-    HORIZONTAL = "RIGHT",
-    VERTICAL = "RIGHT",
-    DOWN = "RIGHT",
-    UP = "LEFT",
-}
-
 local SETTING_FEATURES = {
-    buffIndicators = "buffIndicators",
-    raidFrameGrowth = "frameLayout",
+    indicators = "indicators",
     showRaidMarkers = "raidMarker",
     raidMarkerPoint = "raidMarker",
     raidMarkerRelativePoint = "raidMarker",
@@ -75,6 +85,25 @@ local SETTING_FEATURES = {
     showRoleIcons = "roleIcon",
     showThreatIndicator = "threatIndicator",
     threatIndicatorBlink = "threatIndicator",
+    threatIndicatorHideForTanks = "threatIndicator",
+    threatIndicatorColorByThreat = "threatIndicator",
+    threatIndicatorHighColorR = "threatIndicator",
+    threatIndicatorHighColorG = "threatIndicator",
+    threatIndicatorHighColorB = "threatIndicator",
+    threatIndicatorInsecureColorR = "threatIndicator",
+    threatIndicatorInsecureColorG = "threatIndicator",
+    threatIndicatorInsecureColorB = "threatIndicator",
+    threatIndicatorSecureColorR = "threatIndicator",
+    threatIndicatorSecureColorG = "threatIndicator",
+    threatIndicatorSecureColorB = "threatIndicator",
+    threatIndicatorBorderSize = "threatIndicator",
+    threatIndicatorBorderStyle = "threatIndicator",
+    threatIndicatorGlowSize = "threatIndicator",
+    threatIndicatorBorderOpacity = "threatIndicator",
+    threatIndicatorBorderInset = "threatIndicator",
+    threatIndicatorBorderColorR = "threatIndicator",
+    threatIndicatorBorderColorG = "threatIndicator",
+    threatIndicatorBorderColorB = "threatIndicator",
     threatIndicatorShape = "threatIndicator",
     threatIndicatorPoint = "threatIndicator",
     threatIndicatorRelativePoint = "threatIndicator",
@@ -89,6 +118,7 @@ local SETTING_FEATURES = {
     partyLeaderSize = "partyLeader",
     partyLeaderHideInCombat = "partyLeader",
     customizeNames = "name",
+    nameAnchor = "name",
     nameOffsetX = "name",
     nameOffsetY = "name",
     nameSize = "name",
@@ -108,8 +138,7 @@ local SETTING_FEATURES = {
 }
 
 local VALID_FEATURES = {
-    buffIndicators = true,
-    frameLayout = true,
+    indicators = true,
     raidMarker = true,
     roleIcon = true,
     threatIndicator = true,
@@ -124,6 +153,11 @@ local GLOBAL_DEFAULTS = {
 
 function Addon:IsConfigOpen()
     return _G["BetterRaidFramesConfigFrame"] and _G["BetterRaidFramesConfigFrame"]:IsShown()
+end
+
+function Addon:IsThreatPreviewOpen()
+    local frame = _G["BetterRaidFramesConfigFrame"]
+    return frame and frame:IsShown() and frame.activeTabId == "threatIndicator" or false
 end
 
 function Addon:IsEditModeActive()
@@ -213,16 +247,12 @@ local function DeepCopy(value)
 end
 
 local function NormalizeProfile(profile)
-    -- Copy the former shared display settings into each buff before removing them.
-    profile.buffIndicators = Addon:NormalizeBuffIndicators(profile.buffIndicators, profile)
+    profile.indicators = Addon:NormalizeIndicators(profile.indicators)
     for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
         if profile[newKey] == nil and profile[oldKey] ~= nil then
             profile[newKey] = profile[oldKey]
         end
     end
-
-    profile.raidFrameGrowth = RAID_GROWTH_MIGRATIONS[profile.raidFrameGrowth]
-        or profile.raidFrameGrowth
 
     for key in pairs(profile) do
         if defaults[key] == nil then
@@ -323,49 +353,44 @@ local function InitializeDB()
 end
 
 local function HookRaidFrames()
-    Addon:InitializeRaidFrameLayout()
     Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
     Addon:HookPartyLeader()
     Addon:HookName()
-    Addon:HookBuffIndicators()
+    Addon:HookDesignerIndicators()
 end
 
 local pendingFeatureUpdates = {}
 local updateThrottleFrame
 local activeFeatures
 local activeSettings
-local activeConfigOpen
+local activeThreatPreview
 local activeInCombat
 
 local function UpdateFrame(frame)
     if not activeFeatures or activeFeatures.raidMarker then Addon:UpdateRaidMarker(frame, activeSettings) end
     if not activeFeatures or activeFeatures.roleIcon then Addon:UpdateRoleIcon(frame, activeSettings) end
     if not activeFeatures or activeFeatures.threatIndicator then
-        Addon:UpdateThreatIndicator(frame, activeSettings, activeConfigOpen)
+        Addon:UpdateThreatIndicator(frame, activeSettings, activeThreatPreview)
     end
     if not activeFeatures or activeFeatures.partyLeader then
         Addon:UpdatePartyLeader(frame, activeSettings, activeInCombat)
     end
     if not activeFeatures or activeFeatures.name then Addon:UpdateName(frame, activeSettings) end
-    if not activeFeatures or activeFeatures.buffIndicators then Addon:UpdateBuffIndicators(frame, activeSettings) end
+    if not activeFeatures or activeFeatures.indicators then Addon:UpdateDesignerIndicators(frame, activeSettings) end
 end
 
 local function UpdateFrames(features)
     local updateAll = features == nil
-    local updateLayout = updateAll or features.frameLayout
     local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
-        or features.threatIndicator or features.partyLeader or features.name or features.buffIndicators
+        or features.threatIndicator or features.partyLeader or features.name or features.indicators
     local updateThreat = updateAll or features.threatIndicator
     local updatePartyLeader = updateAll or features.partyLeader
 
     activeFeatures = features
     activeSettings = GetCurrentProfile()
-    if updateLayout and Addon.UpdateRaidFrameLayout then
-        Addon:UpdateRaidFrameLayout(activeSettings)
-    end
-    activeConfigOpen = updateThreat and Addon:IsConfigOpen() or false
+    activeThreatPreview = updateThreat and Addon:IsThreatPreviewOpen() or false
     activeInCombat = updatePartyLeader and UnitAffectingCombat and UnitAffectingCombat("player") or false
     if updateUnitFrames then
         Addon:ForEachFrame(UpdateFrame)
@@ -624,7 +649,6 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         Addon:HookEditMode()
         RegisterOptionsPanel()
     elseif event == "PLAYER_ENTERING_WORLD" then
-        Addon:InitializeRaidFrameLayout()
         if not Addon:ApplyAutomaticProfile(true) then
             Addon:UpdateAllFrames()
         end

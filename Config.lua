@@ -55,7 +55,7 @@ local function CreateCheckbox(parent, label, settingKey, yOffset, onChange)
     return checkbox
 end
 
-local function CreateDropdown(parent, label, settingKey, options, yOffset)
+local function CreateDropdown(parent, label, settingKey, options, yOffset, onChange)
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", 24, yOffset)
     container:SetSize(CONTROL_WIDTH, 30)
@@ -77,10 +77,13 @@ local function CreateDropdown(parent, label, settingKey, options, yOffset)
     local function SetSelected(value)
         Addon:SetSetting(settingKey, value)
         dropdown:GenerateMenu()
+        if onChange then onChange(value) end
     end
 
     dropdown:SetupMenu(function(_, rootDescription)
-        for _, option in ipairs(options) do
+        local choices = type(options) == "function" and options() or options
+        if #choices > 12 then rootDescription:SetScrollMode(320) end
+        for _, option in ipairs(choices) do
             rootDescription:CreateRadio(option.label, IsSelected, SetSelected, option.value)
         end
     end)
@@ -93,7 +96,7 @@ local function CreateDropdown(parent, label, settingKey, options, yOffset)
     return dropdown
 end
 
-local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset)
+local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal, step, yOffset, onChange)
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", 24, yOffset)
     container:SetSize(CONTROL_WIDTH, 32)
@@ -132,6 +135,7 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
             if not sliderFrame.initInProgress then
                 value = math.floor(value / step + 0.5) * step
                 Addon:SetSetting(settingKey, value)
+                if onChange then onChange(value) end
             end
         end)
     end
@@ -146,7 +150,7 @@ local function CreateHorizontalSlider(parent, label, settingKey, minVal, maxVal,
     return sliderFrame
 end
 
-local function CreateSubCheckbox(parent, label, settingKey, yOffset, xOffset)
+local function CreateSubCheckbox(parent, label, settingKey, yOffset, xOffset, onChange)
     local checkbox = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
     checkbox:SetPoint("TOPLEFT", xOffset or 24, yOffset)
     checkbox.Text:SetText(label)
@@ -155,6 +159,7 @@ local function CreateSubCheckbox(parent, label, settingKey, yOffset, xOffset)
     checkbox:SetChecked(Addon:GetSetting(settingKey))
     checkbox:SetScript("OnClick", function(self)
         Addon:SetSetting(settingKey, self:GetChecked())
+        if onChange then onChange(self:GetChecked()) end
     end)
 
     RegisterSettingRefresher(function()
@@ -163,7 +168,7 @@ local function CreateSubCheckbox(parent, label, settingKey, yOffset, xOffset)
     return checkbox
 end
 
-local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settingKeyB, yOffset)
+local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settingKeyB, yOffset, onChange)
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", 24, yOffset)
     container:SetSize(CONTROL_WIDTH, 26)
@@ -180,7 +185,7 @@ local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settin
 
     local border = colorSwatch:CreateTexture(nil, "BACKGROUND")
     border:SetAllPoints()
-    border:SetColorTexture(0, 0, 0, 1)
+    border:SetColorTexture(0.6, 0.6, 0.6, 1)
 
     local color = colorSwatch:CreateTexture(nil, "ARTWORK")
     color:SetPoint("TOPLEFT", 1, -1)
@@ -196,15 +201,18 @@ local function CreateColorPicker(parent, label, settingKeyR, settingKeyG, settin
     end
 
     colorSwatch:SetScript("OnClick", function()
+        local profile = Addon:GetCurrentProfileName()
         local originalR = Addon:GetSetting(settingKeyR) or 0
         local originalG = Addon:GetSetting(settingKeyG) or 0
         local originalB = Addon:GetSetting(settingKeyB) or 0
 
         local function SetColor(r, g, b)
+            if Addon:GetCurrentProfileName() ~= profile or InCombatLockdown() then return end
             Addon:SetSetting(settingKeyR, r)
             Addon:SetSetting(settingKeyG, g)
             Addon:SetSetting(settingKeyB, b)
             color:SetColorTexture(r, g, b, 1)
+            if onChange then onChange() end
         end
 
         ColorPickerFrame:SetupColorPickerAndShow({
@@ -234,7 +242,7 @@ local function CreateConfigFrame()
     settingRefreshers = {}
 
     local frame = CreateFrame("Frame", "BetterRaidFramesConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(700, 540)
+    frame:SetSize(900, 700)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -259,13 +267,12 @@ local function CreateConfigFrame()
     local tabPages = {}
     local tabOrder = {
         { id = "general",          label = "General" },
-        { id = "frameLayout",      label = "Frame Layout" },
         { id = "raidMarkers",      label = "Raid Markers" },
         { id = "roleIcons",        label = "Role Icons" },
         { id = "names",            label = "Name" },
         { id = "partyLeader",      label = "Party Leader" },
         { id = "threatIndicator",  label = "Threat Indicator" },
-        { id = "buffIndicators",   label = "Buff Indicators" },
+        { id = "indicators",       label = "Indicators" },
     }
 
     local function CreateTabPage(id)
@@ -284,6 +291,7 @@ local function CreateConfigFrame()
     local activeTabId = nil
     local featureTabsEnabled = true
     local function ShowTab(id)
+        local previousTabId = activeTabId
         if tabPages[activeTabId] then
             tabPages[activeTabId]:Hide()
         end
@@ -298,10 +306,13 @@ local function CreateConfigFrame()
         for _, tab in ipairs(tabOrder) do
             local btn = tabButtons[tab.id]
             if btn then
-                local available = tab.id == "general" or tab.id == "frameLayout" or featureTabsEnabled
+                local available = tab.id == "general" or featureTabsEnabled
                 btn:SetEnabled(available and tab.id ~= id)
                 btn:SetAlpha(available and 1.0 or 0.5)
             end
+        end
+        if previousTabId == "threatIndicator" or id == "threatIndicator" then
+            Addon:RequestFeatureUpdate("threatIndicator")
         end
     end
 
@@ -504,7 +515,7 @@ local function CreateConfigFrame()
             raidStyleWarning:SetShown(not isRaidStyle)
 
             for _, tab in ipairs(tabOrder) do
-                if tab.id ~= "general" and tab.id ~= "frameLayout" then
+                if tab.id ~= "general" then
                     local btn = tabButtons[tab.id]
                     if btn then
                         btn:SetEnabled(isRaidStyle and activeTabId ~= tab.id)
@@ -513,7 +524,7 @@ local function CreateConfigFrame()
                 end
             end
 
-            if not isRaidStyle and activeTabId ~= "general" and activeTabId ~= "frameLayout" then
+            if not isRaidStyle and activeTabId ~= "general" then
                 ShowTab("general")
             end
         end
@@ -534,34 +545,6 @@ local function CreateConfigFrame()
         note:SetTextColor(0.75, 0.75, 0.75)
 
         C_Timer.After(0.5, UpdateFeatureTabsEnabled)
-    end
-
-    local function BuildFrameLayoutTab(content)
-        local y = BeginPage(content, "Frame Layout")
-
-        local description = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        description:SetPoint("TOPLEFT", 16, y)
-        description:SetWidth(450)
-        description:SetJustifyH("LEFT")
-        description:SetText(
-            "Choose which direction Raid groups are added. "
-            .. "The required frame anchor and group order are handled automatically.")
-        description:SetTextColor(0.75, 0.75, 0.75)
-        y = y - 50
-
-        CreateDropdown(content, "Growth:", "raidFrameGrowth", Addon.RaidFrameGrowthOptions, y)
-        y = y - 42
-
-        local growthNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        growthNote:SetPoint("TOPLEFT", 24, y)
-        growthNote:SetWidth(430)
-        growthNote:SetJustifyH("LEFT")
-        growthNote:SetText(
-            "Grow right: Group 1, Group 2, Group 3. "
-            .. "Grow left: Group 3, Group 2, Group 1, with Group 1 fixed on the right. "
-            .. "This applies to Edit Mode's Separate Groups layouts. "
-            .. "Layout changes made during combat are applied after combat.")
-        growthNote:SetTextColor(0.9, 0.75, 0.2)
     end
 
     local function BuildRaidMarkersTab(content)
@@ -602,38 +585,65 @@ local function CreateConfigFrame()
         resetNote:SetPoint("TOPLEFT", 214, y - 4)
         resetNote:SetText("Disable to restore Blizzard's default style.")
         resetNote:SetTextColor(0.75, 0.75, 0.75)
-        y = y - 34
+        y = y - 40
 
-        local xSlider = CreateHorizontalSlider(content, "Relative X:",
+        local function Section(label)
+            local heading = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+            heading:SetPoint("TOPLEFT", 24, y)
+            heading:SetText(label)
+            table.insert(options, heading)
+            y = y - 22
+        end
+
+        Section("Placement")
+        local anchorDropdown = CreateDropdown(content, "Anchor:", "nameAnchor", Addon.AnchorOptions, y)
+        AddDropdownControl(options, anchorDropdown)
+        y = y - 36
+
+        local xSlider = CreateHorizontalSlider(content, "X offset (px):",
             "nameOffsetX", -250, 250, 1, y)
         table.insert(options, xSlider.container)
         y = y - 32
 
-        local ySlider = CreateHorizontalSlider(content, "Relative Y:",
+        local ySlider = CreateHorizontalSlider(content, "Y offset (px):",
             "nameOffsetY", -250, 250, 1, y)
         table.insert(options, ySlider.container)
+        y = y - 38
+
+        local placementNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        placementNote:SetPoint("TOPLEFT", 24, y)
+        placementNote:SetText("Offsets start at the selected anchor. +X moves right; +Y moves up.")
+        placementNote:SetTextColor(0.75, 0.75, 0.75)
+        table.insert(options, placementNote)
         y = y - 32
 
-        local sizeSlider = CreateHorizontalSlider(content, "Font size:", "nameSize", 6, 20, 1, y)
+        Section("Text")
+        local sizeSlider = CreateHorizontalSlider(content, "Font size (px):", "nameSize", 6, 40, 1, y)
         table.insert(options, sizeSlider.container)
-        y = y - 32
+        y = y - 34
+
+        table.insert(options, CreateSubCheckbox(content, "Use class color", "nameClassColor", y, 24))
+        table.insert(options, CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, 300))
+        y = y - 28
+
+        table.insert(options, CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, 24))
+        table.insert(options, CreateSubCheckbox(content, "Cyrillic to Latin", "nameCyrillicToLatin", y, 300))
+        y = y - 28
 
         local maxLengthSlider = CreateHorizontalSlider(content, "Max length:",
             "nameTruncateLength", 3, 20, 1, y)
         table.insert(options, maxLengthSlider.container)
-        y = y - 30
-
-        table.insert(options, CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, 230))
-        y = y - 28
-
-        table.insert(options, CreateSubCheckbox(content, "Use class color", "nameClassColor", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Cyrillic to Latin", "nameCyrillicToLatin", y, 230))
-        y = y - 28
+        y = y - 34
 
         table.insert(options, CreateSubCheckbox(content, "Hide when dead", "nameHideOnDead", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Hide when offline", "nameHideOnOffline", y, 230))
-        y = y - 30
+        table.insert(options, CreateSubCheckbox(content, "Hide when offline", "nameHideOnOffline", y, 300))
+        y = y - 38
+
+        Section("Appearance")
+        local outlineDropdown = CreateDropdown(content, "Outline:", "nameTextOutline",
+            Addon.NameOutlineOptions, y)
+        AddDropdownControl(options, outlineDropdown)
+        y = y - 36
 
         table.insert(options, CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y))
         y = y - 30
@@ -645,11 +655,6 @@ local function CreateConfigFrame()
         local shadowOffsetSlider = CreateHorizontalSlider(content, "Shadow offset:",
             "nameTextShadowOffset", 1, 3, 1, y)
         table.insert(options, shadowOffsetSlider.container)
-        y = y - 34
-
-        local outlineDropdown = CreateDropdown(content, "Outline:", "nameTextOutline",
-            Addon.NameOutlineOptions, y)
-        AddDropdownControl(options, outlineDropdown)
 
         updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
         RegisterSettingRefresher(function()
@@ -683,46 +688,21 @@ local function CreateConfigFrame()
 
     local function BuildThreatTab(content)
         local y = BeginPage(content, "Threat Indicator")
-        local options = {}
-        local updateOptions
-
-        local note = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        note:SetPoint("TOPLEFT", 16, y)
-        note:SetText(
-            "Tip: You can disable Blizzard aggro highlight at\nOptions > Interface > Raid Frames > Display Aggro Highlight")
-        note:SetTextColor(0.9, 0.75, 0.2)
-        y = y - 26
-
-        CreateCheckbox(content, "Show threat indicator", "showThreatIndicator", y, function(checked)
-            updateOptions(checked)
-        end)
-        y = y - 28
-
-        local blinking = CreateSubCheckbox(content, "Blinking", "threatIndicatorBlink", y)
-        table.insert(options, blinking)
-        y = y - 32
-
-        local shapeDropdown = CreateDropdown(content, "Shape:", "threatIndicatorShape",
-            Addon.ThreatIndicatorShapeOptions, y)
-        AddDropdownControl(options, shapeDropdown)
-        y = y - 36
-
-        y = BuildAnchorControls(content, options, y, "threatIndicator", "Indicator anchor:")
-
-        local sizeSlider = CreateHorizontalSlider(content, "Size:", "threatIndicatorSize", 4, 20, 1, y)
-        table.insert(options, sizeSlider.container)
-
-        updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
-        updateOptions(Addon:GetSetting("showThreatIndicator"))
+        RegisterSettingRefresher(Addon:BuildThreatOptions(content, y, {
+            checkbox = CreateCheckbox,
+            subCheckbox = CreateSubCheckbox,
+            dropdown = CreateDropdown,
+            slider = CreateHorizontalSlider,
+            colorPicker = CreateColorPicker,
+        }))
     end
 
     local builders = {
-        buffIndicators = function(content)
-            local y = BeginPage(content, "Buff Indicators")
-            RegisterSettingRefresher(Addon:BuildBuffIndicatorsOptions(content, y))
+        indicators = function(content)
+            local y = BeginPage(content, "Indicators")
+            RegisterSettingRefresher(Addon:BuildDesignerOptions(content, y))
         end,
         general = BuildGeneralTab,
-        frameLayout = BuildFrameLayoutTab,
         raidMarkers = BuildRaidMarkersTab,
         roleIcons = BuildRoleIconsTab,
         names = BuildNamesTab,

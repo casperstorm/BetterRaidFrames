@@ -84,12 +84,15 @@ local function TryTransformName(name, transform, ...)
     return ok and result or name
 end
 
-local function CaptureDefault(fontString)
+local function CapturePoints(fontString)
     local points = {}
     for index = 1, fontString:GetNumPoints() do
         points[index] = { fontString:GetPoint(index) }
     end
+    return points
+end
 
+local function CaptureDefault(fontString)
     local fontPath, fontSize, fontFlags = fontString:GetFont()
     local fontObject = fontString:GetFontObject()
     local customFontPath = fontPath
@@ -101,7 +104,7 @@ local function CaptureDefault(fontString)
     local shadowX, shadowY = fontString:GetShadowOffset()
 
     local state = {
-        points = points,
+        points = CapturePoints(fontString),
         fontObject = fontObject,
         fontPath = fontPath,
         customFontPath = customFontPath,
@@ -154,18 +157,22 @@ local function RestoreDefaultName(frame)
 end
 
 local function ApplyNameLayout(fontString, frame, settings, state)
+    local anchor = Addon:GetValidAnchor(settings.nameAnchor, "CENTER")
     local offsetX = settings.nameOffsetX or 0
     local offsetY = settings.nameOffsetY or 0
-    if state.offsetX ~= offsetX or state.offsetY ~= offsetY then
+    if state.anchor ~= anchor or state.offsetX ~= offsetX or state.offsetY ~= offsetY then
         fontString:ClearAllPoints()
-        fontString:SetPoint("CENTER", frame, "CENTER", offsetX, offsetY)
+        fontString:SetPoint(anchor, frame, anchor, offsetX, offsetY)
+        state.anchor = anchor
         state.offsetX = offsetX
         state.offsetY = offsetY
     end
 
-    if state.justifyApplied ~= true then
-        fontString:SetJustifyH("CENTER")
-        state.justifyApplied = true
+    local justify = stringFind(anchor, "LEFT", 1, true) and "LEFT"
+        or stringFind(anchor, "RIGHT", 1, true) and "RIGHT" or "CENTER"
+    if state.appliedJustify ~= justify then
+        fontString:SetJustifyH(justify)
+        state.appliedJustify = justify
     end
 
     local fontSize = settings.nameSize or 11
@@ -274,6 +281,19 @@ function Addon:HookName()
     end
     if CompactUnitFrame_UpdateStatusText then
         hooksecurefunc("CompactUnitFrame_UpdateStatusText", OnNameUpdated)
+    end
+    if CompactUnitFrameLayoutTemplates_LayoutFrameElement then
+        hooksecurefunc("CompactUnitFrameLayoutTemplates_LayoutFrameElement", function(frame, element, _, key)
+            if key ~= "Name" or element ~= frame.name then return end
+            local state = nameStates[element]
+            if not state then return end
+            -- Blizzard rebuilds name anchors on frame setup. Remember the new
+            -- default for restoration, then reapply the user's selected anchor.
+            state.points = CapturePoints(element)
+            state.justifyH = element:GetJustifyH()
+            state.anchor, state.appliedJustify = nil, nil
+            OnNameUpdated(frame)
+        end)
     end
 end
 

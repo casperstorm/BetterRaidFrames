@@ -18,13 +18,12 @@ local eventHandler
 local onUpdateHandler
 local framePasses = 0
 local featureUpdates = {
-    frameLayout = 0,
     raidMarker = 0,
     roleIcon = 0,
     threatIndicator = 0,
     partyLeader = 0,
     name = 0,
-    buffIndicators = 0,
+    indicators = 0,
 }
 
 function framePrototype:RegisterEvent() end
@@ -61,21 +60,17 @@ local Addon = {
     UpdateThreatIndicator = function() featureUpdates.threatIndicator = featureUpdates.threatIndicator + 1 end,
     UpdatePartyLeader = function() featureUpdates.partyLeader = featureUpdates.partyLeader + 1 end,
     UpdateName = function() featureUpdates.name = featureUpdates.name + 1 end,
-    UpdateBuffIndicators = function() featureUpdates.buffIndicators = featureUpdates.buffIndicators + 1 end,
-    UpdateRaidFrameLayout = function() featureUpdates.frameLayout = featureUpdates.frameLayout + 1 end,
-    InitializeRaidFrameLayout = function() end,
+    UpdateDesignerIndicators = function() featureUpdates.indicators = featureUpdates.indicators + 1 end,
     HookRaidMarkers = function() end,
     HookRoleIcons = function() end,
     HookThreatIndicator = function() end,
     HookPartyLeader = function() end,
     HookName = function() end,
-    HookBuffIndicators = function() end,
+    HookDesignerIndicators = function() end,
     HookEditMode = function() end,
 }
 
-local updateBuffIndicators, hookBuffIndicators = Addon.UpdateBuffIndicators, Addon.HookBuffIndicators
-assert(loadfile("BuffIndicators.lua"))("BetterRaidFrames", Addon)
-Addon.UpdateBuffIndicators, Addon.HookBuffIndicators = updateBuffIndicators, hookBuffIndicators
+assert(loadfile("Indicators.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("BetterRaidFrames.lua"))("BetterRaidFrames", Addon)
 
 BetterRaidFramesDB = {
@@ -87,6 +82,13 @@ BetterRaidFramesDB = {
                 { spellID = 364343 },
                 { spellID = "invalid" },
             },
+            indicators = { sets = {
+                default = { items = {
+                    { id = 1, spellID = 364343, anchor = "TOP", color = { r = 1, g = 0.8, b = 0.4, a = 1 }, obsolete = true },
+                    { spellID = "invalid" },
+                }, groups = { TOP = { grow = "LEFT", spacing = 4 } } },
+                ["1468"] = { items = { { id = 1, spellID = 366155, type = "ICON", size = 26 } } },
+            } },
             raidMarkerX = 1,
             raidMarkerY = 2,
             threatIndicatorX = 7,
@@ -118,22 +120,18 @@ BetterRaidFramesDB = {
 
 eventHandler(nil, "ADDON_LOADED", "BetterRaidFrames")
 
-assertEqual(#Addon:GetSetting("buffIndicators"), 1, "saved buffs should be normalized on load")
-assertEqual(Addon:GetSetting("buffIndicators")[1].obsolete, nil, "unknown buff fields should be removed")
-assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, true, "saved buffs should default to own casts")
-assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 2, "existing profiles should keep the two-pixel height")
-assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "ELAPSED")
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "TOP")
-assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 10)
+assertEqual(Addon:GetSetting("buffIndicators"), nil, "removed duration indicators should be discarded on load")
+assertEqual(Addon:SetSetting("buffIndicators", {}), false, "removed duration settings should be rejected")
+local savedIndicators = Addon:GetIndicatorSet("default")
+assertEqual(#savedIndicators.items, 1, "new designer settings should be normalized and preserved")
+assertEqual(savedIndicators.items[1].obsolete, nil)
+assertEqual(savedIndicators.items[1].mineOnly, true)
+assertEqual(savedIndicators.items[1].anchor, "TOP")
+assertEqual(savedIndicators.groups.TOP.spacing, 4)
+assertEqual(Addon:GetIndicatorSet("1468").items[1].spellID, 366155, "specialization sets should survive cleanup")
 local legacy = BetterRaidFramesDB.profiles["Legacy Buffs"]
-assertEqual(legacy.buffIndicators[1].thickness, 4, "shared thickness should migrate into existing buffs")
-assertEqual(legacy.buffIndicators[1].direction, "REMAINING")
-assertEqual(legacy.buffIndicators[1].position, "RIGHT")
-assertEqual(legacy.buffIndicators[1].frameLevel, 112)
-assertEqual(legacy.buffIndicators[2].thickness, 8, "per-buff choices must take precedence during migration")
-assertEqual(legacy.buffIndicators[2].direction, "ELAPSED")
-assertEqual(legacy.buffIndicators[2].position, "LEFT")
-assertEqual(legacy.buffIndicators[2].frameLevel, 0)
+assertEqual(legacy.buffIndicators, nil, "inactive profiles should also discard removed duration indicators")
+assertEqual(#legacy.indicators.sets.default.items, 0, "old duration segments should not create new indicators")
 assertEqual(legacy.buffIndicatorHeight, nil, "obsolete shared settings should be removed")
 assertEqual(legacy.buffIndicatorDirection, nil)
 assertEqual(legacy.buffIndicatorPosition, nil)
@@ -161,8 +159,10 @@ assertEqual(BetterRaidFramesDB.profiles.Default.nameOffsetX, 6,
     "legacy name X should migrate to a relative offset")
 assertEqual(BetterRaidFramesDB.profiles.Default.nameOffsetY, -7,
     "legacy name Y should migrate to a relative offset")
-assertEqual(BetterRaidFramesDB.profiles.Default.raidFrameGrowth, "RIGHT",
-    "legacy horizontal growth should migrate to right")
+assertEqual(BetterRaidFramesDB.profiles.Default.nameAnchor, "CENTER",
+    "existing name offsets must retain their center anchor")
+assertEqual(BetterRaidFramesDB.profiles.Default.raidFrameGrowth, nil,
+    "removed raid growth settings should be pruned")
 assertEqual(BetterRaidFramesDB.profiles.Default.removedSetting, nil,
     "removed profile settings should be pruned")
 assertEqual(BetterRaidFramesDB.globalSettings.removedSetting, nil,
@@ -185,21 +185,44 @@ assertEqual(featureUpdates.name, 0, "a raid marker setting should not update nam
 local passesBeforeName = framePasses
 assertEqual(Addon:SetSetting("customizeNames", true), true, "name customization should be configurable")
 assertEqual(Addon:SetSetting("nameSize", 14), true, "name styling should be configurable")
+assertEqual(Addon:SetSetting("nameAnchor", "BOTTOMLEFT"), true, "name anchors should be configurable")
 onUpdateHandler()
 assertEqual(framePasses, passesBeforeName + 1, "name settings should coalesce into one frame pass")
 assertEqual(featureUpdates.name, 1, "name settings should only update names")
 
 local passesBeforeLayout = framePasses
-local layoutUpdatesBefore = featureUpdates.frameLayout
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
     "the removed manual raid anchor setting should be rejected")
-assertEqual(Addon:SetSetting("raidFrameGrowth", "LEFT"), true,
-    "raid frame growth should be configurable")
-onUpdateHandler()
+assertEqual(Addon:SetSetting("raidFrameGrowth", "LEFT"), false,
+    "removed raid growth settings should be rejected")
+assertEqual(Addon:RequestFeatureUpdate("frameLayout"), false,
+    "the removed layout feature should not schedule updates")
 assertEqual(framePasses, passesBeforeLayout,
-    "layout-only settings should not scan compact unit frames")
-assertEqual(featureUpdates.frameLayout, layoutUpdatesBefore + 1,
-    "layout settings should coalesce into one layout update")
+    "removed layout settings should not scan compact unit frames")
+
+assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false)
+assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), false)
+assertEqual(Addon:GetSetting("threatIndicatorHighColorG"), 1)
+assertEqual(Addon:GetSetting("threatIndicatorInsecureColorG"), 0.6)
+assertEqual(Addon:GetSetting("threatIndicatorSecureColorG"), 0)
+assertEqual(Addon:GetSetting("threatIndicatorBorderOpacity"), 100)
+assertEqual(Addon:GetSetting("threatIndicatorBorderInset"), 0)
+assertEqual(Addon:SetSetting("threatIndicatorBorder", "CUSTOM"), false, "removed border styles should be rejected")
+assertEqual(Addon:SetSetting("threatIndicatorBorderTexture", "custom.tga"), false)
+local threatUpdatesBefore = featureUpdates.threatIndicator
+local namesBeforeThreat = featureUpdates.name
+Addon:SetSetting("threatIndicatorHideForTanks", true)
+Addon:SetSetting("threatIndicatorColorByThreat", true)
+Addon:SetSetting("threatIndicatorHighColorB", 0.25)
+Addon:SetSetting("threatIndicatorBorderOpacity", 40)
+Addon:SetSetting("threatIndicatorBorderInset", -3)
+Addon:SetSetting("threatIndicatorBorderColorG", 0.5)
+Addon:SetSetting("threatIndicatorBorderSize", 4)
+Addon:SetSetting("threatIndicatorBorderStyle", "GLOW")
+Addon:SetSetting("threatIndicatorGlowSize", 12)
+onUpdateHandler()
+assertEqual(featureUpdates.threatIndicator, threatUpdatesBefore + 1, "threat options should coalesce into one update")
+assertEqual(featureUpdates.name, namesBeforeThreat, "threat options should not update unrelated features")
 
 local context = "solo"
 
@@ -223,6 +246,12 @@ assertEqual(Addon:GetAssignedProfileForContext("raid"), "Raid", "raid assignment
 context = "party"
 assertEqual(Addon:ApplyAutomaticProfile(false), true, "party context should switch profile")
 assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activate party profile")
+assertEqual(Addon:GetSetting("nameAnchor"), "CENTER", "name placement belongs to each profile")
+assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false, "tank filtering should belong to each profile")
+assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), false, "threat colours should belong to each profile")
+assertEqual(Addon:GetSetting("threatIndicatorHighColorB"), 0)
+assertEqual(Addon:GetSetting("threatIndicatorBorderOpacity"), 100)
+assertEqual(Addon:GetSetting("threatIndicatorBorderInset"), 0)
 
 context = "raid"
 assertEqual(Addon:ApplyAutomaticProfile(false), true, "raid context should switch profile")
@@ -238,41 +267,46 @@ context = "raid"
 assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not switch when assignment is cleared")
 
 assertEqual(Addon:SwitchProfile("Default"), true)
-assertEqual(Addon:DuplicateProfile("Default", "Buff Copy"), true)
-assertEqual(Addon:SwitchProfile("Buff Copy"), true)
-local beforeBuffUpdate = featureUpdates.buffIndicators
+assertEqual(Addon:GetSetting("nameAnchor"), "BOTTOMLEFT", "switching back restores the chosen name anchor")
+assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), true)
+assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), true)
+assertEqual(Addon:DuplicateProfile("Default", "Indicator Copy"), true)
+assertEqual(Addon:SwitchProfile("Indicator Copy"), true)
+assertEqual(Addon:GetSetting("threatIndicatorHighColorB"), 0.25)
+assertEqual(Addon:GetSetting("threatIndicatorBorderOpacity"), 40)
+assertEqual(Addon:GetSetting("threatIndicatorBorderInset"), -3)
+assertEqual(Addon:GetSetting("threatIndicatorBorderColorG"), 0.5)
+assertEqual(Addon:GetSetting("threatIndicatorBorderSize"), 4)
+assertEqual(Addon:GetSetting("threatIndicatorBorderStyle"), "GLOW")
+assertEqual(Addon:GetSetting("threatIndicatorGlowSize"), 12)
+assertEqual(Addon:GetSetting("nameAnchor"), "BOTTOMLEFT", "profile copies retain name placement")
+local beforeIndicatorUpdate = featureUpdates.indicators
 local beforeNameUpdate = featureUpdates.name
-Addon:ChangeBuffIndicator(1, { mineOnly = false, r = 0.2 })
-Addon:ChangeBuffIndicator(1, { thickness = 6 })
-Addon:ChangeBuffIndicator(1, { direction = "REMAINING" })
-Addon:ChangeBuffIndicator(1, { position = "BOTTOM" })
-Addon:ChangeBuffIndicator(1, { frameLevel = 50 })
+Addon:ChangeDesignerIndicator("default", 1, { mineOnly = false, color = { r = 0.2, g = 0.4, b = 0.6, a = 0.8 } })
+Addon:ChangeDesignerIndicator("default", 1, { size = 30, text = "DURATION", anchor = "BOTTOM" })
+Addon:ChangeDesignerGroup("default", "TOP", { grow = "RIGHT", spacing = 7 })
+Addon:ChangeDesignerIndicator("1468", 1, { size = 40 })
 onUpdateHandler()
-assertEqual(featureUpdates.buffIndicators, beforeBuffUpdate + 1, "buff edits should refresh buff indicators")
-assertEqual(featureUpdates.name, beforeNameUpdate, "buff edits should not refresh unrelated features")
-assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, false)
-assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 6)
-assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "REMAINING")
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "BOTTOM")
-assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 50)
+assertEqual(featureUpdates.indicators, beforeIndicatorUpdate + 1, "designer edits should coalesce into one indicator update")
+assertEqual(featureUpdates.name, beforeNameUpdate, "indicator edits should not refresh unrelated features")
+local copiedSet = Addon:GetIndicatorSet("default")
+assertEqual(copiedSet.items[1].mineOnly, false)
+assertEqual(copiedSet.items[1].size, 30)
+assertEqual(copiedSet.items[1].text, "DURATION")
+assertEqual(copiedSet.items[1].anchor, "BOTTOM")
+assertEqual(copiedSet.groups.TOP.spacing, 7)
 assertEqual(Addon:SwitchProfile("Default"), true)
-assertEqual(Addon:GetSetting("buffIndicators")[1].mineOnly, true, "profile copies must not share buff entries")
-assertEqual(Addon:GetSetting("buffIndicators")[1].r, 1, "profile copies must not share buff colours")
-assertEqual(Addon:GetSetting("buffIndicators")[1].thickness, 2, "height settings should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicators")[1].direction, "ELAPSED", "direction should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "TOP", "position should belong to each profile")
-assertEqual(Addon:GetSetting("buffIndicators")[1].frameLevel, 10, "layering should belong to each profile")
-Addon:ChangeBuffIndicator(1, { position = "LEFT" })
-assertEqual(Addon:DuplicateProfile("Default", "Vertical Buffs"), true)
-assertEqual(Addon:SwitchProfile("Vertical Buffs"), true)
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "LEFT", "left placement should survive profile normalization")
-Addon:ChangeBuffIndicator(1, { position = "RIGHT" })
-assertEqual(Addon:SwitchProfile("Default"), true)
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "LEFT", "vertical placement should remain profile-specific")
-assertEqual(Addon:SwitchProfile("Vertical Buffs"), true)
-assertEqual(Addon:GetSetting("buffIndicators")[1].position, "RIGHT", "right placement should survive profile normalization")
-assertEqual(Addon:CreateProfile("Empty Buffs"), true)
-assertEqual(Addon:SwitchProfile("Empty Buffs"), true)
-assertEqual(#Addon:GetSetting("buffIndicators"), 0, "new profiles should have no indicators enabled")
+local originalSet = Addon:GetIndicatorSet("default")
+assertEqual(originalSet.items[1].mineOnly, true, "profile copies must not share indicator entries")
+assertEqual(originalSet.items[1].color.r, 1, "profile copies must not share indicator colours")
+assertEqual(originalSet.items[1].size, 20)
+assertEqual(originalSet.items[1].text, "NONE")
+assertEqual(originalSet.items[1].anchor, "TOP")
+assertEqual(originalSet.groups.TOP.grow, "LEFT", "profile copies must not share group settings")
+assertEqual(originalSet.groups.TOP.spacing, 4)
+assertEqual(Addon:GetIndicatorSet("1468").items[1].size, 26, "profile copies must not share specialization sets")
+assertEqual(Addon:CreateProfile("Empty Indicators"), true)
+assertEqual(Addon:SwitchProfile("Empty Indicators"), true)
+assertEqual(#Addon:GetIndicatorSet("default").items, 0, "new profiles should have no indicators enabled")
 
 print("PASS: auto_profile_switch_test")

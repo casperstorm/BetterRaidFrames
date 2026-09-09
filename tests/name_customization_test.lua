@@ -97,12 +97,22 @@ function CompactUnitFrame_UpdateStatusText(target)
     blizzardStatusUpdates = blizzardStatusUpdates + 1
     target.name:Show()
 end
+function CompactUnitFrameLayoutTemplates_LayoutFrameElement(target, element, _, key)
+    if key == "Name" then
+        element:ClearAllPoints()
+        element:SetPoint("TOPLEFT", target, "TOPLEFT", 3, -3)
+        element:SetPoint("TOPRIGHT", target, "TOPRIGHT", -3, -3)
+        element:SetJustifyH("LEFT")
+    end
+end
 function hooksecurefunc(name, callback) hooks[name] = callback end
 
 local requestedFeature
+local editMode = false
 local Addon = {}
+assert(loadfile("Utils.lua"))("BetterRaidFrames", Addon)
 function Addon:GetSettings() return settings end
-function Addon:IsEditModeActive() return false end
+function Addon:IsEditModeActive() return editMode end
 function Addon:IsRaidOrPartyFrame() return true end
 function Addon:RequestFeatureUpdate(feature) requestedFeature = feature end
 
@@ -123,6 +133,24 @@ assertEqual(fontString.shadowOffset[1], 2, "shadow offset should be applied")
 local clearCount = fontString.clearCount
 Addon:UpdateName(frame)
 assertEqual(fontString.clearCount, clearCount, "unchanged layout settings should not re-anchor the name")
+
+for _, option in ipairs(Addon.AnchorOptions) do
+    local anchor = option.value
+    settings.nameAnchor = anchor
+    Addon:UpdateName(frame)
+    local point = fontString.points[1]
+    assertEqual(#fontString.points, 1, "custom placement must clear Blizzard's extra anchors")
+    assertEqual(point[1], anchor, "the name must attach by the selected edge")
+    assertEqual(point[2], frame, "the anchor must be relative to the unit frame")
+    assertEqual(point[3], anchor, "the frame and name must use the same anchor")
+    assertEqual(point[4], 8, "X remains relative to the selected anchor")
+    assertEqual(point[5], -4, "Y remains relative to the selected anchor")
+    local justify = anchor:find("LEFT") and "LEFT" or anchor:find("RIGHT") and "RIGHT" or "CENTER"
+    assertEqual(fontString.justify, justify, "text should align with its anchor")
+end
+settings.nameAnchor = "invalid"
+Addon:UpdateName(frame)
+assertEqual(fontString.points[1][1], "CENTER", "invalid saved anchors must fall back safely")
 
 settings.nameTextShadow = false
 Addon:UpdateName(frame)
@@ -151,5 +179,32 @@ assertEqual(requestedFeature, "name", "manual refreshes should use the throttled
 
 assertEqual(type(hooks.CompactUnitFrame_UpdateName), "function", "the Blizzard name update should be hooked")
 assertEqual(type(hooks.CompactUnitFrame_UpdateStatusText), "function", "status updates should be hooked")
+
+settings.customizeNames, settings.nameAnchor = true, "BOTTOMRIGHT"
+Addon:UpdateName(frame)
+local layoutHook = hooks.CompactUnitFrameLayoutTemplates_LayoutFrameElement
+assertEqual(type(layoutHook), "function", "Blizzard's name layout resets must be hooked")
+CompactUnitFrameLayoutTemplates_LayoutFrameElement(frame, fontString, 0, "Name")
+layoutHook(frame, fontString, 0, "Name")
+assertEqual(fontString.points[1][1], "BOTTOMRIGHT", "frame setup must preserve the configured anchor")
+assertEqual(fontString.justify, "RIGHT", "frame setup must preserve the configured alignment")
+clearCount = fontString.clearCount
+layoutHook(frame, {}, 0, "Role")
+Addon:UpdateName(frame)
+assertEqual(fontString.clearCount, clearCount, "unrelated layout updates and stable name updates should do no layout work")
+
+editMode = true
+CompactUnitFrameLayoutTemplates_LayoutFrameElement(frame, fontString, 0, "Name")
+layoutHook(frame, fontString, 0, "Name")
+assertEqual(fontString.points[1][1], "TOPLEFT", "Edit Mode keeps control of its preview")
+editMode = false
+Addon:UpdateName(frame)
+assertEqual(fontString.points[1][1], "BOTTOMRIGHT", "leaving Edit Mode reapplies the selected anchor")
+settings.customizeNames = false
+Addon:UpdateName(frame)
+assertEqual(#fontString.points, 2, "disabling restores the latest Blizzard layout")
+assertEqual(fontString.points[1][1], "TOPLEFT")
+assertEqual(fontString.points[2][1], "TOPRIGHT")
+assertEqual(fontString.justify, "LEFT")
 
 print("PASS: name_customization_test")

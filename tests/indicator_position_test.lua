@@ -34,6 +34,8 @@ local Addon = {}
 function Addon:GetSetting(key) return settings[key] end
 function Addon:GetSettings() return settings end
 function Addon:IsConfigOpen() return true end
+function Addon:IsThreatPreviewOpen() return true end
+function Addon:StyleThreatBorder() end
 function Addon:IsEditModeActive() return false end
 
 local function CreateRegion()
@@ -71,6 +73,7 @@ local roleIcon = CreateRegion()
 roleIcon.position = { "TOPRIGHT", nil, "TOPRIGHT", -3, -2 }
 local threatIndicator = CreateRegion()
 threatIndicator.animGroup = animation
+threatIndicator.texture = { SetColorTexture = function() end, SetShown = function() end }
 local leaderIndicator = CreateRegion()
 
 local frame = {
@@ -82,6 +85,7 @@ local frame = {
 }
 
 function UnitExists(unit) return unit == "party1" end
+function UnitThreatSituation() return nil end
 function GetRaidTargetIndex() return 1 end
 function SetRaidTargetIconTexture() end
 function UnitIsGroupLeader() return true end

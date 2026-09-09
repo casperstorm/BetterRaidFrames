@@ -14,13 +14,15 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 
 BetterRaidFrames.lua
 Utils.lua
-BuffIndicators.lua
+Indicators.lua
+IndicatorDisplay.lua
 Name.lua
-RaidFrameLayout.lua
 RaidMarkers.lua
 RoleIcons.lua
+ThreatBorders.lua
 ThreatIndicator.lua
 PartyLeader.lua
 EditModeButton.lua
-BuffIndicatorsConfig.lua
+IndicatorsConfig.lua
+ThreatIndicatorConfig.lua
 Config.lua
