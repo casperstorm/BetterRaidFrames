@@ -1,5 +1,6 @@
 local env = assert(loadfile("tests/helpers/threat_env.lua"))()
 local Addon = env.Addon
+function Addon:RefreshFrameBorders() end
 env.settings.threatIndicatorBorder = "CUSTOM"
 env.settings.threatIndicatorBorderTexture = "Interface\\AddOns\\MyMedia\\edge.tga"
 assert(loadfile("BetterRaidFrames.lua"))("BetterRaidFrames", Addon)
@@ -24,6 +25,11 @@ assert(loadfile("ThreatIndicatorConfig.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("Config.lua"))("BetterRaidFrames", Addon)
 Addon:OpenConfig()
 local config = BetterRaidFramesConfigFrame
+local borders = env.find(function(w) return w.Text and w.Text.text == "Crisp frame borders" end)
+assert(borders and not borders:GetChecked(), "General exposes the optional border correction, disabled by default")
+borders:SetChecked(true)
+borders.scripts.OnClick(borders)
+assert(Addon:GetSetting("crispFrameBorders"), "the border checkbox saves its profile setting")
 assert(not Addon:IsThreatPreviewOpen(), "opening settings on General must not preview threat")
 local before = requested
 config.ShowTab("threatIndicator")

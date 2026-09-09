@@ -544,6 +544,15 @@ local function CreateConfigFrame()
         note:SetText("Enable Raid-Style Party Frames first to configure feature tabs.")
         note:SetTextColor(0.75, 0.75, 0.75)
 
+        y = y - 44
+        CreateCheckbox(content, "Crisp frame borders", "crispFrameBorders", y)
+        local borderNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        borderNote:SetPoint("TOPLEFT", 32, y - 32)
+        borderNote:SetWidth(620)
+        borderNote:SetJustifyH("LEFT")
+        borderNote:SetText("Aligns health and power bar edges to screen pixels for more even separators.\nApplies out of combat. Disable to restore the original insets.")
+        borderNote:SetTextColor(0.75, 0.75, 0.75)
+
         C_Timer.After(0.5, UpdateFeatureTabsEnabled)
     end
 

@@ -13,6 +13,7 @@ Discord username: `async`
 ## Features
 
 - Profiles with automatic Party and Raid switching
+- Optional pixel-aligned health and power bar edges for more even frame separators
 - Raid target markers with configurable anchors, offsets, and sizing
 - Role icon display options
 - Party leader indicator with configurable anchor, offsets, sizing, and combat visibility
@@ -39,6 +40,12 @@ Join a Follower Dungeon or open Blizzard Edit Mode, then type `/brf`.
 **Where do I edit frame and aura sizes?**
 
 Open Blizzard Edit Mode and select the Party or Raid Frames.
+
+**Why do some frame separators look thicker than others?**
+
+Frame sizes and UI scaling can place Blizzard's health-bar insets between screen pixels. Try **General → Crisp frame borders** in `/brf` to align the bar edges to the pixel grid. Each edge uses one physical pixel, giving touching frames a two-pixel separator. This is off by default and belongs to the current profile.
+
+The correction updates after layout or screen-scale changes, without continuous polling. Changes apply out of combat when frame geometry is accessible; disabling it restores the original insets. Blizzard still controls frame placement and sizing, and BRF does not change UI-scale settings.
 
 **How do I position and style names?**
 

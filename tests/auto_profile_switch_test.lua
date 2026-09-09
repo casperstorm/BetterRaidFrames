@@ -18,6 +18,7 @@ local eventHandler
 local onUpdateHandler
 local framePasses = 0
 local featureUpdates = {
+    frameBorders = 0,
     raidMarker = 0,
     roleIcon = 0,
     threatIndicator = 0,
@@ -51,6 +52,8 @@ function CreateFrame()
 end
 
 local Addon = {
+    RefreshFrameBorders = function() featureUpdates.frameBorders = featureUpdates.frameBorders + 1 end,
+    HookFrameBorders = function() end,
     ForEachFrame = function(_, callback)
         framePasses = framePasses + 1
         callback({})
@@ -190,6 +193,18 @@ onUpdateHandler()
 assertEqual(framePasses, passesBeforeName + 1, "name settings should coalesce into one frame pass")
 assertEqual(featureUpdates.name, 1, "name settings should only update names")
 
+assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment should be opt-in")
+local passesBeforeBorders = framePasses
+local namesBeforeBorders = featureUpdates.name
+local bordersBefore = featureUpdates.frameBorders
+Addon:SetSetting("crispFrameBorders", true)
+Addon:RequestFeatureUpdate("frameBorders")
+assertEqual(featureUpdates.frameBorders, bordersBefore, "border edits wait for the coalesced update")
+onUpdateHandler()
+assertEqual(featureUpdates.frameBorders, bordersBefore + 1, "border requests coalesce into one refresh")
+assertEqual(framePasses, passesBeforeBorders, "border refresh owns its scan without an unrelated frame pass")
+assertEqual(featureUpdates.name, namesBeforeBorders, "border settings do not refresh other artwork")
+
 local passesBeforeLayout = framePasses
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
     "the removed manual raid anchor setting should be rejected")
@@ -246,6 +261,7 @@ assertEqual(Addon:GetAssignedProfileForContext("raid"), "Raid", "raid assignment
 context = "party"
 assertEqual(Addon:ApplyAutomaticProfile(false), true, "party context should switch profile")
 assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activate party profile")
+assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment belongs to each profile")
 assertEqual(Addon:GetSetting("nameAnchor"), "CENTER", "name placement belongs to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false, "tank filtering should belong to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), false, "threat colours should belong to each profile")
@@ -267,6 +283,7 @@ context = "raid"
 assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not switch when assignment is cleared")
 
 assertEqual(Addon:SwitchProfile("Default"), true)
+assertEqual(Addon:GetSetting("crispFrameBorders"), true, "switching back restores pixel alignment")
 assertEqual(Addon:GetSetting("nameAnchor"), "BOTTOMLEFT", "switching back restores the chosen name anchor")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), true)
 assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), true)

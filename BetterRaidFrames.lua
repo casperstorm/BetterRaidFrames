@@ -1,6 +1,7 @@
 local ADDON_NAME, Addon = ...
 
 local defaults = {
+    crispFrameBorders = false,
     indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -75,6 +76,7 @@ local POSITION_SETTING_MIGRATIONS = {
 }
 
 local SETTING_FEATURES = {
+    crispFrameBorders = "frameBorders",
     indicators = "indicators",
     showRaidMarkers = "raidMarker",
     raidMarkerPoint = "raidMarker",
@@ -138,6 +140,7 @@ local SETTING_FEATURES = {
 }
 
 local VALID_FEATURES = {
+    frameBorders = true,
     indicators = true,
     raidMarker = true,
     roleIcon = true,
@@ -353,6 +356,7 @@ local function InitializeDB()
 end
 
 local function HookRaidFrames()
+    Addon:HookFrameBorders()
     Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
     Addon:HookThreatIndicator()
@@ -395,6 +399,7 @@ local function UpdateFrames(features)
     if updateUnitFrames then
         Addon:ForEachFrame(UpdateFrame)
     end
+    if updateAll or features.frameBorders then Addon:RefreshFrameBorders(activeSettings) end
     activeFeatures = nil
     activeSettings = nil
 end
