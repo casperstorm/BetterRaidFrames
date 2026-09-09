@@ -23,6 +23,7 @@ ThreatBorders.lua
 ThreatIndicator.lua
 PartyLeader.lua
 EditModeButton.lua
+IndicatorEditor.lua
 IndicatorsConfig.lua
 ThreatIndicatorConfig.lua
 Config.lua

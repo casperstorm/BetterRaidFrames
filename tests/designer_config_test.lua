@@ -2,147 +2,220 @@ local env = assert(loadfile("tests/helpers/designer_env.lua"))()
 local Addon = env.Addon
 local cvarValue, cvarWrites = "1", 0
 C_CVar = {
-    GetCVarBool = function(name)
-        assert(name == "raidFramesDisplayBuffs")
-        return cvarValue == "1"
-    end,
-    SetCVar = function(name, value)
-        assert(name == "raidFramesDisplayBuffs")
-        cvarValue, cvarWrites = value, cvarWrites + 1
-    end,
+    GetCVarBool = function(name) assert(name == "raidFramesDisplayBuffs"); return cvarValue == "1" end,
+    SetCVar = function(name, value) assert(name == "raidFramesDisplayBuffs"); cvarValue, cvarWrites = value, cvarWrites + 1 end,
 }
+assert(loadfile("IndicatorEditor.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("IndicatorsConfig.lua"))("BetterRaidFrames", Addon)
 local refresh = Addon:BuildDesignerOptions(env.frame(), -38)
-local function findText(text) return env.find(function(w) return w.text == text end) end
-local function click(w) w.scripts.OnClick(w) end
-local blizzardBuffs = env.find(function(w) return w.Text and w.Text.text == "Show Blizzard buff icons" end)
-assert(blizzardBuffs:GetChecked() and cvarWrites == 0, "opening the designer must respect the existing CVar")
+local function visible(w) return w.shown and (not w.parent or visible(w.parent)) end
+local function click(w) assert(w, "missing widget"); w.scripts.OnClick(w) end
+local function button(text)
+    return env.find(function(w) return w.kind == "Button" and w.text == text and visible(w) end)
+end
+local function checkbox(text)
+    return env.find(function(w) return w.Text and w.Text.text == text end)
+end
+local function dropdown(label)
+    return env.find(function(w) return w.label and w.label.text == label and w.kind == "DropdownButton" and visible(w) end)
+end
+local function choose(label, value)
+    for _, option in ipairs(dropdown(label).menu.items) do
+        if option.value == value then option.callback(value); return end
+    end
+    error("choice not found: " .. label .. "/" .. value)
+end
+local function slider(label)
+    return env.find(function(w) return w.label and w.label.text == label and w.template == "MinimalSliderWithSteppersTemplate" end)
+end
+local function group(anchor)
+    return env.find(function(w) return w.anchor == anchor and w.toggle and visible(w) end)
+end
+local function member(id)
+    return env.find(function(w) return w.item and w.item.id == id and visible(w) end)
+end
+local function selectItem(id) click(member(id).select) end
+local function selectGroup(anchor) click(group(anchor).select) end
+local input = env.find(function(w) return w.kind == "EditBox" and w.height == 24 end)
+local function addBuff(anchor, spell)
+    click(group(anchor).add)
+    assert(visible(input))
+    input:SetText(tostring(spell)); click(button("Add"))
+    local set = Addon:GetIndicatorSet()
+    return set.items[#set.items].id
+end
+local function item(key, id) return Addon:FindDesignerIndicator(key, id) end
+local blizzardBuffs = checkbox("Show Blizzard buff icons")
+assert(blizzardBuffs:GetChecked() and cvarWrites == 0, "opening the designer respects the CVar")
 blizzardBuffs:SetChecked(false); click(blizzardBuffs)
 assert(cvarValue == "0")
 blizzardBuffs:SetChecked(true); click(blizzardBuffs)
 assert(cvarValue == "1")
 cvarValue = "0"
 blizzardBuffs.scripts.OnEvent(blizzardBuffs, "CVAR_UPDATE", "raidFramesDisplayBuffs", "0")
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2, "external CVar updates must refresh without writing back")
-local function dropdown(label) return env.find(function(w) return w.label and w.label.text == label end) end
-local function choose(label, value)
-    local d = dropdown(label)
-    for _, option in ipairs(d.menu.items) do if option.value == value then option.callback(value); return end end
-    error("choice not found: " .. label .. "/" .. value)
-end
-local input = env.find(function(w) return w.kind == "EditBox" and w.height == 24 end)
-input:SetText("Echo"); click(findText("Add"))
-local a = Addon:GetIndicatorSet().items[1].id
-assert(#Addon:GetIndicatorSet().items == 1)
-choose("Display", "ICON")
-choose("Text", "STACKS")
-assert(Addon:FindDesignerIndicator("default", a).type == "ICON")
-local glow = env.find(function(w) return w.Text and w.Text.text == "Glow" end)
-local pulse = env.find(function(w) return w.Text and w.Text.text == "Pulse glow" end)
-assert(not glow:GetChecked())
-assert(not pulse:GetChecked() and not pulse.enabled, "pulsing requires glow")
-glow:SetChecked(true); click(glow)
-assert(Addon:FindDesignerIndicator("default", a).glow)
-assert(pulse.enabled)
-pulse:SetChecked(true); click(pulse)
-assert(Addon:FindDesignerIndicator("default", a).glowPulse)
-local size = env.find(function(w) return w.template == "MinimalSliderWithSteppersTemplate" and w.max == 50 end)
-size:SetValue(26)
-assert(Addon:FindDesignerIndicator("default", a).size == 26)
-local oldAnchorMenu = dropdown("Anchor").menu.items[1]
-choose("Editing set", "1468")
-assert(glow:GetChecked(), "specializations inherit the default glow setting")
-assert(pulse:GetChecked(), "specializations inherit the pulse setting")
-pulse:SetChecked(false); click(pulse)
-assert(not Addon:FindDesignerIndicator("1468", a).glowPulse and Addon:FindDesignerIndicator("default", a).glowPulse,
-    "changing a specialization's pulse must preserve Default")
-glow:SetChecked(false); click(glow)
-assert(not pulse.enabled)
-assert(not Addon:FindDesignerIndicator("1468", a).glow and Addon:FindDesignerIndicator("default", a).glow,
-    "changing a specialization's glow must preserve Default")
-oldAnchorMenu.callback(oldAnchorMenu.value)
-assert(Addon:GetIndicatorSet("1468").items[1].anchor == "BOTTOMRIGHT", "stale dropdowns cannot write to another set")
-choose("Grow", "UP")
-assert(Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.grow == "UP")
-assert(Addon:GetIndicatorSet("default").groups.BOTTOMRIGHT.grow == "LEFT")
-click(findText("Placement"))
-local offsetX = env.find(function(w) return w.min == -250 and w.point[2] == 4 end)
-local offsetY = env.find(function(w) return w.min == -250 and w.point[2] == 328 end)
-local offsetZ = env.find(function(w) return w.min == -100 and w.max == 500 end)
-assert(offsetZ.value == 0)
-offsetZ:SetValue(240)
-assert(Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.offsetZ == 240)
-local aboveBlizzard = findText("Above Blizzard icons")
-env.combat = true
-click(aboveBlizzard)
-assert(Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.offsetZ == 240, "the preset respects combat restrictions")
-env.combat = false
-click(aboveBlizzard)
-assert(offsetZ.value == 200 and Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.offsetZ == 200)
-assert(Addon:GetIndicatorSet("default").groups.BOTTOMRIGHT.offsetZ == 0, "group Z edits must preserve other sets")
-offsetX:SetValue(-12); offsetY:SetValue(8)
-assert(Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.offsetX == -12)
-assert(Addon:GetIndicatorSet("1468").groups.BOTTOMRIGHT.offsetY == 8)
-assert(Addon:GetIndicatorSet("default").groups.BOTTOMRIGHT.offsetX == 0, "group sliders must edit the selected spec only")
-input:SetText("366155"); click(findText("Add"))
-assert(#Addon:GetIndicatorSet("1468").items == 2)
-assert(offsetX.value == -12 and offsetY.value == 8, "indicators sharing an anchor must share offset controls")
-assert(offsetZ.value == 200, "indicators sharing an anchor must share their layer control")
-local b = Addon:GetIndicatorSet("1468").items[2].id
-choose("Anchor", "TOPLEFT")
-assert(Addon:FindDesignerIndicator("1468", b).anchor == "TOPLEFT")
-assert(offsetX.value == 0 and offsetY.value == 0, "moving to another anchor must load that group's offsets")
-assert(offsetZ.value == 0, "joining another anchor loads its Z offset")
-click(findText("Appearance"))
+assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
+
+assert(#dropdown("Groups").menu.items == 9)
+local beforeGroup = env.settings.indicators
+choose("Groups", "BOTTOMRIGHT")
+assert(env.settings.indicators == beforeGroup, "choosing an empty group is navigation, not a profile override")
+assert(#dropdown("Groups").menu.items == 8)
+assert(visible(slider("X offset (px)")) and not visible(slider("Layer / Z offset")))
+local inspector = slider("X offset (px)").parent.parent.parent.parent
+local inspectorPoint = inspector.point
+assert(inspectorPoint and inspectorPoint[1] == "BOTTOMRIGHT", "the inspector is anchored independently of the tree")
+local a = addBuff("BOTTOMRIGHT", "Echo")
+assert(item("default", a).type == "ICON" and item("default", a).anchor == "BOTTOMRIGHT")
+assert(not visible(slider("X offset (px)")), "spell editors contain no group layout controls")
+assert(visible(slider("Size (px)")))
 choose("Display", "SQUARE")
-assert(not glow:GetChecked(), "a newly added indicator starts without glow")
-assert(not pulse:GetChecked() and not pulse.enabled, "new indicators start without pulsing")
+choose("Display", "ICON")
+click(button("Text")); choose("Text", "STACKS")
+assert(item("default", a).text == "STACKS")
+click(button("Display"))
+local glow, pulse = checkbox("Glow"), checkbox("Pulse glow")
+assert(not glow:GetChecked() and not pulse:GetChecked() and not pulse.enabled)
+glow:SetChecked(true); click(glow)
+pulse:SetChecked(true); click(pulse)
+slider("Size (px)"):SetValue(26)
+assert(item("default", a).glow and item("default", a).glowPulse and item("default", a).size == 26)
+local staleItemMenu = dropdown("Move to group").menu.items[1]
+
+choose("Editing set", "1468")
+assert(visible(slider("X offset (px)")), "sets open on group settings")
+selectItem(a)
+assert(glow:GetChecked() and pulse:GetChecked(), "specializations inherit Default")
+pulse:SetChecked(false); click(pulse)
+glow:SetChecked(false); click(glow)
+assert(not item("1468", a).glow and not item("1468", a).glowPulse)
+assert(item("default", a).glow and item("default", a).glowPulse and not pulse.enabled)
+staleItemMenu.callback(staleItemMenu.value)
+assert(item("1468", a).anchor == "BOTTOMRIGHT", "stale item menus cannot write to another set")
+selectGroup("BOTTOMRIGHT")
+choose("Grow", "UP")
+slider("X offset (px)"):SetValue(-12); slider("Y offset (px)"):SetValue(8)
+click(button("+ Advanced"))
+assert(visible(slider("Layer / Z offset")))
+slider("Layer / Z offset"):SetValue(240)
+env.combat = true
+click(button("Above Blizzard icons"))
+assert(Addon:GetIndicatorSet().groups.BOTTOMRIGHT.offsetZ == 240)
+env.combat = false
+click(button("Above Blizzard icons"))
+assert(Addon:GetIndicatorSet().groups.BOTTOMRIGHT.offsetZ == 200)
+assert(Addon:GetIndicatorSet("default").groups.BOTTOMRIGHT.offsetZ == 0)
+assert(Addon:GetIndicatorSet("default").groups.BOTTOMRIGHT.offsetX == 0)
+click(button("− Advanced"))
+assert(not visible(slider("Layer / Z offset")))
+local b = addBuff("BOTTOMRIGHT", 355941)
+assert(inspector.point == inspectorPoint, "selecting another spell must not move the inspector")
+assert(item("1468", b).anchor == "BOTTOMRIGHT")
+assert(not item("1468", b).glow and not item("1468", b).glowPulse)
+click(button("↑"))
+assert(Addon:GetIndicatorSet().items[1].id == b and not button("↑").enabled)
+click(button("↓"))
+assert(Addon:GetIndicatorSet().items[2].id == b and not button("↓").enabled)
+click(button("Copy"))
+local copy = Addon:GetIndicatorSet().items[3].id
+assert(copy ~= b and item("1468", copy).anchor == "BOTTOMRIGHT")
+click(button("Remove"))
+assert(not item("1468", copy) and visible(slider("Spacing (px)")), "removing a spell returns to its group")
+local toggle = member(b).enabled
+toggle:SetChecked(false); click(toggle)
+assert(not item("1468", b).enabled)
+toggle:SetChecked(true); click(toggle)
+
+-- Moving a group keeps both spells, their order and shared offsets together.
+choose("Position", "TOPLEFT")
+assert(item("1468", a).anchor == "TOPLEFT" and item("1468", b).anchor == "TOPLEFT")
+assert(Addon:GetIndicatorSet().items[1].id == a and Addon:GetIndicatorSet().items[2].id == b)
+assert(slider("X offset (px)").value == -12 and slider("Y offset (px)").value == 8)
+assert(slider("Layer / Z offset").value == 200)
+assert(group("TOPLEFT").select.selected)
+assert(Addon:GetIndicatorSet("default").items[1].anchor == "BOTTOMRIGHT")
+local staleGroupMenu = dropdown("Grow").menu.items[1]
+choose("Groups", "BOTTOMRIGHT")
+staleGroupMenu.callback(staleGroupMenu.value)
+assert(Addon:GetIndicatorSet().groups.BOTTOMRIGHT.grow == "LEFT", "group menus capture the selected group")
+for _, option in ipairs(dropdown("Position").menu.items) do
+    assert(option.value ~= "TOPLEFT", "group positions never offer an occupied anchor")
+end
+selectItem(b)
+choose("Move to group", "BOTTOMRIGHT")
+assert(item("1468", b).anchor == "BOTTOMRIGHT" and item("1468", a).anchor == "TOPLEFT")
+selectGroup("BOTTOMRIGHT")
+assert(slider("X offset (px)").value == 0 and slider("Layer / Z offset").value == 0)
+selectItem(b)
+choose("Display", "SQUARE")
 glow:SetChecked(true); click(glow)
 pulse:SetChecked(true); click(pulse)
 glow:SetChecked(false); click(glow)
-assert(not pulse.enabled and pulse:GetChecked(), "turning glow off preserves its pulse preference")
+assert(pulse:GetChecked() and not pulse.enabled, "turning glow off retains the pulse preference")
 glow:SetChecked(true); click(glow)
-assert(pulse.enabled and pulse:GetChecked())
-assert(Addon:FindDesignerIndicator("1468", b).glow and not Addon:FindDesignerIndicator("1468", a).glow,
-    "square glow is independent of other indicators")
-local swatch = env.find(function(w) return w.kind == "Button" and w.width == 22 end)
+local swatch = env.find(function(w) return w.kind == "Button" and w.width == 22 and visible(w) end)
 click(swatch)
-local original = Addon:FindDesignerIndicator("1468", b).color
+local original = item("1468", b).color
 env.colorPicker.swatchFunc()
-assert(Addon:FindDesignerIndicator("1468", b).color.a == .4)
+assert(item("1468", b).color.a == .4)
 env.colorPicker.cancelFunc()
-assert(Addon:FindDesignerIndicator("1468", b).color.r == original.r)
+assert(item("1468", b).color.r == original.r)
 click(swatch)
 local staleColor = env.colorPicker
-choose("Editing set", "default")
+selectGroup("BOTTOMRIGHT")
 staleColor.swatchFunc()
-assert(Addon:GetIndicatorSet("default").items[1].color.r == .4, "old pickers cannot change another set")
+assert(item("1468", b).color.r == original.r, "selecting a group invalidates the old spell colour picker")
+selectItem(b)
+click(button("Change buff"))
+assert(input:GetText() == "355941")
+input:SetText("376788"); click(button("Save buff"))
+assert(item("1468", b).spellID == 376788 and item("1468", b).type == "SQUARE")
+assert(member(b).select.label.text:match("^Echoed "), "Echoed aura names stay distinct")
+click(group("BOTTOMRIGHT").toggle)
+assert(group("BOTTOMRIGHT").toggle.text == "+" and visible(slider("Spacing (px)")))
+for _, w in ipairs(env.widgets) do
+    assert(not (w.item and w.item.id == b and visible(w)), "collapsed groups hide their children")
+end
+selectGroup("BOTTOMRIGHT")
+assert(member(b))
+
+-- Changing selection, profile or combat state cannot redirect pending edits.
+choose("Editing set", "default")
+selectItem(a)
 env.combat = true
 pulse:SetChecked(false); click(pulse)
-assert(Addon:FindDesignerIndicator("default", a).glowPulse, "combat-blocked clicks cannot change pulsing")
 blizzardBuffs:SetChecked(true); click(blizzardBuffs)
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2, "combat-blocked clicks must restore the actual CVar state")
-input:SetText("774"); click(findText("Add")); size:SetValue(40)
-assert(#Addon:GetIndicatorSet("default").items == 1 and Addon:GetIndicatorSet("default").items[1].size == 26)
+slider("Size (px)"):SetValue(40)
+choose("Move to group", "TOP")
+assert(item("default", a).glowPulse and item("default", a).size == 26 and item("default", a).anchor == "BOTTOMRIGHT")
+assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
+selectGroup("BOTTOMRIGHT")
+choose("Position", "TOP")
+assert(item("default", a).anchor == "BOTTOMRIGHT")
+click(group("BOTTOMRIGHT").add)
+input:SetText("774"); click(button("Add"))
+assert(#Addon:GetIndicatorSet("default").items == 1)
 env.combat = false
-env.profile = "Another"
 local oldSettings = env.settings
-env.settings = { indicators = Addon:NormalizeIndicators(nil) }
+env.profile, env.settings = "Another", { indicators = Addon:NormalizeIndicators(nil) }
 refresh()
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2, "profile changes must not override the shared CVar")
-assert(#Addon:GetIndicatorSet().items == 0)
+assert(#dropdown("Groups").menu.items == 9, "empty draft groups do not leak into another profile")
+assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
 staleColor.cancelFunc()
-assert(#Addon:GetIndicatorSet().items == 0)
-input:SetText("774"); click(findText("Add"))
+choose("Groups", "BOTTOMRIGHT")
+addBuff("BOTTOMRIGHT", 774)
 assert(#Addon:GetIndicatorSet().items == 1 and #oldSettings.indicators.sets.default.items == 1)
 
 local payload = { version = 1, set = Addon:NormalizeIndicatorSet({ items = { { id = 1, spellID = 17, type = "ICON" } } }) }
 C_EncodingUtil = { DecodeBase64 = function(s) return s end, DecompressString = function(s) return s end, DeserializeJSON = function() return payload end }
-click(findText("Import"))
+click(button("Import"))
 local shareInput = env.find(function(w) return w.kind == "EditBox" and w.height == 26 end)
-shareInput:SetText("BRFI1:json")
-click(findText("Review Import"))
+shareInput:SetText("BRFI1:json"); click(button("Review Import"))
 assert(Addon:GetIndicatorSet().items[1].spellID == 774, "review must not replace settings")
-click(findText("Replace Set"))
-assert(Addon:GetIndicatorSet().items[1].spellID == 17)
-print("designer config tests passed")
+click(button("Replace Set"))
+assert(Addon:GetIndicatorSet().items[1].spellID == 17 and visible(slider("Spacing (px)")))
+-- Warm both editor views, then ensure navigating them keeps a bounded UI pool.
+selectItem(1); selectGroup("BOTTOMRIGHT")
+local count = #env.widgets
+for _ = 1, 100 do selectItem(1); selectGroup("BOTTOMRIGHT") end
+assert(#env.widgets == count, "group/item navigation reuses controls and preview visuals")
+print("designer group editor tests passed")

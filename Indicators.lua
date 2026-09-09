@@ -57,6 +57,12 @@ function Addon:GetIndicatorAnchorName(anchor)
     return anchorNames[anchor] or "Bottom right"
 end
 
+function Addon:GetIndicatorSpellLabel(spellID, spell)
+    local name = spell and spell.name or "Spell " .. spellID
+    -- Blizzard gives these Echo auras the same names as the original buffs.
+    return (spellID == 376788 or spellID == 367364) and "Echoed " .. name or name
+end
+
 function Addon:GetIndicatorGrowthOptions(anchor)
     local result = {}
     for _, direction in ipairs(directions) do
@@ -244,6 +250,23 @@ function Addon:ChangeDesignerGroup(key, anchor, changes)
     local set = self:NormalizeIndicatorSet(self:GetIndicatorSet(key))
     for field, value in pairs(changes) do set.groups[anchor][field] = value end
     self:SaveIndicatorSet(key, set)
+end
+
+function Addon:MoveDesignerGroup(key, anchor, destination)
+    if not anchorNames[anchor] or not anchorNames[destination] then return false end
+    if anchor == destination then return true end
+    local current = self:GetIndicatorSet(key)
+    for _, item in ipairs(current.items) do
+        if item.anchor == destination then return false, "That position already has a group." end
+    end
+    local set = self:NormalizeIndicatorSet(current)
+    set.groups[destination] = self:NormalizeIndicatorGroup(set.groups[anchor], destination)
+    set.groups[anchor] = self:NormalizeIndicatorGroup(nil, anchor)
+    for _, item in ipairs(set.items) do
+        if item.anchor == anchor then item.anchor = destination end
+    end
+    self:SaveIndicatorSet(key, set)
+    return true
 end
 
 function Addon:ExportDesignerIndicators(key)

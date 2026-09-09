@@ -108,4 +108,28 @@ local lastId = assert(Addon:AddDesignerIndicator("default", 774, "SQUARE"))
 local wrappedId = assert(Addon:AddDesignerIndicator("default", 774, "SQUARE"))
 assert(lastId == 2147483647 and wrappedId ~= lastId and wrappedId ~= 1)
 assert(Addon:FindDesignerIndicator("default", wrappedId), "allocated IDs must survive normalization")
+
+-- Moving a group preserves its members, ordering and display settings in one
+-- immutable update. An occupied target must never silently merge groups.
+Addon:UseDefaultIndicators("1468")
+Addon:SaveIndicatorSet("default", { items = {
+    { id = 1, spellID = 364343, type = "ICON", anchor = "BOTTOMRIGHT", glow = true },
+    { id = 2, spellID = 774, type = "SQUARE", anchor = "CENTER" },
+    { id = 3, spellID = 355941, type = "ICON", anchor = "BOTTOMRIGHT", size = 32 },
+}, groups = { BOTTOMRIGHT = { grow = "UP", spacing = 7, offsetX = 12, offsetY = -8, offsetZ = 200 } } })
+local beforeMove = Addon:GetIndicatorSet("default")
+assert(not Addon:MoveDesignerGroup("1468", "BOTTOMRIGHT", "CENTER"))
+assert(not Addon:MoveDesignerGroup("1468", "BOTTOMRIGHT", "invalid"))
+assert(not Addon:GetSetting("indicators").sets["1468"], "failed moves must not create a specialization override")
+assert(Addon:MoveDesignerGroup("1468", "BOTTOMRIGHT", "TOPLEFT"))
+local moved = Addon:GetIndicatorSet("1468")
+assert(moved.items[1].id == 1 and moved.items[3].id == 3)
+assert(moved.items[1].anchor == "TOPLEFT" and moved.items[3].anchor == "TOPLEFT")
+assert(moved.items[2].anchor == "CENTER" and moved.items[1].glow and moved.items[3].size == 32)
+assert(moved.groups.TOPLEFT.spacing == 7 and moved.groups.TOPLEFT.offsetX == 12
+    and moved.groups.TOPLEFT.offsetY == -8 and moved.groups.TOPLEFT.offsetZ == 200)
+assert(moved.groups.TOPLEFT.grow == "RIGHT", "growth adjusts when the old direction would point outside the new corner")
+assert(moved.groups.BOTTOMRIGHT.offsetX == 0 and moved.groups.BOTTOMRIGHT.offsetZ == 0)
+assert(Addon:GetIndicatorSet("default") == beforeMove and beforeMove.items[1].anchor == "BOTTOMRIGHT",
+    "a group move never mutates shared Default settings")
 print("designer settings tests passed")
