@@ -578,7 +578,10 @@ local function CreateConfigFrame()
 
     local function BuildRoleIconsTab(content)
         local y = BeginPage(content, "Role Icons")
-        CreateDropdown(content, "Show role icons:", "showRoleIcons", Addon.RoleIconOptions, y)
+        RegisterSettingRefresher(Addon:BuildRoleIconOptions(content, y, {
+            dropdown = CreateDropdown,
+            slider = CreateHorizontalSlider,
+        }))
     end
 
     local function BuildNamesTab(content)

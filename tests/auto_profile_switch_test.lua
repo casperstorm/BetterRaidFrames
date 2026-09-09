@@ -205,6 +205,21 @@ assertEqual(featureUpdates.frameBorders, bordersBefore + 1, "border requests coa
 assertEqual(framePasses, passesBeforeBorders, "border refresh owns its scan without an unrelated frame pass")
 assertEqual(featureUpdates.name, namesBeforeBorders, "border settings do not refresh other artwork")
 
+assertEqual(Addon:GetSetting("roleIconStyle"), "BLIZZARD", "existing role icons retain their native style")
+assertEqual(Addon:GetSetting("roleIconSize"), 10)
+local rolesBefore = featureUpdates.roleIcon
+local passesBeforeRoles = framePasses
+Addon:SetSetting("roleIconStyle", "TINY")
+Addon:SetSetting("showRoleIcons", "TANK_HEALER")
+Addon:SetSetting("roleIconSize", 8)
+Addon:SetSetting("roleIconPoint", "LEFT")
+Addon:SetSetting("roleIconOffsetX", 4)
+Addon:SetSetting("roleIconOffsetY", -2)
+onUpdateHandler()
+assertEqual(featureUpdates.roleIcon, rolesBefore + 1, "role settings coalesce into one role update")
+assertEqual(framePasses, passesBeforeRoles + 1)
+assertEqual(featureUpdates.name, namesBeforeBorders, "role styling does not rewrite names")
+
 local passesBeforeLayout = framePasses
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
     "the removed manual raid anchor setting should be rejected")
@@ -262,6 +277,8 @@ context = "party"
 assertEqual(Addon:ApplyAutomaticProfile(false), true, "party context should switch profile")
 assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activate party profile")
 assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment belongs to each profile")
+assertEqual(Addon:GetSetting("roleIconStyle"), "BLIZZARD", "tiny roles belong to each profile")
+assertEqual(Addon:GetSetting("roleIconSize"), 10)
 assertEqual(Addon:GetSetting("nameAnchor"), "CENTER", "name placement belongs to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false, "tank filtering should belong to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), false, "threat colours should belong to each profile")
@@ -284,6 +301,12 @@ assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not 
 
 assertEqual(Addon:SwitchProfile("Default"), true)
 assertEqual(Addon:GetSetting("crispFrameBorders"), true, "switching back restores pixel alignment")
+assertEqual(Addon:GetSetting("roleIconStyle"), "TINY")
+assertEqual(Addon:GetSetting("showRoleIcons"), "TANK_HEALER")
+assertEqual(Addon:GetSetting("roleIconSize"), 8)
+assertEqual(Addon:GetSetting("roleIconPoint"), "LEFT")
+assertEqual(Addon:GetSetting("roleIconOffsetX"), 4)
+assertEqual(Addon:GetSetting("roleIconOffsetY"), -2)
 assertEqual(Addon:GetSetting("nameAnchor"), "BOTTOMLEFT", "switching back restores the chosen name anchor")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), true)
 assertEqual(Addon:GetSetting("threatIndicatorColorByThreat"), true)

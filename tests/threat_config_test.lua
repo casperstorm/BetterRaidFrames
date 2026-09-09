@@ -7,6 +7,7 @@ assert(loadfile("BetterRaidFrames.lua"))("BetterRaidFrames", Addon)
 BetterRaidFramesDB = { currentProfile = "Default", profiles = { Default = env.settings }, globalSettings = {} }
 function Addon:GetUseRaidStylePartyFrames() return true end
 function Addon:BuildDesignerOptions() return function() end end
+function Addon:BuildRoleIconOptions() return function() end end
 function IsInRaid() return false end
 Addon:SwitchProfile("Default")
 assert(Addon:GetSetting("threatIndicatorBorder") == nil and Addon:GetSetting("threatIndicatorBorderTexture") == nil,

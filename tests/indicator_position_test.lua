@@ -40,6 +40,7 @@ function Addon:IsEditModeActive() return false end
 
 local function CreateRegion()
     return {
+        CanBeAccessedInContext = function() return true end,
         SetSize = function(self, width, height)
             self.width = width
             self.height = height
@@ -77,6 +78,7 @@ threatIndicator.texture = { SetColorTexture = function() end, SetShown = functio
 local leaderIndicator = CreateRegion()
 
 local frame = {
+    CanBeAccessedInContext = function() return true end,
     unit = "party1",
     BRFRaidMarker = raidMarker,
     roleIcon = roleIcon,

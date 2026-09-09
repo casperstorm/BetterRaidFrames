@@ -26,5 +26,6 @@ PartyLeader.lua
 EditModeButton.lua
 IndicatorEditor.lua
 IndicatorsConfig.lua
+RoleIconsConfig.lua
 ThreatIndicatorConfig.lua
 Config.lua

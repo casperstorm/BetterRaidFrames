@@ -15,7 +15,7 @@ Discord username: `async`
 - Profiles with automatic Party and Raid switching
 - Optional pixel-aligned health and power bar edges for more even frame separators
 - Raid target markers with configurable anchors, offsets, and sizing
-- Role icon display options
+- Role icon filters and optional tiny, borderless symbols with configurable size and placement
 - Party leader indicator with configurable anchor, offsets, sizing, and combat visibility
 - Optional name styling with positioning, sizing, truncation, class colors, transliteration, and text effects
 - Square or circular threat indicator with configurable placement, sizing, blinking, tank filtering, and threat-based colours
@@ -40,6 +40,14 @@ Join a Follower Dungeon or open Blizzard Edit Mode, then type `/brf`.
 **Where do I edit frame and aura sizes?**
 
 Open Blizzard Edit Mode and select the Party or Raid Frames.
+
+**How do I make role icons smaller?**
+
+Open **Role Icons** in `/brf` and click **Tiny tank & healer**. Tanks get a small shield and healers a cross; damage roles stay unmarked. The preset selects **Tiny** style and the **Tank & Healer** filter while preserving any size and position you already chose. **All** can also show a small damage-role symbol.
+
+Tiny icons start at size 10, inset at the top right. Adjust size from 6–20 and choose any of nine anchors with X/Y offsets. The samples follow your role filter and placement. Switch **Style** back to **Blizzard** to restore native artwork and placement. All options belong to the current profile, and existing profiles retain Blizzard style until you change it.
+
+Tiny style reuses one texture per frame that needs a marker and adds no timers or animation. It keeps the native name anchor in place and uses the player's assigned role when they enter a vehicle.
 
 **Why do some frame separators look thicker than others?**
 
