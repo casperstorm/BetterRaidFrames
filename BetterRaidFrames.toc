@@ -15,6 +15,7 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 BetterRaidFrames.lua
 Utils.lua
 FrameBorders.lua
+Absorbs.lua
 Indicators.lua
 IndicatorDisplay.lua
 Name.lua
@@ -27,5 +28,6 @@ EditModeButton.lua
 IndicatorEditor.lua
 IndicatorsConfig.lua
 RoleIconsConfig.lua
+AbsorbsConfig.lua
 ThreatIndicatorConfig.lua
 Config.lua

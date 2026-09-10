@@ -18,6 +18,7 @@ local eventHandler
 local onUpdateHandler
 local framePasses = 0
 local featureUpdates = {
+    absorbs = 0,
     frameBorders = 0,
     raidMarker = 0,
     roleIcon = 0,
@@ -52,6 +53,8 @@ function CreateFrame()
 end
 
 local Addon = {
+    HookAbsorbs = function() end,
+    UpdateAbsorbs = function() featureUpdates.absorbs = featureUpdates.absorbs + 1 end,
     RefreshFrameBorders = function() featureUpdates.frameBorders = featureUpdates.frameBorders + 1 end,
     HookFrameBorders = function() end,
     ForEachFrame = function(_, callback)
@@ -220,6 +223,18 @@ assertEqual(featureUpdates.roleIcon, rolesBefore + 1, "role settings coalesce in
 assertEqual(framePasses, passesBeforeRoles + 1)
 assertEqual(featureUpdates.name, namesBeforeBorders, "role styling does not rewrite names")
 
+assertEqual(Addon:GetSetting("showAbsorbs"), true, "native absorbs remain enabled by default")
+assertEqual(Addon:GetSetting("showOvershields"), false, "overshields are opt-in")
+local absorbsBefore = featureUpdates.absorbs
+Addon:SetSetting("showOvershields", true)
+Addon:SetSetting("overshieldTexture", "FLAT")
+Addon:SetSetting("overshieldOpacity", 50)
+Addon:SetSetting("absorbOpacity", 70)
+Addon:SetSetting("showAbsorbs", false)
+onUpdateHandler()
+assertEqual(featureUpdates.absorbs, absorbsBefore + 1, "shield settings coalesce into one feature refresh")
+assertEqual(featureUpdates.name, namesBeforeBorders, "shield edits do not rewrite names")
+
 local passesBeforeLayout = framePasses
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
     "the removed manual raid anchor setting should be rejected")
@@ -278,6 +293,8 @@ assertEqual(Addon:ApplyAutomaticProfile(false), true, "party context should swit
 assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activate party profile")
 assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment belongs to each profile")
 assertEqual(Addon:GetSetting("roleIconStyle"), "BLIZZARD", "tiny roles belong to each profile")
+assertEqual(Addon:GetSetting("showAbsorbs"), true)
+assertEqual(Addon:GetSetting("showOvershields"), false)
 assertEqual(Addon:GetSetting("roleIconSize"), 10)
 assertEqual(Addon:GetSetting("nameAnchor"), "CENTER", "name placement belongs to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false, "tank filtering should belong to each profile")
@@ -301,6 +318,11 @@ assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not 
 
 assertEqual(Addon:SwitchProfile("Default"), true)
 assertEqual(Addon:GetSetting("crispFrameBorders"), true, "switching back restores pixel alignment")
+assertEqual(Addon:GetSetting("showAbsorbs"), false)
+assertEqual(Addon:GetSetting("showOvershields"), true)
+assertEqual(Addon:GetSetting("overshieldTexture"), "FLAT")
+assertEqual(Addon:GetSetting("overshieldOpacity"), 50)
+assertEqual(Addon:GetSetting("absorbOpacity"), 70)
 assertEqual(Addon:GetSetting("roleIconStyle"), "TINY")
 assertEqual(Addon:GetSetting("showRoleIcons"), "TANK_HEALER")
 assertEqual(Addon:GetSetting("roleIconSize"), 8)

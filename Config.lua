@@ -269,6 +269,7 @@ local function CreateConfigFrame()
         { id = "general",          label = "General" },
         { id = "raidMarkers",      label = "Raid Markers" },
         { id = "roleIcons",        label = "Role Icons" },
+        { id = "absorbs",          label = "Absorbs" },
         { id = "names",            label = "Name" },
         { id = "partyLeader",      label = "Party Leader" },
         { id = "threatIndicator",  label = "Threat Indicator" },
@@ -710,6 +711,14 @@ local function CreateConfigFrame()
     end
 
     local builders = {
+        absorbs = function(content)
+            local y = BeginPage(content, "Absorbs")
+            RegisterSettingRefresher(Addon:BuildAbsorbOptions(content, y, {
+                checkbox = CreateCheckbox,
+                dropdown = CreateDropdown,
+                slider = CreateHorizontalSlider,
+            }))
+        end,
         indicators = function(content)
             local y = BeginPage(content, "Indicators")
             RegisterSettingRefresher(Addon:BuildDesignerOptions(content, y))
