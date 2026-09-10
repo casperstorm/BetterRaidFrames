@@ -553,6 +553,15 @@ local function CreateConfigFrame()
         borderNote:SetText("Aligns health and power bar edges to screen pixels for more even separators.\nApplies out of combat. Disable to restore the original insets.")
         borderNote:SetTextColor(0.75, 0.75, 0.75)
 
+        y = y - 88
+        CreateCheckbox(content, "Show my frame while solo", "showSolo", y)
+        local soloNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        soloNote:SetPoint("TOPLEFT", 32, y - 32)
+        soloNote:SetWidth(620)
+        soloNote:SetJustifyH("LEFT")
+        soloNote:SetText("Keeps your Raid-Style Party Frame visible without a group, using its usual layout.\nChanges apply out of combat. Party and raid visibility stay automatic.")
+        soloNote:SetTextColor(0.75, 0.75, 0.75)
+
         C_Timer.After(0.5, UpdateFeatureTabsEnabled)
     end
 

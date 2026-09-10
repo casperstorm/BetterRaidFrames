@@ -14,6 +14,7 @@ Libs/LibEditModeOverride/LibEditModeOverride.lua
 
 BetterRaidFrames.lua
 Utils.lua
+SoloFrame.lua
 FrameBorders.lua
 Indicators.lua
 IndicatorDisplay.lua

@@ -18,6 +18,7 @@ local eventHandler
 local onUpdateHandler
 local framePasses = 0
 local featureUpdates = {
+    soloFrame = 0,
     frameBorders = 0,
     raidMarker = 0,
     roleIcon = 0,
@@ -52,6 +53,8 @@ function CreateFrame()
 end
 
 local Addon = {
+    RefreshSoloFrame = function() featureUpdates.soloFrame = featureUpdates.soloFrame + 1 end,
+    HookSoloFrame = function() end,
     RefreshFrameBorders = function() featureUpdates.frameBorders = featureUpdates.frameBorders + 1 end,
     HookFrameBorders = function() end,
     ForEachFrame = function(_, callback)
@@ -220,6 +223,16 @@ assertEqual(featureUpdates.roleIcon, rolesBefore + 1, "role settings coalesce in
 assertEqual(framePasses, passesBeforeRoles + 1)
 assertEqual(featureUpdates.name, namesBeforeBorders, "role styling does not rewrite names")
 
+assertEqual(Addon:GetSetting("showSolo"), false, "solo visibility is opt-in")
+local soloBefore, passesBeforeSolo = featureUpdates.soloFrame, framePasses
+local indicatorsBeforeSolo = featureUpdates.indicators
+Addon:SetSetting("showSolo", true)
+Addon:SetSetting("showSolo", true)
+onUpdateHandler()
+assertEqual(featureUpdates.soloFrame, soloBefore + 1)
+assertEqual(framePasses, passesBeforeSolo + 1, "solo changes coalesce into one frame pass")
+assertEqual(featureUpdates.indicators, indicatorsBeforeSolo + 1, "newly visible frames receive their indicators")
+
 local passesBeforeLayout = framePasses
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
     "the removed manual raid anchor setting should be rejected")
@@ -276,6 +289,7 @@ assertEqual(Addon:GetAssignedProfileForContext("raid"), "Raid", "raid assignment
 context = "party"
 assertEqual(Addon:ApplyAutomaticProfile(false), true, "party context should switch profile")
 assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activate party profile")
+assertEqual(Addon:GetSetting("showSolo"), false, "solo visibility belongs to each profile")
 assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment belongs to each profile")
 assertEqual(Addon:GetSetting("roleIconStyle"), "BLIZZARD", "tiny roles belong to each profile")
 assertEqual(Addon:GetSetting("roleIconSize"), 10)
@@ -300,6 +314,7 @@ context = "raid"
 assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not switch when assignment is cleared")
 
 assertEqual(Addon:SwitchProfile("Default"), true)
+assertEqual(Addon:GetSetting("showSolo"), true, "returning to the profile restores solo visibility")
 assertEqual(Addon:GetSetting("crispFrameBorders"), true, "switching back restores pixel alignment")
 assertEqual(Addon:GetSetting("roleIconStyle"), "TINY")
 assertEqual(Addon:GetSetting("showRoleIcons"), "TANK_HEALER")

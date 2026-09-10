@@ -1,6 +1,7 @@
 local env = assert(loadfile("tests/helpers/threat_env.lua"))()
 local Addon = env.Addon
 function Addon:RefreshFrameBorders() end
+function Addon:RefreshSoloFrame() end
 env.settings.threatIndicatorBorder = "CUSTOM"
 env.settings.threatIndicatorBorderTexture = "Interface\\AddOns\\MyMedia\\edge.tga"
 assert(loadfile("BetterRaidFrames.lua"))("BetterRaidFrames", Addon)

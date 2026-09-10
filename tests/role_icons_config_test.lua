@@ -9,6 +9,7 @@ BetterRaidFramesDB = { currentProfile = "Default", profiles = { Default = env.se
 function IsInRaid() return false end
 function Addon:GetUseRaidStylePartyFrames() return true end
 function Addon:RefreshFrameBorders() end
+function Addon:RefreshSoloFrame() end
 function Addon:BuildDesignerOptions() return function() end end
 function Addon:BuildThreatOptions() return function() end end
 Addon:SwitchProfile("Default")

@@ -2,6 +2,7 @@ local ADDON_NAME, Addon = ...
 
 local defaults = {
     crispFrameBorders = false,
+    showSolo = false,
     indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -81,6 +82,7 @@ local POSITION_SETTING_MIGRATIONS = {
 }
 
 local SETTING_FEATURES = {
+    showSolo = "soloFrame",
     crispFrameBorders = "frameBorders",
     indicators = "indicators",
     showRaidMarkers = "raidMarker",
@@ -150,6 +152,7 @@ local SETTING_FEATURES = {
 }
 
 local VALID_FEATURES = {
+    soloFrame = true,
     frameBorders = true,
     indicators = true,
     raidMarker = true,
@@ -366,6 +369,7 @@ local function InitializeDB()
 end
 
 local function HookRaidFrames()
+    Addon:HookSoloFrame()
     Addon:HookFrameBorders()
     Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
@@ -396,16 +400,18 @@ local function UpdateFrame(frame)
 end
 
 local function UpdateFrames(features)
-    local updateAll = features == nil
+    -- Visibility changes can expose frames that still need their BRF styling.
+    local updateAll = features == nil or features.soloFrame
     local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
         or features.threatIndicator or features.partyLeader or features.name or features.indicators
     local updateThreat = updateAll or features.threatIndicator
     local updatePartyLeader = updateAll or features.partyLeader
 
-    activeFeatures = features
+    activeFeatures = not updateAll and features or nil
     activeSettings = GetCurrentProfile()
     activeThreatPreview = updateThreat and Addon:IsThreatPreviewOpen() or false
     activeInCombat = updatePartyLeader and UnitAffectingCombat and UnitAffectingCombat("player") or false
+    if updateAll then Addon:RefreshSoloFrame(activeSettings) end
     if updateUnitFrames then
         Addon:ForEachFrame(UpdateFrame)
     end

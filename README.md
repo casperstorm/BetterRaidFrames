@@ -13,6 +13,7 @@ Discord username: `async`
 ## Features
 
 - Profiles with automatic Party and Raid switching
+- Optional solo visibility for your own Raid-Style Party Frame
 - Optional pixel-aligned health and power bar edges for more even frame separators
 - Raid target markers with configurable anchors, offsets, and sizing
 - Role icon filters and optional tiny, borderless symbols with configurable size and placement
@@ -40,6 +41,12 @@ Join a Follower Dungeon or open Blizzard Edit Mode, then type `/brf`.
 **Where do I edit frame and aura sizes?**
 
 Open Blizzard Edit Mode and select the Party or Raid Frames.
+
+**Can I show my frame while playing solo?**
+
+Enable **General → Show my frame while solo** in `/brf`, with **Use Raid-Style Party Frames** enabled. BRF keeps the existing player entry visible, using your normal party-frame position, size, and indicators. Blizzard's pet display setting still applies. Party and raid visibility remain automatic when you join a group, and Edit Mode keeps control of its previews.
+
+The option starts off and belongs to the current profile. Turning it off restores Blizzard's normal visibility. Setting and layout changes apply out of combat; an already enabled solo frame remains available during combat through Blizzard's shared secure visibility driver. BRF adds no polling loop or replacement unit frames and changes no CVars.
 
 **How do I make role icons smaller?**
 
