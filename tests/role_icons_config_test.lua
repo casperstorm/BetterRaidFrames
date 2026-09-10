@@ -41,11 +41,25 @@ preset.scripts.OnClick(preset)
 assert(Addon:GetSetting("roleIconStyle") == "TINY" and Addon:GetSetting("showRoleIcons") == "TANK_HEALER")
 assert(size.container:IsVisible() and size.value == 10 and x.value == -3 and y.value == -3)
 local samples = {}
-for _, w in ipairs(env.widgets) do
-    if inside(w) and (w.text == "Tank" or w.text == "Healer" or w.text == "Damage") then samples[w.text] = w.parent end
+local previewRow = env.find(function(w) return w.samples and inside(w) end)
+for index, role in ipairs({ "Tank", "Healer", "Damage" }) do
+    samples[role] = previewRow.samples[index]
 end
 assert(samples.Tank.BRFTinyRoleIcon:IsVisible() and samples.Healer.BRFTinyRoleIcon:IsVisible())
 assert(not samples.Damage.BRFTinyRoleIcon, "the recommended preset leaves damage units unmarked")
+local liveFrame = env.frame("player")
+liveFrame:SetParent(UIParent); liveFrame:SetSize(100, 56); liveFrame:SetScale(1.5)
+CompactPartyFrameMember1 = liveFrame
+Addon:RefreshConfig()
+for _, sample in pairs(samples) do
+    assert(sample:GetWidth() == 100 and sample:GetHeight() == 56)
+    assert(sample:GetEffectiveScale() == liveFrame:GetEffectiveScale(), "role samples use the live frame's scale")
+end
+assert(previewRow:GetHeight() == 128, "the role controls move below the resized preview row and role captions")
+liveFrame:SetSize(100, 90)
+previewRow.scripts.OnEvent(previewRow, "EDIT_MODE_LAYOUTS_UPDATED")
+assert(previewRow:GetHeight() == 179 and samples.Tank:GetHeight() == 90)
+CompactPartyFrameMember1 = nil
 choose("Show role icons:", "ALL")
 assert(samples.Damage.BRFTinyRoleIcon:IsVisible(), "previews follow the current role filter")
 choose("Show role icons:", "NONE")
@@ -58,9 +72,11 @@ assert(icon.width == 7 and icon.point[1] == "BOTTOMLEFT" and icon.point[3] == "B
     and icon.point[4] == 4 and icon.point[5] == 5, "settings and preview share the same placement")
 choose("Style:", "BLIZZARD")
 assert(not size.container:IsVisible() and not icon:IsVisible())
+assert(not next(previewRow.events), "Blizzard style stops watching the hidden role samples")
 preset.scripts.OnClick(preset)
 assert(size.value == 7 and x.value == 4 and y.value == 5, "preset preserves the user's chosen size and position")
 
+config.ShowTab("names"); config.ShowTab("roleIcons")
 local allocated = #env.widgets
 for _ = 1, 20 do
     choose("Style:", "BLIZZARD"); preset.scripts.OnClick(preset)

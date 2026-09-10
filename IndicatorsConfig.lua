@@ -110,16 +110,35 @@ function Addon:BuildDesignerOptions(content, y)
     cvarNote:SetTextColor(0.75, 0.75, 0.75)
     y = y - 36
     local profileLabel = Label(content, "", 12, y, 676)
-    local preview = self:CreateDesignerPreview(content)
-    preview:SetPoint("TOPLEFT", 12, y - 24)
-    local previewGroup = Label(content, "", 206, y - 25, 470)
-    local previewActive = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-    previewActive:SetPoint("TOPLEFT", 198, y - 46)
+    local previewRow = CreateFrame("Frame", nil, content)
+    previewRow:SetPoint("TOPLEFT", 12, y - 24); previewRow:SetPoint("TOPRIGHT", -12, y - 24)
+    previewRow:SetHeight(56)
+    local preview = self:CreateDesignerPreview(previewRow)
+    preview:SetPoint("TOPLEFT", previewRow, "TOPLEFT", 0, 0)
+    local previewSize = Label(previewRow, "", 0, 0, 220)
+    previewSize:SetTextColor(0.75, 0.75, 0.75)
+    local previewGroup = Label(previewRow, "", 0, -18, 220)
+    local previewActive = CreateFrame("CheckButton", nil, previewRow, "InterfaceOptionsCheckButtonTemplate")
     previewActive.Text:SetText("Selected buff active")
     previewActive.Text:SetFontObject("GameFontHighlightSmall")
     previewActive:SetScript("OnClick", function(button)
         if context.id then context.absent[context.id] = not button:GetChecked(); Refresh() end
     end)
+    function preview:GetAvailableSize()
+        -- Reserve room for the controls and keep the editor usable for unusually
+        -- large/scaled frames. Any shrink-to-fit is explicitly labelled.
+        return math.max(1, content:GetWidth() - 260), 140
+    end
+    function preview:OnSizeResolved(width, height, label)
+        previewRow:SetHeight(math.max(56, height))
+        previewSize:ClearAllPoints(); previewSize:SetPoint("TOPLEFT", width + 14, 0)
+        previewSize:SetText(label)
+        previewGroup:ClearAllPoints(); previewGroup:SetPoint("TOPLEFT", width + 14, -18)
+        previewActive:ClearAllPoints(); previewActive:SetPoint("TOPLEFT", width + 6, -34)
+    end
+    local editorArea = CreateFrame("Frame", nil, content)
+    editorArea:SetPoint("TOPLEFT", previewRow, "BOTTOMLEFT", -12, -11)
+    editorArea:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", 0, 0)
 
     local status = Label(content, "", 12, 0, 676)
     status:ClearAllPoints(); status:SetPoint("BOTTOMLEFT", 12, 0)
@@ -142,9 +161,9 @@ function Addon:BuildDesignerOptions(content, y)
         end
         return result
     end
-    local sets = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
-    sets.label = Label(content, "Editing set", 12, y - 91)
-    sets:SetPoint("TOPLEFT", 12, y - 107); sets:SetWidth(300)
+    local sets = CreateFrame("DropdownButton", nil, editorArea, "WowStyle1DropdownTemplate")
+    sets.label = Label(editorArea, "Editing set", 12, 0)
+    sets:SetPoint("TOPLEFT", 12, -16); sets:SetWidth(300)
     sets:SetupMenu(function(_, root)
         local profile, key, token = context:Capture()
         for _, option in ipairs(SetOptions()) do
@@ -153,7 +172,7 @@ function Addon:BuildDesignerOptions(content, y)
             end, option.value)
         end
     end)
-    local useDefault = Button(content, "Use Default", 324, y - 107, 116, function()
+    local useDefault = Button(editorArea, "Use Default", 324, -16, 116, function()
         if context:CanEdit() then Addon:UseDefaultIndicators(context.key); context:Reset(); Refresh() end
     end)
 
@@ -199,12 +218,12 @@ function Addon:BuildDesignerOptions(content, y)
             or "Paste a BetterRaidFrames indicator export, then review it before replacing this set.")
         share:Show(); shareInput:SetFocus(); shareInput:HighlightText()
     end
-    Button(content, "Import", 452, y - 107, 92, function() OpenShare(false) end)
-    Button(content, "Export", 556, y - 107, 88, function() OpenShare(true) end)
+    Button(editorArea, "Import", 452, -16, 92, function() OpenShare(false) end)
+    Button(editorArea, "Export", 556, -16, 88, function() OpenShare(true) end)
 
-    local addGroup = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
-    addGroup.label = Label(content, "Groups", 12, y - 145)
-    addGroup:SetPoint("TOPLEFT", 12, y - 165); addGroup:SetWidth(TREE_WIDTH)
+    local addGroup = CreateFrame("DropdownButton", nil, editorArea, "WowStyle1DropdownTemplate")
+    addGroup.label = Label(editorArea, "Groups", 12, -54)
+    addGroup:SetPoint("TOPLEFT", 12, -74); addGroup:SetWidth(TREE_WIDTH)
     addGroup:SetDefaultText("+ Add group")
     addGroup:SetupMenu(function(_, root)
         local profile, key, token = context:Capture()
@@ -214,15 +233,15 @@ function Addon:BuildDesignerOptions(content, y)
             end, anchor.value)
         end
     end)
-    scroll = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 12, y - 200); scroll:SetPoint("BOTTOMLEFT", 12, 35); scroll:SetWidth(TREE_WIDTH)
+    scroll = CreateFrame("ScrollFrame", nil, editorArea, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 12, -109); scroll:SetPoint("BOTTOMLEFT", 12, 35); scroll:SetWidth(TREE_WIDTH)
     local tree = CreateFrame("Frame", nil, scroll)
     tree:SetSize(TREE_WIDTH, 1); scroll:SetScrollChild(tree)
-    local separator = content:CreateTexture(nil, "BACKGROUND")
+    local separator = editorArea:CreateTexture(nil, "BACKGROUND")
     separator:SetColorTexture(0.5, 0.5, 0.5, 0.25)
-    separator:SetPoint("TOPLEFT", 254, y - 145); separator:SetPoint("BOTTOMLEFT", 254, 35); separator:SetWidth(1)
-    local inspector = CreateFrame("Frame", nil, content)
-    inspector:SetPoint("TOPLEFT", 270, y - 145); inspector:SetPoint("BOTTOMRIGHT", -4, 35)
+    separator:SetPoint("TOPLEFT", 254, -54); separator:SetPoint("BOTTOMLEFT", 254, 35); separator:SetWidth(1)
+    local inspector = CreateFrame("Frame", nil, editorArea)
+    inspector:SetPoint("TOPLEFT", 270, -54); inspector:SetPoint("BOTTOMRIGHT", -4, 35)
     refreshEditor = self:BuildDesignerEditor(inspector, context)
 
     local groupRows, itemRows = {}, {}
@@ -361,6 +380,7 @@ function Addon:BuildDesignerOptions(content, y)
         elseif #set.items == 0 then context:Message("Add a group, then add its indicators. Up to 32 indicators per set.")
         else context:Message("Select a group for layout, or an indicator for its display settings.") end
     end
+    preview.RefreshOptions = function() Refresh() end
     content:HookScript("OnHide", function() share:Hide() end)
     Refresh()
     return Refresh

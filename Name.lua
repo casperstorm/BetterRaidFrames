@@ -129,8 +129,7 @@ local function RefreshBlizzardName(frame)
     end
 end
 
-local function RestoreDefaultName(frame)
-    local fontString = frame and frame.name
+local function RestoreNameStyle(fontString)
     local state = fontString and nameStates[fontString]
     if not state then return end
 
@@ -153,7 +152,7 @@ local function RestoreDefaultName(frame)
     fontString:SetShadowOffset(unpack(state.shadowOffset))
     fontString:SetShown(state.shown)
 
-    RefreshBlizzardName(frame)
+    return true
 end
 
 local function ApplyNameLayout(fontString, frame, settings, state)
@@ -242,25 +241,55 @@ local function ApplyNameText(fontString, unit, settings)
     fontString:SetTextColor(1, 1, 1)
 end
 
-local function UpdateName(frame, settings)
-    local fontString = frame and frame.name
-    if not fontString then return end
-
-    settings = settings or Addon:GetSettings()
-    if not settings or not settings.customizeNames then
-        RestoreDefaultName(frame)
-        return
-    end
-
-    local unit = frame.displayedUnit or frame.unit
-    if not unit then return end
-
+local function ApplyCustomName(frame, unit, settings)
+    local fontString = frame.name
     local state = nameStates[fontString] or CaptureDefault(fontString)
     if not state.customFontPath then return end
 
     ApplyNameLayout(fontString, frame, settings, state)
     ApplyNameShadow(fontString, settings, state)
     ApplyNameText(fontString, unit, settings)
+end
+
+local function UpdateName(frame, settings)
+    local fontString = frame and frame.name
+    if not fontString then return end
+
+    settings = settings or Addon:GetSettings()
+    if not settings or not settings.customizeNames then
+        if RestoreNameStyle(fontString) then RefreshBlizzardName(frame) end
+        return
+    end
+
+    local unit = frame.displayedUnit or frame.unit
+    if unit then ApplyCustomName(frame, unit, settings) end
+end
+
+function Addon:UpdateNamePreview(frame, settings)
+    if not frame:IsVisible() then return end
+    if not frame.name then
+        -- Absorb previews contain child status bars. Give the name its own
+        -- foreground so shield artwork cannot paint over the text.
+        local host = CreateFrame("Frame", nil, frame)
+        host:SetAllPoints()
+        host:EnableMouse(false)
+        local name = host:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        name:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3)
+        name:SetJustifyH("LEFT")
+        name:SetWordWrap(false)
+        frame.name = name
+    end
+    frame.name:GetParent():SetFrameLevel((frame.healthBar or frame):GetFrameLevel() + 1)
+    settings = settings or self:GetSettings()
+    if settings.customizeNames then
+        ApplyCustomName(frame, "player", settings)
+    else
+        -- Restore only our sample's style; native name/status update functions
+        -- expect real compact unit frames and must not run on these previews.
+        RestoreNameStyle(frame.name)
+        frame.name:SetText(GetUnitName("player", true) or "")
+        frame.name:Show()
+    end
 end
 
 function Addon:HookName()

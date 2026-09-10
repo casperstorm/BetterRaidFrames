@@ -73,3 +73,15 @@ end
 function Addon:UpdateRaidMarker(frame, settings)
     UpdateRaidMarker(frame, settings)
 end
+
+function Addon:UpdateRaidMarkerPreview(frame, settings)
+    if not frame:IsVisible() then return end
+    if not settings.showRaidMarkers then
+        if frame.BRFRaidMarker then frame.BRFRaidMarker:Hide() end
+        return
+    end
+    local icon = GetOrCreateRaidMarker(frame)
+    SetRaidTargetIconTexture(icon, 8) -- A sample skull; no real unit is marked.
+    ApplyRaidMarkerSettings(frame, icon, settings)
+    icon:Show()
+end

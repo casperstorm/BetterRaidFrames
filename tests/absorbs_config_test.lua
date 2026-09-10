@@ -46,11 +46,26 @@ for _, w in ipairs(env.widgets) do
 end
 assert(#opacity == 2 and opacity[1].value == 100 and opacity[2].value == 80)
 local samples = {}
-for _, w in ipairs(env.widgets) do
-    if inside(w) and (w.text == "Absorb fits" or w.text == "Absorb overflows" or w.text == "Shield at full health") then
-        samples[w.text] = w.parent
-    end
+local previewRow = env.find(function(w) return w.samples and inside(w) end)
+for index, label in ipairs({ "Absorb fits", "Absorb overflows", "Shield at full health" }) do
+    samples[label] = previewRow.samples[index]
 end
+content:SetSize(676, 634)
+local liveFrame = env.frame("player")
+liveFrame:SetParent(UIParent); liveFrame:SetSize(100, 56); liveFrame:SetScale(1.25)
+CompactPartyFrameMember1 = liveFrame
+Addon:RefreshConfig()
+for _, sample in pairs(samples) do
+    assert(sample:GetWidth() == 100 and sample:GetHeight() == 56)
+    assert(sample:GetEffectiveScale() == liveFrame:GetEffectiveScale(), "shield samples match the live dimensions and scale")
+end
+assert(samples["Absorb fits"].totalAbsorb.width == 24.5 and samples["Absorb fits"].totalAbsorb.height == 54)
+assert(samples["Absorb fits"].totalAbsorb.point[4] == 39.2, "absorb artwork begins at the sample health fill's edge")
+liveFrame:SetSize(128, 72)
+previewRow.scripts.OnEvent(previewRow, "EDIT_MODE_LAYOUTS_UPDATED")
+assert(samples["Absorb fits"].totalAbsorb.width == 31.5 and samples["Absorb fits"].totalAbsorb.height == 70,
+    "shield texture geometry follows a layout resize")
+CompactPartyFrameMember1 = nil
 assert(normal:GetChecked() and not overflow:GetChecked(), "existing profiles retain native shields without overshields")
 assert(prediction:GetChecked() and cvarWrites == 0, "opening settings respects the actual Blizzard CVar")
 for _, sample in pairs(samples) do assert(not sample.BRFOvershield) end
@@ -87,6 +102,7 @@ for _, option in ipairs(dropdown.menu.items) do
     option.callback(option.value)
     assert(Addon:GetSetting("overshieldTexture") == option.value)
 end
+config.ShowTab("names"); config.ShowTab("absorbs")
 local allocated = #env.widgets
 for _ = 1, 20 do
     toggle(overflow, false); toggle(overflow, true)
@@ -94,6 +110,7 @@ for _ = 1, 20 do
 end
 assert(#env.widgets == allocated, "tab and setting changes reuse preview objects")
 config.ShowTab("names")
+assert(not next(previewRow.events), "leaving Absorbs unregisters the sizing events")
 local updates = previewUpdates
 cvarValue = "0"
 prediction.scripts.OnEvent(prediction, "CVAR_UPDATE", "raidFramesDisplayIncomingHeals", "0")

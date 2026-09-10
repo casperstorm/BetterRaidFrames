@@ -79,7 +79,6 @@ function Addon:GetAutoProfileOptions() return { { value = "", label = "Disabled"
 function Addon:GetGlobalSetting() return "" end
 function Addon:GetUseRaidStylePartyFrames() return true end
 Addon.RoleIconOptions = { { value = "ALL", label = "All" } }
-Addon.NameOutlineOptions = { { value = "NONE", label = "None" } }
 env.settings.showThreatIndicator = true
 env.settings.threatIndicatorBlink = true
 env.settings.threatIndicatorColorByThreat = true

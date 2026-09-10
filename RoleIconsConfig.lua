@@ -20,28 +20,26 @@ function Addon:BuildRoleIconOptions(content, y, ui)
     local tiny = CreateFrame("Frame", nil, content)
     tiny:SetPoint("TOPLEFT", 0, y - 90)
     tiny:SetSize(650, 400)
-    local samples = {}
+    local previewRow = self:CreateFramePreviewRow(tiny, 3, 140, { "Tank", "Healer", "Damage" })
+    previewRow:SetPoint("TOPLEFT", 24, 0); previewRow:SetPoint("TOPRIGHT", -24, 0)
+    local samples = previewRow.samples
     local roles = { "TANK", "HEALER", "DAMAGER" }
-    for index, label in ipairs({ "Tank", "Healer", "Damage" }) do
-        local sample = CreateFrame("Frame", nil, tiny)
-        sample:SetPoint("TOPLEFT", 24 + (index - 1) * 208, 0)
-        sample:SetSize(180, 54)
+    for _, sample in ipairs(samples) do
         local background = sample:CreateTexture(nil, "BACKGROUND")
         background:SetAllPoints()
         background:SetColorTexture(0.12, 0.3, 0.25, 1)
-        local name = sample:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        name:SetPoint("TOPLEFT", 4, -4)
-        name:SetText(label)
-        samples[index] = sample
     end
 
-    ui.slider(tiny, "Size (px):", "roleIconSize", 6, 20, 1, -80, Changed)
-    ui.dropdown(tiny, "Anchor:", "roleIconPoint", self.AnchorOptions, -120, Changed)
-    ui.slider(tiny, "X offset (px):", "roleIconOffsetX", -250, 250, 1, -160, Changed)
-    ui.slider(tiny, "Y offset (px):", "roleIconOffsetY", -250, 250, 1, -200, Changed)
+    local controls = CreateFrame("Frame", nil, tiny)
+    controls:SetPoint("TOPLEFT", previewRow, "BOTTOMLEFT", -24, -26)
+    controls:SetSize(650, 280)
+    ui.slider(controls, "Size (px):", "roleIconSize", 6, 20, 1, 0, Changed)
+    ui.dropdown(controls, "Anchor:", "roleIconPoint", self.AnchorOptions, -40, Changed)
+    ui.slider(controls, "X offset (px):", "roleIconOffsetX", -250, 250, 1, -80, Changed)
+    ui.slider(controls, "Y offset (px):", "roleIconOffsetY", -250, 250, 1, -120, Changed)
 
-    local note = tiny:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    note:SetPoint("TOPLEFT", 24, -250)
+    local note = controls:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    note:SetPoint("TOPLEFT", 24, -170)
     note:SetWidth(600)
     note:SetJustifyH("LEFT")
     note:SetText("Small, borderless role symbols. Tank & Healer leaves damage roles unmarked.\nOffsets start at the selected anchor: +X moves right; +Y moves up.")
@@ -59,10 +57,12 @@ function Addon:BuildRoleIconOptions(content, y, ui)
         local enabled = settings.roleIconStyle == "TINY"
         tiny:SetShown(enabled)
         nativeNote:SetShown(not enabled)
-        if enabled then
+        if enabled and tiny:IsVisible() then
+            previewRow:RefreshSize()
             for index, sample in ipairs(samples) do Addon:UpdateRoleIconPreview(sample, settings, roles[index]) end
         end
     end
+    previewRow.RefreshOptions = Refresh
     content:HookScript("OnShow", Refresh)
     Refresh()
     return Refresh

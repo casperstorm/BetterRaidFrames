@@ -336,25 +336,45 @@ local function CreateConfigFrame()
         return -38
     end
 
-    local function BuildAnchorControls(content, options, y, settingPrefix, anchorLabel)
-        local pointDropdown = CreateDropdown(content, anchorLabel, settingPrefix .. "Point", Addon.AnchorOptions, y)
+    local function BuildAnchorControls(content, options, y, settingPrefix, anchorLabel, onChange)
+        local pointDropdown = CreateDropdown(content, anchorLabel, settingPrefix .. "Point", Addon.AnchorOptions, y, onChange)
         AddDropdownControl(options, pointDropdown)
         y = y - 36
 
         local relativePointDropdown = CreateDropdown(content, "Frame anchor:",
-            settingPrefix .. "RelativePoint", Addon.AnchorOptions, y)
+            settingPrefix .. "RelativePoint", Addon.AnchorOptions, y, onChange)
         AddDropdownControl(options, relativePointDropdown)
         y = y - 36
 
         local xSlider = CreateHorizontalSlider(content, "Relative X:",
-            settingPrefix .. "OffsetX", -250, 250, 1, y)
+            settingPrefix .. "OffsetX", -250, 250, 1, y, onChange)
         table.insert(options, xSlider.container)
         y = y - 34
 
         local ySlider = CreateHorizontalSlider(content, "Relative Y:",
-            settingPrefix .. "OffsetY", -250, 250, 1, y)
+            settingPrefix .. "OffsetY", -250, 250, 1, y, onChange)
         table.insert(options, ySlider.container)
         return y - 34
+    end
+
+    local function BuildSidePreview(content, y, maxHeight, updateVisual)
+        local panel = CreateFrame("Frame", nil, content)
+        panel:SetPoint("TOPLEFT", 448, y); panel:SetPoint("TOPRIGHT", 0, y)
+        panel:SetHeight(maxHeight + 20)
+        local row = Addon:CreateFramePreviewRow(panel, 1, maxHeight)
+        row:SetPoint("TOPLEFT", 24, 0); row:SetPoint("TOPRIGHT", -24, 0)
+        local background = row.samples[1]:CreateTexture(nil, "BACKGROUND")
+        background:SetAllPoints()
+        background:SetColorTexture(0.12, 0.3, 0.25, 1)
+        local function Refresh()
+            if not content:IsVisible() then return end
+            row:RefreshSize()
+            if updateVisual then updateVisual(Addon, row.samples[1], Addon:GetSettings()) end
+        end
+        row.RefreshOptions = Refresh
+        content:HookScript("OnShow", Refresh)
+        RegisterSettingRefresher(Refresh)
+        return Refresh
     end
 
     local function BuildGeneralTab(content)
@@ -570,18 +590,21 @@ local function CreateConfigFrame()
         local y = BeginPage(content, "Raid Markers")
         local options = {}
         local updateOptions
+        local RefreshPreview = BuildSidePreview(content, y - 32, 140, Addon.UpdateRaidMarkerPreview)
 
         CreateCheckbox(content, "Show raid markers", "showRaidMarkers", y, function(checked)
             updateOptions(checked)
+            RefreshPreview()
         end)
         y = y - 32
 
-        y = BuildAnchorControls(content, options, y, "raidMarker", "Marker anchor:")
+        y = BuildAnchorControls(content, options, y, "raidMarker", "Marker anchor:", RefreshPreview)
 
-        local sizeSlider = CreateHorizontalSlider(content, "Marker size:", "raidMarkerSize", 8, 32, 1, y)
+        local sizeSlider = CreateHorizontalSlider(content, "Marker size:", "raidMarkerSize", 8, 32, 1, y, RefreshPreview)
         table.insert(options, sizeSlider.container)
 
         updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
+        RegisterSettingRefresher(function() updateOptions(Addon:GetSetting("showRaidMarkers")) end)
         updateOptions(Addon:GetSetting("showRaidMarkers"))
 
     end
@@ -599,8 +622,13 @@ local function CreateConfigFrame()
         local options = {}
         local updateOptions
 
+        -- Keep the preview beside Placement so it stays visible while editing
+        -- the text and appearance controls further down the page.
+        local RefreshPreview = BuildSidePreview(content, y - 40, 100)
+
         CreateCheckbox(content, "Customize names", "customizeNames", y, function(checked)
             updateOptions(checked)
+            RefreshPreview()
         end)
 
         local resetNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
@@ -618,17 +646,17 @@ local function CreateConfigFrame()
         end
 
         Section("Placement")
-        local anchorDropdown = CreateDropdown(content, "Anchor:", "nameAnchor", Addon.AnchorOptions, y)
+        local anchorDropdown = CreateDropdown(content, "Anchor:", "nameAnchor", Addon.AnchorOptions, y, RefreshPreview)
         AddDropdownControl(options, anchorDropdown)
         y = y - 36
 
         local xSlider = CreateHorizontalSlider(content, "X offset (px):",
-            "nameOffsetX", -250, 250, 1, y)
+            "nameOffsetX", -250, 250, 1, y, RefreshPreview)
         table.insert(options, xSlider.container)
         y = y - 32
 
         local ySlider = CreateHorizontalSlider(content, "Y offset (px):",
-            "nameOffsetY", -250, 250, 1, y)
+            "nameOffsetY", -250, 250, 1, y, RefreshPreview)
         table.insert(options, ySlider.container)
         y = y - 38
 
@@ -640,42 +668,42 @@ local function CreateConfigFrame()
         y = y - 32
 
         Section("Text")
-        local sizeSlider = CreateHorizontalSlider(content, "Font size (px):", "nameSize", 6, 40, 1, y)
+        local sizeSlider = CreateHorizontalSlider(content, "Font size (px):", "nameSize", 6, 40, 1, y, RefreshPreview)
         table.insert(options, sizeSlider.container)
         y = y - 34
 
-        table.insert(options, CreateSubCheckbox(content, "Use class color", "nameClassColor", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, 300))
+        table.insert(options, CreateSubCheckbox(content, "Use class color", "nameClassColor", y, 24, RefreshPreview))
+        table.insert(options, CreateSubCheckbox(content, "Hide server name", "nameHideServer", y, 300, RefreshPreview))
         y = y - 28
 
-        table.insert(options, CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Cyrillic to Latin", "nameCyrillicToLatin", y, 300))
+        table.insert(options, CreateSubCheckbox(content, "Truncate long names", "nameTruncate", y, 24, RefreshPreview))
+        table.insert(options, CreateSubCheckbox(content, "Cyrillic to Latin", "nameCyrillicToLatin", y, 300, RefreshPreview))
         y = y - 28
 
         local maxLengthSlider = CreateHorizontalSlider(content, "Max length:",
-            "nameTruncateLength", 3, 20, 1, y)
+            "nameTruncateLength", 3, 20, 1, y, RefreshPreview)
         table.insert(options, maxLengthSlider.container)
         y = y - 34
 
-        table.insert(options, CreateSubCheckbox(content, "Hide when dead", "nameHideOnDead", y, 24))
-        table.insert(options, CreateSubCheckbox(content, "Hide when offline", "nameHideOnOffline", y, 300))
+        table.insert(options, CreateSubCheckbox(content, "Hide when dead", "nameHideOnDead", y, 24, RefreshPreview))
+        table.insert(options, CreateSubCheckbox(content, "Hide when offline", "nameHideOnOffline", y, 300, RefreshPreview))
         y = y - 38
 
         Section("Appearance")
         local outlineDropdown = CreateDropdown(content, "Outline:", "nameTextOutline",
-            Addon.NameOutlineOptions, y)
+            Addon.NameOutlineOptions, y, RefreshPreview)
         AddDropdownControl(options, outlineDropdown)
         y = y - 36
 
-        table.insert(options, CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y))
+        table.insert(options, CreateSubCheckbox(content, "Text shadow", "nameTextShadow", y, nil, RefreshPreview))
         y = y - 30
 
         table.insert(options, CreateColorPicker(content, "Shadow color:",
-            "nameTextShadowColorR", "nameTextShadowColorG", "nameTextShadowColorB", y))
+            "nameTextShadowColorR", "nameTextShadowColorG", "nameTextShadowColorB", y, RefreshPreview))
         y = y - 30
 
         local shadowOffsetSlider = CreateHorizontalSlider(content, "Shadow offset:",
-            "nameTextShadowOffset", 1, 3, 1, y)
+            "nameTextShadowOffset", 1, 3, 1, y, RefreshPreview)
         table.insert(options, shadowOffsetSlider.container)
 
         updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
@@ -689,22 +717,25 @@ local function CreateConfigFrame()
         local y = BeginPage(content, "Party Leader")
         local options = {}
         local updateOptions
+        local RefreshPreview = BuildSidePreview(content, y - 60, 140, Addon.UpdatePartyLeaderPreview)
 
         CreateCheckbox(content, "Show party leader icon", "showPartyLeader", y, function(checked)
             updateOptions(checked)
+            RefreshPreview()
         end)
         y = y - 28
 
-        local hideInCombat = CreateSubCheckbox(content, "Hide in combat", "partyLeaderHideInCombat", y)
+        local hideInCombat = CreateSubCheckbox(content, "Hide in combat", "partyLeaderHideInCombat", y, nil, RefreshPreview)
         table.insert(options, hideInCombat)
         y = y - 32
 
-        y = BuildAnchorControls(content, options, y, "partyLeader", "Icon anchor:")
+        y = BuildAnchorControls(content, options, y, "partyLeader", "Icon anchor:", RefreshPreview)
 
-        local sizeSlider = CreateHorizontalSlider(content, "Size:", "partyLeaderSize", 8, 32, 1, y)
+        local sizeSlider = CreateHorizontalSlider(content, "Size:", "partyLeaderSize", 8, 32, 1, y, RefreshPreview)
         table.insert(options, sizeSlider.container)
 
         updateOptions = function(enabled) SetControlsEnabled(options, enabled) end
+        RegisterSettingRefresher(function() updateOptions(Addon:GetSetting("showPartyLeader")) end)
         updateOptions(Addon:GetSetting("showPartyLeader"))
     end
 

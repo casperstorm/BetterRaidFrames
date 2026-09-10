@@ -40,6 +40,23 @@ assert(Addon:IsThreatPreviewOpen() and requested == before + 1)
 local samples = {}
 for _, w in ipairs(env.widgets) do if w.BRFThreatIndicator then samples[#samples + 1] = w end end
 assert(#samples == 3, "all three threat states have a sample even without a group")
+local previewRow = samples[1].parent.parent
+previewRow.parent:SetSize(676, 634)
+local liveFrame = env.frame("player")
+liveFrame:SetParent(UIParent); liveFrame:SetSize(100, 60); liveFrame:SetScale(1.25)
+CompactPartyFrameMember1 = liveFrame
+Addon:RefreshConfig()
+for _, sample in ipairs(samples) do
+    assert(sample:GetWidth() == 100 and sample:GetHeight() == 60)
+    assert(sample:GetEffectiveScale() == liveFrame:GetEffectiveScale(), "all threat states use the live frame's scale")
+end
+assert(previewRow:GetHeight() == 119, "threat controls follow the full sample and caption height")
+local caption = env.find(function(w) return w.text == Addon.ThreatLevels[1].label end)
+assert(caption:GetEffectiveScale() == previewRow:GetEffectiveScale(), "captions remain readable outside the scaled frames")
+liveFrame:SetSize(100, 80)
+previewRow.scripts.OnEvent(previewRow, "EDIT_MODE_LAYOUTS_UPDATED")
+assert(previewRow:GetHeight() == 144 and samples[1]:GetHeight() == 80)
+CompactPartyFrameMember1 = nil
 local function CheckSamples(visible)
     for _, sample in ipairs(samples) do
         assert(sample.BRFThreatIndicator.shown == visible and sample.BRFThreatIndicator.animGroup:IsPlaying() == visible)
@@ -50,6 +67,7 @@ for index, sample in ipairs(samples) do
     for channel, value in ipairs(Addon.ThreatLevels[index].color) do assert(sample.BRFThreatIndicator.texture.color[channel] == value) end
 end
 config.ShowTab("names")
+assert(not next(previewRow.events), "leaving Threat unregisters its sizing events")
 assert(not Addon:IsThreatPreviewOpen() and requested == before + 2, "leaving Threat schedules live-frame cleanup")
 CheckSamples(false)
 config.ShowTab("threatIndicator")

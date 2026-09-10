@@ -25,30 +25,29 @@ function Addon:BuildThreatOptions(content, y, ui)
     ui.subCheckbox(content, "Blinking", "threatIndicatorBlink", y, 260, Changed)
     ui.subCheckbox(content, "Hide for tanks", "threatIndicatorHideForTanks", y, 390, Changed)
 
-    local samples = {}
-    for status, level in ipairs(self.ThreatLevels) do
-        local sample = CreateFrame("Frame", nil, content)
-        sample:SetPoint("TOPLEFT", 24 + (status - 1) * 212, y - 48)
-        sample:SetSize(180, 54)
+    local captions = {}
+    for status, level in ipairs(self.ThreatLevels) do captions[status] = level.label end
+    local previewRow = self:CreateFramePreviewRow(content, 3, 120, captions)
+    previewRow:SetPoint("TOPLEFT", 24, y - 48); previewRow:SetPoint("TOPRIGHT", -24, y - 48)
+    local samples = previewRow.samples
+    for _, sample in ipairs(samples) do
         local health = sample:CreateTexture(nil, "BACKGROUND")
         health:SetAllPoints()
         health:SetColorTexture(0.12, 0.3, 0.25, 1)
-        local name = sample:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        name:SetPoint("TOP", 0, -6)
-        name:SetText("Sample unit")
-        Label(content, level.label, 24 + (status - 1) * 212, y - 126, 180)
-        samples[status] = sample
     end
 
-    ui.dropdown(content, "Visual:", "threatIndicatorShape", self.ThreatIndicatorShapeOptions, y - 162, Changed)
+    local controls = CreateFrame("Frame", nil, content)
+    controls:SetPoint("TOPLEFT", previewRow, "BOTTOMLEFT", -24, -24)
+    controls:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", 0, 0)
+    ui.dropdown(controls, "Visual:", "threatIndicatorShape", self.ThreatIndicatorShapeOptions, 0, Changed)
     local panels, buttons = {}, {}
     local selected = "Colours"
     for index, section in ipairs({ "Colours", "Placement", "Border" }) do
-        local panel = CreateFrame("Frame", nil, content)
-        panel:SetPoint("TOPLEFT", 0, y - 238)
+        local panel = CreateFrame("Frame", nil, controls)
+        panel:SetPoint("TOPLEFT", 0, -76)
         panel:SetSize(650, 380)
         panels[section] = panel
-        buttons[section] = Button(content, section, 24 + (index - 1) * 124, y - 206, 116,
+        buttons[section] = Button(controls, section, 24 + (index - 1) * 124, -44, 116,
             function() selected = section; Refresh() end)
     end
 
@@ -91,6 +90,7 @@ function Addon:BuildThreatOptions(content, y, ui)
     local borderNote = Label(border, "", 24, -164, 610)
 
     Refresh = function()
+        previewRow:RefreshSize()
         local settings = Addon:GetSettings()
         local fullFrame = settings.threatIndicatorShape == "BORDER"
         local glow = fullFrame and settings.threatIndicatorBorderStyle == "GLOW"
@@ -112,6 +112,7 @@ function Addon:BuildThreatOptions(content, y, ui)
             Addon:UpdateThreatPreview(sample, settings, status, Addon:IsThreatPreviewOpen() and content:IsVisible())
         end
     end
+    previewRow.RefreshOptions = Refresh
     content:HookScript("OnShow", Refresh)
     content:HookScript("OnHide", function()
         for status, sample in ipairs(samples) do Addon:UpdateThreatPreview(sample, Addon:GetSettings(), status, false) end

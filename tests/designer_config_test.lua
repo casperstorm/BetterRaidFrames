@@ -7,7 +7,19 @@ C_CVar = {
 }
 assert(loadfile("IndicatorEditor.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("IndicatorsConfig.lua"))("BetterRaidFrames", Addon)
-local refresh = Addon:BuildDesignerOptions(env.frame(), -38)
+local content = env.frame()
+content:SetSize(676, 620)
+local refresh = Addon:BuildDesignerOptions(content, -38)
+local sizedPreview = env.find(function(w) return w.GetAvailableSize ~= nil end)
+local nativeFrame = env.frame("player")
+nativeFrame:SetSize(100, 90)
+env.partyFrames = { nativeFrame }
+refresh()
+assert(sizedPreview:GetWidth() == 100 and sizedPreview:GetHeight() == 90 and sizedPreview.scale == 1)
+assert(sizedPreview.parent:GetHeight() == 90, "the preview row reserves the displayed height")
+nativeFrame:SetSize(100, 56)
+refresh()
+assert(sizedPreview.parent:GetHeight() == 56, "smaller frames give the editor its space back")
 local function visible(w) return w.shown and (not w.parent or visible(w.parent)) end
 local function click(w) assert(w, "missing widget"); w.scripts.OnClick(w) end
 local function button(text)

@@ -40,13 +40,13 @@ function Addon:BuildAbsorbOptions(content, y, ui)
     ui.slider(content, "Opacity (%):", "overshieldOpacity", 0, 100, 1, y - 224, Changed)
     Label(content, "Shows shield coverage beyond full health over the filled health bar.\nShields uses a tiled pattern; Blizzard Flat gives a plain overlay.", y - 264)
 
-    local samples = {}
+    local previewRow = self:CreateFramePreviewRow(content, 3, 120,
+        { "Absorb fits", "Absorb overflows", "Shield at full health" })
+    previewRow:SetPoint("TOPLEFT", 24, y - 334); previewRow:SetPoint("TOPRIGHT", -24, y - 334)
+    local samples = previewRow.samples
     local health = { 40, 80, 100 }
     local shields = { 25, 50, 45 }
-    for index, text in ipairs({ "Absorb fits", "Absorb overflows", "Shield at full health" }) do
-        local sample = CreateFrame("Frame", nil, content)
-        sample:SetPoint("TOPLEFT", 24 + (index - 1) * 208, y - 334)
-        sample:SetSize(180, 54)
+    for index, sample in ipairs(samples) do
         local background = sample:CreateTexture(nil, "BACKGROUND")
         background:SetAllPoints()
         background:SetColorTexture(0.08, 0.1, 0.1, 1)
@@ -62,8 +62,6 @@ function Addon:BuildAbsorbOptions(content, y, ui)
         sample.totalAbsorb:SetAtlas("raidframe-shield-fill", false, nil, true, "REPEAT", "REPEAT")
         sample.totalAbsorb:SetHorizTile(true)
         sample.totalAbsorb:SetVertTile(true)
-        sample.totalAbsorb:SetPoint("TOPLEFT", bar, "TOPLEFT", 178 * health[index] / 100, 0)
-        sample.totalAbsorb:SetSize(178 * math.min(shields[index], 100 - health[index]) / 100, 52)
         sample.totalAbsorb:SetShown(health[index] < 100)
         sample.totalAbsorbOverlay = bar:CreateTexture(nil, "OVERLAY", nil, 1)
         sample.totalAbsorbOverlay:SetAtlas("RaidFrame-Shield-Overlay", false, nil, true, "REPEAT", "REPEAT")
@@ -71,22 +69,23 @@ function Addon:BuildAbsorbOptions(content, y, ui)
         sample.totalAbsorbOverlay:SetVertTile(true)
         sample.totalAbsorbOverlay:SetAllPoints(sample.totalAbsorb)
         sample.totalAbsorbOverlay:SetShown(health[index] < 100)
-        local label = sample:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        label:SetPoint("TOPLEFT", sample, "BOTTOMLEFT", 0, -8)
-        label:SetText(text)
-        samples[index] = sample
     end
     Refresh = function()
         local nativeEnabled = C_CVar.GetCVarBool(PREDICTION_CVAR)
         prediction:SetChecked(nativeEnabled)
         if not content:IsVisible() then return end
+        previewRow:RefreshSize()
         local settings = Addon:GetSettings()
         for index, sample in ipairs(samples) do
+            local width, height = math.max(1, sample:GetWidth() - 2), math.max(1, sample:GetHeight() - 2)
+            sample.totalAbsorb:SetPoint("TOPLEFT", sample.healthBar, "TOPLEFT", width * health[index] / 100, 0)
+            sample.totalAbsorb:SetSize(width * math.min(shields[index], 100 - health[index]) / 100, height)
             sample.totalAbsorb:SetShown(nativeEnabled and health[index] < 100)
             sample.totalAbsorbOverlay:SetShown(nativeEnabled and health[index] < 100)
             Addon:UpdateAbsorbPreview(sample, settings, shields[index])
         end
     end
+    previewRow.RefreshOptions = Refresh
     content:HookScript("OnShow", Refresh)
     Refresh()
     return Refresh

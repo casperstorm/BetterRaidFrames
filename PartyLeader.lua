@@ -77,3 +77,15 @@ end
 function Addon:UpdatePartyLeader(frame, settings, inCombat)
     UpdatePartyLeader(frame, settings, inCombat)
 end
+
+function Addon:UpdatePartyLeaderPreview(frame, settings)
+    if not frame:IsVisible() then return end
+    if not settings.showPartyLeader or (settings.partyLeaderHideInCombat and UnitAffectingCombat("player")) then
+        if frame.BRFLeaderIndicator then frame.BRFLeaderIndicator:Hide() end
+        return
+    end
+    -- The example always represents a leader, including while playing solo.
+    local indicator = GetOrCreateLeaderIndicator(frame)
+    ApplyLeaderIndicatorSettings(indicator, frame, settings)
+    indicator:Show()
+end

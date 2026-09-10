@@ -18,12 +18,16 @@ local function widget(kind, parent, template)
 end
 function methods:SetPoint(...) guard(self); self.point = { ... } end
 function methods:ClearAllPoints() guard(self); self.point = nil end
+function methods:GetNumPoints() return self.point and 1 or 0 end
+function methods:GetPoint() return table.unpack(self.point or {}) end
 function methods:SetSize(w, h) guard(self); self.width, self.height = w, h end
 function methods:SetWidth(v) guard(self); self.width = v end
 function methods:SetHeight(v) guard(self); self.height = v end
 function methods:GetWidth() guard(self); assert(env.internal or self.kind ~= "AuraContainer", "reading secret container size"); return self.width or 180 end
 function methods:GetHeight() guard(self); assert(env.internal or self.kind ~= "AuraContainer", "reading secret container size"); return self.height or 130 end
 function methods:GetSize() return self:GetWidth(), self:GetHeight() end
+function methods:GetParent() return self.parent end
+function methods:GetEffectiveScale() guard(self); return (self.scale or 1) * (self.parent and self.parent:GetEffectiveScale() or 1) end
 function methods:SetParent(parent) guard(self); self.parent = parent end
 function methods:GetFrameLevel() guard(self); return self.level or (self.parent and self.parent:GetFrameLevel() + 1) or 5 end
 function methods:SetFrameLevel(v)
@@ -76,6 +80,16 @@ function methods:SetBlendMode(v) guard(self); self.blendMode = v end
 function methods:SetColorTexture(...) guard(self); self.color = { ... }; self.texture = nil end
 function methods:SetVertexColor(...) guard(self); self.vertex = { ... } end
 function methods:SetTextColor(...) guard(self); self.textColor = { ... } end
+function methods:GetTextColor() return table.unpack(self.textColor or { 1, 1, 1, 1 }) end
+function methods:SetFont(path, size, flags) guard(self); self.fontPath, self.fontSize, self.fontFlags = path, size, flags end
+function methods:GetFont() return self.fontPath or "Fonts\\FRIZQT__.TTF", self.fontSize or 11, self.fontFlags or "" end
+function methods:GetFontObject() return nil end
+function methods:SetJustifyH(value) guard(self); self.justifyH = value end
+function methods:GetJustifyH() return self.justifyH or "LEFT" end
+function methods:SetShadowColor(...) guard(self); self.shadowColor = { ... } end
+function methods:GetShadowColor() return table.unpack(self.shadowColor or { 0, 0, 0, 1 }) end
+function methods:SetShadowOffset(...) guard(self); self.shadowOffset = { ... } end
+function methods:GetShadowOffset() return table.unpack(self.shadowOffset or { 1, -1 }) end
 function methods:SetAlpha(v) guard(self); self.alpha = v end
 function methods:SetScale(v) guard(self); self.scale = v end
 function methods:SetCooldown(...) guard(self); self.duration = { ... } end
@@ -93,6 +107,7 @@ function methods:GetChecked() return self.checked end
 function methods:SetScript(name, callback) self.scripts[name] = callback end
 function methods:HookScript(name, callback) self.scripts[name] = callback end
 function methods:RegisterEvent(event) self.events = self.events or {}; self.events[event] = true end
+function methods:UnregisterEvent(event) if self.events then self.events[event] = nil end end
 function methods:SetScrollChild(v) self.child = v end
 function methods:SetVerticalScroll(v) self.scroll = v end
 function methods:GetVerticalScroll() return self.scroll or 0 end
@@ -101,8 +116,8 @@ function methods:SetValue(v)
     self.value = v
     if self.Slider and self.Slider.scripts.OnValueChanged then self.Slider.scripts.OnValueChanged(self.Slider, v) end
 end
-for _, name in ipairs({ "SetAllPoints", "SetHideCountdownNumbers", "SetDrawEdge", "SetDrawBling", "SetFont", "SetShadowColor", "SetShadowOffset",
-    "SetJustifyH", "SetWordWrap", "SetFontObject", "SetAutoFocus", "SetMaxLetters", "ClearFocus", "SetFocus", "HighlightText",
+for _, name in ipairs({ "SetAllPoints", "SetHideCountdownNumbers", "SetDrawEdge", "SetDrawBling",
+    "SetWordWrap", "SetFontObject", "SetAutoFocus", "SetMaxLetters", "ClearFocus", "SetFocus", "HighlightText",
     "SetDefaultText", "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor" }) do
     methods[name] = function(self) guard(self) end
 end
@@ -195,8 +210,11 @@ function env.ShowAuras(container, spells)
 end
 function GetTime() return env.now end
 function InCombatLockdown() return env.combat end
+function IsInRaid() return env.raid == true end
 function issecretvalue(v) return v == "secret" end
-function hooksecurefunc(name, callback) env.hooks[name] = callback end
+function hooksecurefunc(object, name, callback)
+    if callback then env.hooks[name] = callback else env.hooks[object] = name end
+end
 C_Timer = { After = function(_, callback) callback() end }
 C_SpecializationInfo = { GetSpecialization = function() return 1 end, GetSpecializationInfo = function() return env.spec, "Test spec" end }
 C_Spell = { GetSpellInfo = function(value)
@@ -204,6 +222,11 @@ C_Spell = { GetSpellInfo = function(value)
     if id and id > 0 then return { spellID = id, name = "Buff " .. id, iconID = id + 1 } end
 end }
 C_StringUtil = { CreateNumericRuleFormatter = function() return { SetBreakpoints = function() end } end }
+C_ClassColor = { GetClassColor = function() return env.classColor or { r = 1, g = 1, b = 1 } end }
+function GetUnitName(unit) env.lastNameUnit = unit; return env.playerName or "Tidslomme-Realm" end
+function UnitClass() return "Evoker", "EVOKER" end
+function UnitIsConnected() return not env.offline end
+function UnitIsDeadOrGhost() return env.dead == true end
 Enum = { NumericRuleFormatRounding = { Down = 1 }, CompressionMethod = { Gzip = 1 } }
 MinimalSliderWithSteppersMixin = { Label = { Right = 1 } }
 function CreateMinimalSliderFormatter(_, fn) return fn end
@@ -219,8 +242,13 @@ function Addon:GetCurrentProfileName() return env.profile end
 function Addon:IsRaidOrPartyFrame(frame) return frame.valid ~= false end
 function Addon:IsConfigOpen() return false end
 function Addon:RequestFeatureUpdate(feature) env.requested = feature end
+function Addon:ForEachFrame(callback)
+    for _, frame in ipairs(env.raid and (env.raidFrames or {}) or (env.partyFrames or {})) do callback(frame) end
+end
 assert(loadfile("Indicators.lua"))("BetterRaidFrames", Addon)
+assert(loadfile("FramePreview.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("IndicatorDisplay.lua"))("BetterRaidFrames", Addon)
+assert(loadfile("Name.lua"))("BetterRaidFrames", Addon)
 env.settings.indicators = Addon:NormalizeIndicators(nil)
 function env.frame(unit) local f = CreateFrame("Frame"); f.unit = unit; f:SetSize(180, 56); return f end
 function env.find(predicate)

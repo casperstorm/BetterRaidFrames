@@ -431,17 +431,13 @@ end
 
 function Addon:CreateDesignerPreview(parent)
     local preview = CreateFrame("Frame", nil, parent)
-    preview:SetSize(180, 56)
+    preview:SetSize(72, 36)
     local bg = preview:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetColorTexture(0.12, 0.16, 0.13, 1)
     local health = preview:CreateTexture(nil, "ARTWORK")
     health:SetPoint("TOPLEFT", 1, -1)
-    health:SetSize(148, 54)
     health:SetColorTexture(0.24, 0.42, 0.3, 1)
-    local name = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    name:SetPoint("TOPLEFT", 5, -4)
-    name:SetText("Preview")
     local buckets, visuals = {}, {}
     local start, lastSecond = GetTime(), nil
     local currentSet, currentSelected, currentAbsent
@@ -465,6 +461,9 @@ function Addon:CreateDesignerPreview(parent)
     function preview:Refresh(set, selected, absent)
         currentSet, currentSelected, currentAbsent = set, selected, absent
         if not self:IsVisible() then return false end
+        Addon:WatchFramePreviewSize(self)
+        Addon:SizeFramePreview(self)
+        health:SetSize(math.max(1, (self:GetWidth() - 2) * 0.83), math.max(1, self:GetHeight() - 2))
         local descriptions, timed = {}, false
         for index = #set.items + 1, #visuals do
             local visual = visuals[index]
@@ -512,7 +511,9 @@ function Addon:CreateDesignerPreview(parent)
             bucket.flow:SetAnchorPoint(layout.point)
             bucket.flow:SetGrowthDirection(layout.horizontal, layout.vertical)
             bucket.flow:Apply(bucket.frame, descriptions[anchor] or {})
-            if bucket.frame:GetWidth() > 176 or bucket.frame:GetHeight() > 52 then overflow = true end
+            if bucket.frame:GetWidth() > self:GetWidth() - 4 or bucket.frame:GetHeight() > self:GetHeight() - 4 then
+                overflow = true
+            end
         end
         start = GetTime()
         lastSecond = nil
@@ -521,14 +522,16 @@ function Addon:CreateDesignerPreview(parent)
         return overflow
     end
     preview:SetScript("OnHide", function()
+        Addon:UnwatchFramePreviewSize(preview)
         preview:SetScript("OnUpdate", nil)
         for _, visual in ipairs(visuals) do
             StopPulse(visual)
             if visual.cooldown then visual.cooldown:Clear() end
         end
     end)
-    preview:SetScript("OnShow", function()
+    function preview:RefreshOptions()
         if currentSet then preview:Refresh(currentSet, currentSelected, currentAbsent) end
-    end)
+    end
+    preview:SetScript("OnShow", function() preview:RefreshOptions() end)
     return preview
 end

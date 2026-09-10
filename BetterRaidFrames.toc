@@ -18,6 +18,7 @@ SoloFrame.lua
 FrameBorders.lua
 Absorbs.lua
 Indicators.lua
+FramePreview.lua
 IndicatorDisplay.lua
 Name.lua
 RaidMarkers.lua

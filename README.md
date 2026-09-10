@@ -39,6 +39,12 @@ For Party frames, enable **Use Raid-Style Party Frames** in Blizzard Edit Mode. 
 
 Join a Follower Dungeon or open Blizzard Edit Mode, then type `/brf`.
 
+The sample frames in **Indicators**, **Name**, **Raid Markers**, **Party Leader**, **Role Icons**, **Absorbs**, and **Threat Indicator** match your current Blizzard party or raid frame's dimensions and scale. When no live frame is available, they use Edit Mode settings or the last known size. The size label identifies the source; unusually large samples shrink to fit and show the percentage. Measurements update only while that section's previews are visible.
+
+Each sample shows your character's name using the current profile's **Name** settings. The preview beside Placement in **Name** updates as you change the controls. Role, shield and threat labels remain below the samples.
+
+**Raid Markers** uses a sample skull and **Party Leader** shows an example leader icon, even while solo. Enable their display checkboxes to see the examples; anchors, offsets and size update immediately. The leader preview also follows **Hide in combat**.
+
 **Where do I edit frame and aura sizes?**
 
 Open Blizzard Edit Mode and select the Party or Raid Frames.
