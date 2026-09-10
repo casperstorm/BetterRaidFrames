@@ -80,7 +80,16 @@ local function choose(label, value)
     for _, option in ipairs(dropdown.menu.items) do if option.value == value then option.callback(value); return end end
     error("missing choice: " .. value)
 end
+click(env.find(function(w) return w.text == "Placement" and w.scripts.OnClick end))
+choose("Position:", "LEFT")
+local position = env.find(function(w) return w.label and w.label.text == "Position:" and w:IsVisible() end)
+assert(#position.menu.items == 9)
+for _, sample in ipairs(samples) do
+    local point = sample.BRFThreatIndicator.point
+    assert(point[1] == "LEFT" and point[2] == sample and point[3] == "LEFT", "Position updates all samples")
+end
 choose("Visual:", "BORDER")
+assert(not position.container:IsShown(), "full frame borders have no Position control")
 for _, sample in ipairs(samples) do
     local indicator = sample.BRFThreatIndicator
     assert(indicator.BRFShape == "BORDER" and not indicator.texture.shown and indicator.edge.shown)

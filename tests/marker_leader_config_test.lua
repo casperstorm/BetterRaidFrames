@@ -40,6 +40,7 @@ local function slider(content, text)
 end
 local function choose(content, label, value)
     local dropdown = env.find(function(w) return inside(w, content) and w.label and w.label.text == label end)
+    assert(#dropdown.menu.items == 9, "Position offers every edge, corner and center")
     for _, option in ipairs(dropdown.menu.items) do if option.value == value then option.callback(value); return end end
     error("missing option " .. value)
 end
@@ -50,10 +51,10 @@ toggle(showMarker, true)
 local marker = markerFrame.BRFRaidMarker
 assert(marker:IsVisible() and marker.markerIndex == 8 and markerFrame.unit == nil)
 assert(markerFrame.name:GetText() == "Tidslomme" and markerFrame.name.fontSize == 13)
-choose(markerPage, "Marker anchor:", "BOTTOMRIGHT"); choose(markerPage, "Frame anchor:", "TOPLEFT")
-slider(markerPage, "Relative X:"):SetValue(-4); slider(markerPage, "Relative Y:"):SetValue(6)
+choose(markerPage, "Position:", "BOTTOMRIGHT")
+slider(markerPage, "X offset (px):"):SetValue(-4); slider(markerPage, "Y offset (px):"):SetValue(6)
 slider(markerPage, "Marker size:"):SetValue(24)
-assert(marker.point[1] == "BOTTOMRIGHT" and marker.point[2] == markerFrame and marker.point[3] == "TOPLEFT")
+assert(marker.point[1] == "BOTTOMRIGHT" and marker.point[2] == markerFrame and marker.point[3] == "BOTTOMRIGHT")
 assert(marker.point[4] == -4 and marker.point[5] == 6 and marker.width == 24)
 toggle(showMarker, false); assert(not marker:IsShown())
 toggle(showMarker, true); assert(markerFrame.BRFRaidMarker == marker and marker:IsShown())
@@ -64,10 +65,10 @@ toggle(showLeader, true)
 local leader = leaderFrame.BRFLeaderIndicator
 assert(leader:IsVisible() and leader.texture == "Interface\\GroupFrame\\UI-Group-LeaderIcon")
 assert(leaderFrame.unit == nil and leaderFrame.name:GetText() == "Tidslomme")
-choose(leaderPage, "Icon anchor:", "LEFT"); choose(leaderPage, "Frame anchor:", "RIGHT")
-slider(leaderPage, "Relative X:"):SetValue(3); slider(leaderPage, "Relative Y:"):SetValue(-7)
+choose(leaderPage, "Position:", "LEFT")
+slider(leaderPage, "X offset (px):"):SetValue(3); slider(leaderPage, "Y offset (px):"):SetValue(-7)
 slider(leaderPage, "Size:"):SetValue(18)
-assert(leader.point[1] == "LEFT" and leader.point[3] == "RIGHT" and leader.point[4] == 3 and leader.point[5] == -7)
+assert(leader.point[1] == "LEFT" and leader.point[3] == "LEFT" and leader.point[4] == 3 and leader.point[5] == -7)
 assert(leader.width == 18)
 local hideInCombat = env.find(function(w) return inside(w, leaderPage) and w.Text and w.Text.text == "Hide in combat" end)
 toggle(hideInCombat, true)
@@ -102,7 +103,10 @@ local updates = textureUpdates
 Addon:RefreshConfig()
 assert(textureUpdates == updates and not next(markerRow.events) and not next(leaderRow.events), "hidden previews stop updating")
 for _, w in ipairs(env.widgets) do
-    if inside(w, markerPage) or inside(w, leaderPage) then assert(not w.scripts.OnUpdate) end
+    if inside(w, markerPage) or inside(w, leaderPage) then
+        assert(not w.scripts.OnUpdate)
+        assert(not (w.label and w.label.text:find("anchor:")), "paired anchors are replaced by Position")
+    end
 end
 
 print("PASS: marker_leader_config_test (examples, live editing, sizing, combat, profiles, visibility, reuse)")

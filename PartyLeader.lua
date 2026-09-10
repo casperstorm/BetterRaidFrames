@@ -21,12 +21,11 @@ end
 
 local function ApplyLeaderIndicatorSettings(indicator, parentFrame, settings)
     local point = Addon:GetValidAnchor(settings.partyLeaderPoint, "TOPLEFT")
-    local relativePoint = Addon:GetValidAnchor(settings.partyLeaderRelativePoint, "TOPLEFT")
     local offsetX = settings.partyLeaderOffsetX or 2
     local offsetY = settings.partyLeaderOffsetY or -2
     local size = settings.partyLeaderSize or 16
 
-    Addon:ApplyRegionLayout(indicator, parentFrame, point, relativePoint, offsetX, offsetY, size)
+    Addon:ApplyRegionLayout(indicator, parentFrame, point, point, offsetX, offsetY, size)
 end
 
 local function UpdatePartyLeader(frame, settings, inCombat)

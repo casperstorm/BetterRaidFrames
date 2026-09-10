@@ -11,7 +11,6 @@ local defaults = {
     indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
-    raidMarkerRelativePoint = "TOP",
     raidMarkerOffsetX = 0,
     raidMarkerOffsetY = 2,
     raidMarkerSize = 16,
@@ -44,13 +43,11 @@ local defaults = {
     threatIndicatorBorderColorB = 0,
     threatIndicatorShape = "SQUARE",
     threatIndicatorPoint = "CENTER",
-    threatIndicatorRelativePoint = "CENTER",
     threatIndicatorOffsetX = 0,
     threatIndicatorOffsetY = 0,
     threatIndicatorSize = 8,
     showPartyLeader = false,
     partyLeaderPoint = "TOPLEFT",
-    partyLeaderRelativePoint = "TOPLEFT",
     partyLeaderOffsetX = 2,
     partyLeaderOffsetY = -2,
     partyLeaderSize = 16,
@@ -86,6 +83,13 @@ local POSITION_SETTING_MIGRATIONS = {
     nameY = "nameOffsetY",
 }
 
+local LEGACY_ANCHOR_PREFIXES = { "raidMarker", "threatIndicator", "partyLeader" }
+local POSITION_COORDINATES = {
+    TOPLEFT = { -0.5, 0.5 }, TOP = { 0, 0.5 }, TOPRIGHT = { 0.5, 0.5 },
+    LEFT = { -0.5, 0 }, CENTER = { 0, 0 }, RIGHT = { 0.5, 0 },
+    BOTTOMLEFT = { -0.5, -0.5 }, BOTTOM = { 0, -0.5 }, BOTTOMRIGHT = { 0.5, -0.5 },
+}
+
 local SETTING_FEATURES = {
     showSolo = "soloFrame",
     showAbsorbs = "absorbs",
@@ -97,7 +101,6 @@ local SETTING_FEATURES = {
     indicators = "indicators",
     showRaidMarkers = "raidMarker",
     raidMarkerPoint = "raidMarker",
-    raidMarkerRelativePoint = "raidMarker",
     raidMarkerOffsetX = "raidMarker",
     raidMarkerOffsetY = "raidMarker",
     raidMarkerSize = "raidMarker",
@@ -130,13 +133,11 @@ local SETTING_FEATURES = {
     threatIndicatorBorderColorB = "threatIndicator",
     threatIndicatorShape = "threatIndicator",
     threatIndicatorPoint = "threatIndicator",
-    threatIndicatorRelativePoint = "threatIndicator",
     threatIndicatorOffsetX = "threatIndicator",
     threatIndicatorOffsetY = "threatIndicator",
     threatIndicatorSize = "threatIndicator",
     showPartyLeader = "partyLeader",
     partyLeaderPoint = "partyLeader",
-    partyLeaderRelativePoint = "partyLeader",
     partyLeaderOffsetX = "partyLeader",
     partyLeaderOffsetY = "partyLeader",
     partyLeaderSize = "partyLeader",
@@ -281,15 +282,30 @@ local function NormalizeProfile(profile)
         end
     end
 
-    for key in pairs(profile) do
-        if defaults[key] == nil then
-            profile[key] = nil
-        end
-    end
-
     for key, value in pairs(defaults) do
         if type(profile[key]) ~= type(value) then
             profile[key] = DeepCopy(value)
+        end
+    end
+
+    for _, prefix in ipairs(LEGACY_ANCHOR_PREFIXES) do
+        local pointKey, relativeKey = prefix .. "Point", prefix .. "RelativePoint"
+        if profile[relativeKey] ~= nil then
+            local point = POSITION_COORDINATES[profile[pointKey]] or POSITION_COORDINATES[defaults[pointKey]]
+            local position = profile[relativeKey]
+            if not POSITION_COORDINATES[position] then position = defaults[pointKey] end
+            local relative = POSITION_COORDINATES[position]
+            local size = profile[prefix .. "Size"]
+            -- Keep the icon in place when both ends now use the frame's point.
+            profile[prefix .. "OffsetX"] = profile[prefix .. "OffsetX"] + (relative[1] - point[1]) * size
+            profile[prefix .. "OffsetY"] = profile[prefix .. "OffsetY"] + (relative[2] - point[2]) * size
+            profile[pointKey] = position
+        end
+    end
+
+    for key in pairs(profile) do
+        if defaults[key] == nil then
+            profile[key] = nil
         end
     end
 end
@@ -339,6 +355,14 @@ local function InitializeDB()
         for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
             if oldSettings[newKey] == nil and BetterRaidFramesDB[oldKey] ~= nil then
                 oldSettings[newKey] = BetterRaidFramesDB[oldKey]
+                hasOldSettings = true
+            end
+        end
+
+        for _, prefix in ipairs(LEGACY_ANCHOR_PREFIXES) do
+            local key = prefix .. "RelativePoint"
+            if BetterRaidFramesDB[key] ~= nil then
+                oldSettings[key] = BetterRaidFramesDB[key]
                 hasOldSettings = true
             end
         end

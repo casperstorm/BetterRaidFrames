@@ -1,144 +1,67 @@
 # BetterRaidFrames for Midnight
 
-BetterRaidFrames is a lightweight World of Warcraft addon that extends Blizzard's default Raid-Style Party and Raid Frames with focused customization options.
-
-**Made for Midnight.**
+Customize Blizzard's Raid and Raid-Style Party Frames with buff indicators, clearer role icons, threat warnings, and more.
 
 ![BetterRaidFrames](asset.png)
 
-> Tip: Join a Follower Dungeon to preview and configure your frames, or use Blizzard Edit Mode.
-
-Discord username: `async`
-
 ## Features
 
-- Profiles with automatic Party and Raid switching
-- Optional solo visibility for your own Raid-Style Party Frame
-- Optional pixel-aligned health and power bar edges for more even frame separators
-- Absorb shield visibility and opacity, plus optional overshields with a choice of textures
-- Raid target markers with configurable anchors, offsets, and sizing
-- Role icon filters and optional tiny, borderless symbols with configurable size and placement
-- Party leader indicator with configurable anchor, offsets, sizing, and combat visibility
-- Optional name styling with positioning, sizing, truncation, class colors, transliteration, and text effects
-- Square or circular threat indicator with configurable placement, sizing, blinking, tank filtering, and threat-based colours
-- Indicator designer with coloured squares and spell icons, shared anchor groups that close gaps automatically, and specialization sets
-- Compact, Blizzard-style configuration window
-- Event-driven updates designed to avoid unnecessary frame processing
+- **Buff indicators:** Track buffs as spell icons or coloured squares. Arrange them in groups that close gaps automatically when buffs disappear. Add duration text, stack counts, cooldown swipes, and steady or pulsing glows.
+- **Role icons:** Keep Blizzard's icons or use tiny symbols. The **Tiny tank & healer** preset makes tanks and healers easy to spot while leaving damage roles unmarked.
+- **Threat warnings:** Choose a square, circle, or full-frame border with a solid or glowing edge. Set your own colours for high, insecure, and secure threat, enable blinking, or hide threat indicators for tanks.
+- **Absorb shields:** Adjust shield visibility and opacity. Optional overshields show shield coverage beyond full health, with several textures to choose from.
+- **Name styling:** Change font size, position, outlines, and shadows. Use class colours, shorten long names, hide server names, convert Cyrillic to Latin, or hide names for dead and offline units.
+- **Raid markers and party leaders:** Adjust icon size and position. Optionally hide the leader icon during combat.
+- **Frame options:** Show your own party frame while solo and enable **Crisp frame borders** for more even separators.
+- **Profiles:** Save different setups and switch automatically between party and raid profiles. Buff indicators can also have separate sets for each specialization.
+- **Live previews:** See changes in settings using your character's name and your actual frame dimensions and scale.
 
-## Usage
+## Getting started
 
-Type `/brf` or `/betterraidframes` to open the configuration window.
+1. Type `/brf` or `/betterraidframes` to open settings.
+2. For party frames, enable **Use Raid-Style Party Frames** under **General** or in Blizzard Edit Mode.
+3. Open a feature's section, enable it, and adjust its settings while watching the preview.
 
-## FAQ
+Use **Blizzard Edit Mode** to change the overall frame layout, frame size, and Blizzard aura sizes. A Follower Dungeon is a handy place to try your setup with a full party.
 
-**How do I use it?**
+## Positioning and previews
 
-For Party frames, enable **Use Raid-Style Party Frames** in Blizzard Edit Mode. Configure Party and Raid frame layout in Blizzard Edit Mode.
+Choose **Position**, such as Top left, Center, or Bottom right, then fine-tune with X/Y offsets. Positive X moves right; positive Y moves up. Raid Markers, Party Leader, Threat, Role Icons, and Name use this same approach. Existing placements are preserved when upgrading.
 
-**How do I preview my changes?**
+Previews update as you edit. They use your current party or raid frame size when available, with Edit Mode or the last known size as fallbacks. Large previews shrink to fit. Sample raid markers, leader icons, roles, shields, and threat levels let you try settings even while solo.
 
-Join a Follower Dungeon or open Blizzard Edit Mode, then type `/brf`.
+## Adding buff indicators
 
-The sample frames in **Indicators**, **Name**, **Raid Markers**, **Party Leader**, **Role Icons**, **Absorbs**, and **Threat Indicator** match your current Blizzard party or raid frame's dimensions and scale. When no live frame is available, they use Edit Mode settings or the last known size. The size label identifies the source; unusually large samples shrink to fit and show the percentage. Measurements update only while that section's previews are visible.
+1. Open **Indicators**, choose **Add group**, and select a position such as Bottom right.
+2. Choose **Add indicator** inside the group. Enter a buff name or aura ID, or pick one from **Buffs**, then click **Add**.
+3. Select the group to adjust growth direction, spacing, and position. Select an individual buff to change its appearance and text.
 
-Each sample shows your character's name using the current profile's **Name** settings. The preview beside Placement in **Name** updates as you change the controls. Role, shield and threat labels remain below the samples.
+New indicators start as spell icons. In **Display**, switch to a coloured square, adjust size, add a glow, or filter to buffs you cast. In **Text**, show remaining duration or stack count.
 
-**Raid Markers** uses a sample skull and **Party Leader** shows an example leader icon, even while solo. Enable their display checkboxes to see the examples; anchors, offsets and size update immediately. The leader preview also follows **Hide in combat**.
+For example, put **Echo** and **Dream Breath** in a Bottom right group. Both follow the group's spacing and growth direction; when one buff disappears, the other closes the gap automatically.
 
-**Where do I edit frame and aura sizes?**
+You can reorder, copy, or move indicators between groups. Under a group's **Advanced** settings, **Above Blizzard icons** brings the group in front of Blizzard's built-in icons.
 
-Open Blizzard Edit Mode and select the Party or Raid Frames.
+Use **Default** for all specializations or create a separate set for a particular spec. **Export** and **Import** share indicator sets, including their group settings.
 
-**Can I show my frame while playing solo?**
+**Show Blizzard buff icons** controls Blizzard's standard buff display separately from your custom indicators.
 
-Enable **General → Show my frame while solo** in `/brf`, with **Use Raid-Style Party Frames** enabled. BRF keeps the existing player entry visible, using your normal party-frame position, size, and indicators. Blizzard's pet display setting still applies. Party and raid visibility remain automatic when you join a group, and Edit Mode keeps control of its previews.
+## Understanding absorb shields
 
-The option starts off and belongs to the current profile. Turning it off restores Blizzard's normal visibility. Setting and layout changes apply out of combat; an already enabled solo frame remains available during combat through Blizzard's shared secure visibility driver. BRF adds no polling loop or replacement unit frames and changes no CVars.
+Absorbs protect against damage. Overshields show the part of a shield that extends beyond full health. For example, at full health, an active shield can still appear as an overshield overlay.
 
-**How do I show absorb shields beyond full health?**
+The **Absorbs** section has three controls:
 
-Open **Absorbs** in `/brf` and enable **Show overshields**. The overlay fills from the right and is clipped to the filled health bar, showing shield coverage that extends beyond full health. Choose **Shields**, **Blizzard Flat**, **Blizzard Raid**, **Default**, **Smooth**, **Lunar**, **Torghast**, **Insanity**, or **Empower**, and adjust opacity from 0–100%. **Shields** uses Blizzard's current tiled artwork so its pattern keeps its detail instead of stretching the legacy shield image. **Blizzard Flat** gives a plain overlay. Three samples show a shield that fits, one that overflows, and one at full health.
+- **Show Blizzard absorbs and incoming heals:** Enables Blizzard's shield and healing displays. Turning it off also hides incoming heals and healing-absorb effects.
+- **Show normal absorb shields:** Shows Blizzard's damage shields and their overflow edge, with adjustable opacity. Requires the Blizzard display above to be enabled.
+- **Show overshields:** Adds BRF's overlay over the filled health bar for shields extending beyond full health. Choose its texture and opacity. This works independently of the two controls above.
 
-**Show Blizzard absorbs and incoming heals** controls the game's `raidFramesDisplayIncomingHeals` setting, shared across profiles. Blizzard groups damage absorbs, healing absorbs, and incoming heals under this setting; turning it off hides all three native displays. BRF overshields remain independent. The checkbox follows changes made in Blizzard's settings, and opening BRF or switching profiles never overwrites it.
+Most settings belong to the current profile. **Show Blizzard buff icons** and **Show Blizzard absorbs and incoming heals** are game settings shared across profiles.
 
-**Show normal absorb shields** controls just Blizzard's damage-shield display and its overflow edge glow, with a separate opacity slider. It requires the Blizzard display above to be enabled; turning off this absorb-only option keeps incoming heals and healing absorbs unchanged. This option, its opacity, and the overshield settings belong to the current profile. Existing profiles keep normal absorbs at their original opacity and overshields off. Overshields start with the **Shields** texture at 80% opacity when enabled.
+## Installation and support
 
-Overshields reuse one status bar, fill texture, and mask per unit frame. Updates follow Blizzard's existing shield refreshes without adding polling or animations. Health and absorb values go directly to native status-bar APIs, including restricted combat values.
+Download from [CurseForge](https://www.curseforge.com/wow/addons/better-raid-frames), extract the `BetterRaidFrames` folder into `World of Warcraft/_retail_/Interface/AddOns`, and restart the game or reload the UI.
 
-**How do I make role icons smaller?**
+For help or feedback, contact `async` on Discord.
 
-Open **Role Icons** in `/brf` and click **Tiny tank & healer**. Tanks get a small shield and healers a cross; damage roles stay unmarked. The preset selects **Tiny** style and the **Tank & Healer** filter while preserving any size and position you already chose. **All** can also show a small damage-role symbol.
-
-Tiny icons start at size 10, inset at the top right. Adjust size from 6–20 and choose any of nine anchors with X/Y offsets. The samples follow your role filter and placement. Switch **Style** back to **Blizzard** to restore native artwork and placement. All options belong to the current profile, and existing profiles retain Blizzard style until you change it.
-
-Tiny style reuses one texture per frame that needs a marker and adds no timers or animation. It keeps the native name anchor in place and uses the player's assigned role when they enter a vehicle.
-
-**Why do some frame separators look thicker than others?**
-
-Frame sizes and UI scaling can place Blizzard's health-bar insets between screen pixels. Try **General → Crisp frame borders** in `/brf` to align the bar edges to the pixel grid. Each edge uses one physical pixel, giving touching frames a two-pixel separator. This is off by default and belongs to the current profile.
-
-The correction updates after layout or screen-scale changes, without continuous polling. Changes apply out of combat when frame geometry is accessible; disabling it restores the original insets. Blizzard still controls frame placement and sizing, and BRF does not change UI-scale settings.
-
-**How do I position and style names?**
-
-Open **Name** in `/brf` and enable **Customize names**. Under **Placement**, choose one of nine anchors, then adjust X/Y relative to that point. Positive X moves right; positive Y moves up. Names align left, right, or centre to match the anchor. Existing profiles start at **Center**, preserving their saved offsets.
-
-**Text** includes font size (6–40 pixels), class colouring, realm hiding, truncation, Cyrillic transliteration, and dead/offline visibility. **Appearance** contains outlines and text shadows. Disable **Customize names** to restore Blizzard's style and placement.
-
-**How do I configure the threat indicator?**
-
-Open **Threat Indicator** in `/brf` and enable **Show threat indicator**. **Visual** selects exactly one display: **Square**, **Circle**, or **Frame border**. Squares and circles have configurable anchors, offsets, and size. Frame borders follow the entire unit frame as it resizes.
-
-- **Hide for tanks:** Hide it on units assigned the Tank role, including when they are in vehicles.
-- **Colours:** Set separate colours for high threat, insecure threat, and secure threat. They default to yellow, orange, and red; **Reset colours** restores those defaults. Enable **Color by threat** to use the three colours on live frames, or leave it unchecked to use the Secure threat colour for every level.
-- **Border:** Frame borders offer **Solid** (the default) or **Glow**. Solid thickness is 1–16 pixels; glow width is 1–32 pixels and starts at 8. Both use the threat colours, opacity from 0–100% (100% by default), and an inset from -16 to +16 pixels: positive moves inward, negative moves outward, and zero keeps the original position. Squares and circles keep a solid outline with their own colour; opacity affects their outline while the fill stays opaque. Blinking fades relative to the chosen border opacity. Glow reuses the existing border and blink animation without adding a Lua update loop. Previous texture selections continue to use Solid.
-
-Three labelled samples show all threat levels only while the **Threat Indicator** section is open. Sample blinking follows **Blinking**, and stops on leaving the section or closing settings. Units without threat also show varied samples while this section is open; live threat keeps its actual level and tank filtering still applies. Outside this section, only real threat displays. All settings belong to the current profile. Restricted threat data hides the live indicator until the state is available again.
-
-**How do I add square or icon indicators?**
-
-Open **Indicators** in `/brf`. Choose **Add group** and an unused position, then **Add indicator** inside that group. Enter a buff name or spell ID, or select one from **Buffs**, then click **Add**. New indicators start as spell icons; select the indicator and use its **Display** tab to choose a square. Use the buff's aura ID when it differs from the spell that applies it. Each set supports up to 32 indicators; you can track the same buff more than once with different displays.
-
-**Show Blizzard buff icons** toggles the standard buffs on Raid and Raid-Style Party Frames through the game's `raidFramesDisplayBuffs` setting. It is shared across profiles and stays in sync with changes made elsewhere. Your custom square and icon indicators remain independent.
-
-- **Select a group:** Its settings appear in the fixed panel on the right. Choose growth direction, spacing, and X/Y offsets. Offsets move the entire group up to 250 pixels in either direction: positive X moves right, positive Y moves up. Zero offsets retain the default two-pixel inset. Changing **Position** moves all the group's indicators and its settings to an unused anchor; growth adjusts if the previous direction would point outside the new corner. At a corner, the first indicator sits nearest that corner. Missing and disabled buffs take no space, so the remaining indicators close the gap automatically.
-- **Select an indicator → Display:** Choose the size, square colour and opacity, icon texture, optional cooldown swipe, caster filter, and mouseover tooltip. Enable **Glow** for a golden glow while its buff is active. **Pulse glow** gently fades the glow in and out every 1.2 seconds; leave it off for a steady glow. Both work with icons and squares, appear in the preview, and start disabled. Pulsing changes only the glow, keeping the icon and text steady.
-- **Select an indicator → Text:** Show remaining duration, stack count, or neither, with adjustable scale and colour. Text works independently of the cooldown swipe; an icon can hide its texture while keeping text.
-
-Expand **Advanced** in a group's settings for **Layer / Z offset**, which adjusts the whole group's draw order from -100 to +500. Higher values draw in front, lower values behind; zero preserves the existing layer. Click **Above Blizzard icons** to set the group's offset to +200, placing it above the built-in buff, defensive, debuff, and dispel layers. The offset is relative to the unit frame's level, plus the group's base level of 10, with the final level clamped at zero. Icons, squares, text, and glow move together, and the preview uses the same setting. Existing Z offsets are preserved.
-
-Collapse groups with **− / +**. Each spell has an enable checkbox in the list. Select it to **Copy**, **Remove**, or reorder it within its group using **↑ / ↓**. **Move to group** transfers just that indicator to another position, retaining its display settings. **Change buff** replaces its tracked buff without changing its display or order. Empty group choices are kept while editing the current set; groups containing indicators are restored after switching sets or reloading.
-
-The preview shows all configured indicators. Uncheck **Selected buff active** to see the group close its gap. Groups use one row or column; reduce size or spacing if the preview reports an overflow. Separate anchor groups can overlap if made too large.
-
-Settings belong to the current profile. **Default** applies to every specialization without its own set. Editing a specialization creates an independent copy; **Use Default** removes that override. **Export** shares the selected set, including group settings. **Import** reviews a BetterRaidFrames export before replacing that set. Harrek's export strings are not supported.
-
-These displays use Retail 12.1's aura containers for matching, visibility, duration, and automatic layout. Changes that require access to restricted aura frames are saved and applied when restrictions end; displays awaiting those changes are hidden.
-
-Optional cooldown, text, and glow objects allocate on first use and are then reused. Stable updates reuse their layout data; hidden previews stop their timers and pulses. Blizzard's automatic layout reserves ten buttons per indicator, so memory follows the largest pools used during a session and drops after `/reload`. See [the performance audit](PERFORMANCE.md) for measured allocation reductions, stress tests, and in-game verification steps.
-
-**How do I highlight a buff such as Echo?**
-
-Open **Indicators** in `/brf`, select **Add indicator** inside the desired group, enter Echo's buff ID (`364343`), and click **Add**. It starts as a spell icon. To use a coloured square, select Echo and choose **Square** in its **Display** tab, then pick its colour. **Mine (including pets)** tracks your casts; uncheck it to include any caster.
-
-**Where are Blizzard's Raid Frame options?**
-
-Go to **Options > Interface > Raid Frames**.
-
-**How can I track targeted spells?**
-
-Use [Targeted Spells](https://www.curseforge.com/wow/addons/targetedspells).
-
-## Installation
-
-1. Download the latest release.
-2. Extract the `BetterRaidFrames` folder into your World of Warcraft `Interface/AddOns` directory.
-3. Restart World of Warcraft or reload the UI.
-
-## Links
-
-- [CurseForge](https://www.curseforge.com/wow/addons/better-raid-frames)
-
-## License
-
-BetterRaidFrames is released under the GPL-3.0 License. See [LICENSE](LICENSE) for details.
+For technical details, see the [performance audit](PERFORMANCE.md). BetterRaidFrames is released under the [GPL-3.0 License](LICENSE).

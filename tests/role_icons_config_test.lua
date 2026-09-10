@@ -65,7 +65,7 @@ assert(samples.Damage.BRFTinyRoleIcon:IsVisible(), "previews follow the current 
 choose("Show role icons:", "NONE")
 for _, sample in pairs(samples) do assert(not sample.BRFTinyRoleIcon.shown) end
 preset.scripts.OnClick(preset)
-choose("Anchor:", "BOTTOMLEFT")
+choose("Position:", "BOTTOMLEFT")
 size:SetValue(7); x:SetValue(4); y:SetValue(5)
 local icon = samples.Tank.BRFTinyRoleIcon
 assert(icon.width == 7 and icon.point[1] == "BOTTOMLEFT" and icon.point[3] == "BOTTOMLEFT"

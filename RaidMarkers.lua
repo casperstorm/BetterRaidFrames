@@ -22,11 +22,10 @@ end
 local function ApplyRaidMarkerSettings(frame, icon, settings)
     local size = settings.raidMarkerSize or 16
     local point = Addon:GetValidAnchor(settings.raidMarkerPoint, "TOP")
-    local relativePoint = Addon:GetValidAnchor(settings.raidMarkerRelativePoint, "TOP")
     local offsetX = settings.raidMarkerOffsetX or 0
     local offsetY = settings.raidMarkerOffsetY or 2
 
-    Addon:ApplyRegionLayout(icon, frame, point, relativePoint, offsetX, offsetY, size)
+    Addon:ApplyRegionLayout(icon, frame, point, point, offsetX, offsetY, size)
 end
 
 local function UpdateRaidMarker(frame, settings)

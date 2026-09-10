@@ -116,7 +116,6 @@ end
 
 local function ApplyIndicatorSettings(indicator, parentFrame, settings)
     local point = Addon:GetValidAnchor(settings.threatIndicatorPoint, "CENTER")
-    local relativePoint = Addon:GetValidAnchor(settings.threatIndicatorRelativePoint, "CENTER")
     local offsetX = settings.threatIndicatorOffsetX or 0
     local offsetY = settings.threatIndicatorOffsetY or 0
     local size = settings.threatIndicatorSize or 8
@@ -130,7 +129,7 @@ local function ApplyIndicatorSettings(indicator, parentFrame, settings)
     indicator:SetBRFShape(shape)
     indicator.texture:SetShown(shape ~= "BORDER")
     if shape ~= "BORDER" then
-        Addon:ApplyRegionLayout(indicator, parentFrame, point, relativePoint, offsetX, offsetY, size)
+        Addon:ApplyRegionLayout(indicator, parentFrame, point, point, offsetX, offsetY, size)
     end
 end
 

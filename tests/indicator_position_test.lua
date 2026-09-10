@@ -9,7 +9,6 @@ local settings = {
     showRaidMarkers = true,
     showRoleIcons = "ALL",
     raidMarkerPoint = "LEFT",
-    raidMarkerRelativePoint = "RIGHT",
     raidMarkerOffsetX = 3,
     raidMarkerOffsetY = -2,
     raidMarkerSize = 18,
@@ -17,13 +16,11 @@ local settings = {
     threatIndicatorBlink = false,
     threatIndicatorShape = "CIRCLE",
     threatIndicatorPoint = "BOTTOMRIGHT",
-    threatIndicatorRelativePoint = "TOPLEFT",
     threatIndicatorOffsetX = 4,
     threatIndicatorOffsetY = -6,
     threatIndicatorSize = 10,
     showPartyLeader = true,
     partyLeaderPoint = "BOTTOM",
-    partyLeaderRelativePoint = "TOP",
     partyLeaderOffsetX = -5,
     partyLeaderOffsetY = 7,
     partyLeaderSize = 20,
@@ -103,7 +100,7 @@ assert(loadfile("PartyLeader.lua"))("BetterRaidFrames", Addon)
 Addon:UpdateRaidMarker(frame)
 assertEqual(raidMarker.position[1], "LEFT", "raid marker anchor should be configurable")
 assertEqual(raidMarker.position[2], frame, "raid marker should remain relative to its unit frame")
-assertEqual(raidMarker.position[3], "RIGHT", "raid marker frame anchor should be configurable")
+assertEqual(raidMarker.position[3], "LEFT", "raid marker uses the same point on its frame")
 assertEqual(raidMarker.position[4], 3, "raid marker relative X should be applied")
 assertEqual(raidMarker.position[5], -2, "raid marker relative Y should be applied")
 assertEqual(raidMarker.width, 18, "raid marker size should be applied")
@@ -117,7 +114,7 @@ Addon:UpdateThreatIndicator(frame)
 assertEqual(threatIndicator.shape, "CIRCLE", "threat indicator should support a circle shape")
 assertEqual(threatIndicator.position[1], "BOTTOMRIGHT", "threat anchor should be configurable")
 assertEqual(threatIndicator.position[2], frame, "threat indicator should remain relative to its unit frame")
-assertEqual(threatIndicator.position[3], "TOPLEFT", "threat frame anchor should be configurable")
+assertEqual(threatIndicator.position[3], "BOTTOMRIGHT", "threat uses the same point on its frame")
 assertEqual(threatIndicator.position[4], 4, "threat relative X should be applied")
 assertEqual(threatIndicator.position[5], -6, "threat relative Y should be applied")
 assertEqual(threatIndicator.width, 10, "threat indicator size should be applied")
@@ -125,18 +122,17 @@ assertEqual(threatIndicator.width, 10, "threat indicator size should be applied"
 Addon:UpdatePartyLeader(frame)
 assertEqual(leaderIndicator.position[1], "BOTTOM", "leader icon anchor should be configurable")
 assertEqual(leaderIndicator.position[2], frame, "leader icon should remain relative to its unit frame")
-assertEqual(leaderIndicator.position[3], "TOP", "leader icon frame anchor should be configurable")
+assertEqual(leaderIndicator.position[3], "BOTTOM", "leader icon uses the same point on its frame")
 assertEqual(leaderIndicator.position[4], -5, "leader icon relative X should be applied")
 assertEqual(leaderIndicator.position[5], 7, "leader icon relative Y should be applied")
 assertEqual(leaderIndicator.width, 20, "leader icon size should be applied")
 
 settings.threatIndicatorShape = "SQUARE"
 settings.threatIndicatorPoint = "INVALID"
-settings.threatIndicatorRelativePoint = nil
 Addon:UpdateThreatIndicator(frame)
 assertEqual(threatIndicator.shape, "SQUARE", "threat shape should switch back to square")
 assertEqual(threatIndicator.position[1], "CENTER", "invalid anchors should fall back safely")
-assertEqual(threatIndicator.position[3], "CENTER", "missing frame anchors should fall back safely")
+assertEqual(threatIndicator.position[3], "CENTER", "invalid positions use the same fallback on the frame")
 
 settings.showThreatIndicator = false
 Addon:UpdateThreatIndicator(frame)

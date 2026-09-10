@@ -336,22 +336,17 @@ local function CreateConfigFrame()
         return -38
     end
 
-    local function BuildAnchorControls(content, options, y, settingPrefix, anchorLabel, onChange)
-        local pointDropdown = CreateDropdown(content, anchorLabel, settingPrefix .. "Point", Addon.AnchorOptions, y, onChange)
+    local function BuildPositionControls(content, options, y, settingPrefix, onChange)
+        local pointDropdown = CreateDropdown(content, "Position:", settingPrefix .. "Point", Addon.AnchorOptions, y, onChange)
         AddDropdownControl(options, pointDropdown)
         y = y - 36
 
-        local relativePointDropdown = CreateDropdown(content, "Frame anchor:",
-            settingPrefix .. "RelativePoint", Addon.AnchorOptions, y, onChange)
-        AddDropdownControl(options, relativePointDropdown)
-        y = y - 36
-
-        local xSlider = CreateHorizontalSlider(content, "Relative X:",
+        local xSlider = CreateHorizontalSlider(content, "X offset (px):",
             settingPrefix .. "OffsetX", -250, 250, 1, y, onChange)
         table.insert(options, xSlider.container)
         y = y - 34
 
-        local ySlider = CreateHorizontalSlider(content, "Relative Y:",
+        local ySlider = CreateHorizontalSlider(content, "Y offset (px):",
             settingPrefix .. "OffsetY", -250, 250, 1, y, onChange)
         table.insert(options, ySlider.container)
         return y - 34
@@ -598,7 +593,7 @@ local function CreateConfigFrame()
         end)
         y = y - 32
 
-        y = BuildAnchorControls(content, options, y, "raidMarker", "Marker anchor:", RefreshPreview)
+        y = BuildPositionControls(content, options, y, "raidMarker", RefreshPreview)
 
         local sizeSlider = CreateHorizontalSlider(content, "Marker size:", "raidMarkerSize", 8, 32, 1, y, RefreshPreview)
         table.insert(options, sizeSlider.container)
@@ -646,8 +641,8 @@ local function CreateConfigFrame()
         end
 
         Section("Placement")
-        local anchorDropdown = CreateDropdown(content, "Anchor:", "nameAnchor", Addon.AnchorOptions, y, RefreshPreview)
-        AddDropdownControl(options, anchorDropdown)
+        local positionDropdown = CreateDropdown(content, "Position:", "nameAnchor", Addon.AnchorOptions, y, RefreshPreview)
+        AddDropdownControl(options, positionDropdown)
         y = y - 36
 
         local xSlider = CreateHorizontalSlider(content, "X offset (px):",
@@ -662,7 +657,7 @@ local function CreateConfigFrame()
 
         local placementNote = content:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
         placementNote:SetPoint("TOPLEFT", 24, y)
-        placementNote:SetText("Offsets start at the selected anchor. +X moves right; +Y moves up.")
+        placementNote:SetText("Offsets start at the selected position. +X moves right; +Y moves up.")
         placementNote:SetTextColor(0.75, 0.75, 0.75)
         table.insert(options, placementNote)
         y = y - 32
@@ -729,7 +724,7 @@ local function CreateConfigFrame()
         table.insert(options, hideInCombat)
         y = y - 32
 
-        y = BuildAnchorControls(content, options, y, "partyLeader", "Icon anchor:", RefreshPreview)
+        y = BuildPositionControls(content, options, y, "partyLeader", RefreshPreview)
 
         local sizeSlider = CreateHorizontalSlider(content, "Size:", "partyLeaderSize", 8, 32, 1, y, RefreshPreview)
         table.insert(options, sizeSlider.container)

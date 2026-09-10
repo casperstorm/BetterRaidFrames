@@ -72,12 +72,11 @@ function Addon:BuildThreatOptions(content, y, ui)
     local function Place(control)
         placementControls[#placementControls + 1] = control.container or control
     end
-    Place(ui.dropdown(placement, "Indicator anchor:", "threatIndicatorPoint", self.AnchorOptions, 0, Changed))
-    Place(ui.dropdown(placement, "Frame anchor:", "threatIndicatorRelativePoint", self.AnchorOptions, -36, Changed))
-    Place(ui.slider(placement, "X offset (px):", "threatIndicatorOffsetX", -250, 250, 1, -72, Changed))
-    Place(ui.slider(placement, "Y offset (px):", "threatIndicatorOffsetY", -250, 250, 1, -108, Changed))
-    Place(ui.slider(placement, "Size (px):", "threatIndicatorSize", 4, 20, 1, -144, Changed))
-    local placementNote = Label(placement, "", 24, -206, 600)
+    Place(ui.dropdown(placement, "Position:", "threatIndicatorPoint", self.AnchorOptions, 0, Changed))
+    Place(ui.slider(placement, "X offset (px):", "threatIndicatorOffsetX", -250, 250, 1, -36, Changed))
+    Place(ui.slider(placement, "Y offset (px):", "threatIndicatorOffsetY", -250, 250, 1, -72, Changed))
+    Place(ui.slider(placement, "Size (px):", "threatIndicatorSize", 4, 20, 1, -108, Changed))
+    local placementNote = Label(placement, "", 24, -170, 600)
 
     local border = panels.Border
     local borderStyle = ui.dropdown(border, "Style:", "threatIndicatorBorderStyle", self.ThreatBorderStyleOptions, 0, Changed)
@@ -100,7 +99,7 @@ function Addon:BuildThreatOptions(content, y, ui)
         end
         for _, control in ipairs(placementControls) do control:SetShown(not fullFrame) end
         placementNote:SetText(fullFrame and "Frame border follows the entire unit frame and resizes with it."
-            or "Offsets start at the frame anchor. +X moves right; +Y moves up.")
+            or "Offsets start at the selected position. +X moves right; +Y moves up.")
         borderColor:SetShown(not fullFrame)
         borderStyle.container:SetShown(fullFrame)
         thickness.container:SetShown(not glow)

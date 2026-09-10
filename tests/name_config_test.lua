@@ -44,7 +44,7 @@ local function choose(text, value)
     error("missing option " .. value)
 end
 toggle("Customize names", true)
-choose("Anchor:", "BOTTOMRIGHT")
+choose("Position:", "BOTTOMRIGHT")
 slider("X offset (px):"):SetValue(-5); slider("Y offset (px):"):SetValue(4)
 slider("Font size (px):"):SetValue(16)
 assert(sample.name.point[1] == "BOTTOMRIGHT" and sample.name.point[4] == -5 and sample.name.point[5] == 4)
