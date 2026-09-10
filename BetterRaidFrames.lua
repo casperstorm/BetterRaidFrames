@@ -3,6 +3,11 @@ local ADDON_NAME, Addon = ...
 local defaults = {
     crispFrameBorders = false,
     showSolo = false,
+    showAbsorbs = true,
+    absorbOpacity = 100,
+    showOvershields = false,
+    overshieldTexture = "SHIELDS",
+    overshieldOpacity = 80,
     indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -83,6 +88,11 @@ local POSITION_SETTING_MIGRATIONS = {
 
 local SETTING_FEATURES = {
     showSolo = "soloFrame",
+    showAbsorbs = "absorbs",
+    absorbOpacity = "absorbs",
+    showOvershields = "absorbs",
+    overshieldTexture = "absorbs",
+    overshieldOpacity = "absorbs",
     crispFrameBorders = "frameBorders",
     indicators = "indicators",
     showRaidMarkers = "raidMarker",
@@ -153,6 +163,7 @@ local SETTING_FEATURES = {
 
 local VALID_FEATURES = {
     soloFrame = true,
+    absorbs = true,
     frameBorders = true,
     indicators = true,
     raidMarker = true,
@@ -370,6 +381,7 @@ end
 
 local function HookRaidFrames()
     Addon:HookSoloFrame()
+    Addon:HookAbsorbs()
     Addon:HookFrameBorders()
     Addon:HookRaidMarkers()
     Addon:HookRoleIcons()
@@ -387,6 +399,7 @@ local activeThreatPreview
 local activeInCombat
 
 local function UpdateFrame(frame)
+    if not activeFeatures or activeFeatures.absorbs then Addon:UpdateAbsorbs(frame, activeSettings) end
     if not activeFeatures or activeFeatures.raidMarker then Addon:UpdateRaidMarker(frame, activeSettings) end
     if not activeFeatures or activeFeatures.roleIcon then Addon:UpdateRoleIcon(frame, activeSettings) end
     if not activeFeatures or activeFeatures.threatIndicator then
@@ -403,7 +416,7 @@ local function UpdateFrames(features)
     -- Visibility changes can expose frames that still need their BRF styling.
     local updateAll = features == nil or features.soloFrame
     local updateUnitFrames = updateAll or features.raidMarker or features.roleIcon
-        or features.threatIndicator or features.partyLeader or features.name or features.indicators
+        or features.threatIndicator or features.partyLeader or features.name or features.indicators or features.absorbs
     local updateThreat = updateAll or features.threatIndicator
     local updatePartyLeader = updateAll or features.partyLeader
 

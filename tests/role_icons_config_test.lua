@@ -12,6 +12,7 @@ function Addon:RefreshFrameBorders() end
 function Addon:RefreshSoloFrame() end
 function Addon:BuildDesignerOptions() return function() end end
 function Addon:BuildThreatOptions() return function() end end
+function Addon:BuildAbsorbOptions() return function() end end
 Addon:SwitchProfile("Default")
 assert(loadfile("Config.lua"))("BetterRaidFrames", Addon)
 Addon:OpenConfig()

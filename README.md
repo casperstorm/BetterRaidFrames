@@ -15,6 +15,7 @@ Discord username: `async`
 - Profiles with automatic Party and Raid switching
 - Optional solo visibility for your own Raid-Style Party Frame
 - Optional pixel-aligned health and power bar edges for more even frame separators
+- Absorb shield visibility and opacity, plus optional overshields with a choice of textures
 - Raid target markers with configurable anchors, offsets, and sizing
 - Role icon filters and optional tiny, borderless symbols with configurable size and placement
 - Party leader indicator with configurable anchor, offsets, sizing, and combat visibility
@@ -47,6 +48,16 @@ Open Blizzard Edit Mode and select the Party or Raid Frames.
 Enable **General → Show my frame while solo** in `/brf`, with **Use Raid-Style Party Frames** enabled. BRF keeps the existing player entry visible, using your normal party-frame position, size, and indicators. Blizzard's pet display setting still applies. Party and raid visibility remain automatic when you join a group, and Edit Mode keeps control of its previews.
 
 The option starts off and belongs to the current profile. Turning it off restores Blizzard's normal visibility. Setting and layout changes apply out of combat; an already enabled solo frame remains available during combat through Blizzard's shared secure visibility driver. BRF adds no polling loop or replacement unit frames and changes no CVars.
+
+**How do I show absorb shields beyond full health?**
+
+Open **Absorbs** in `/brf` and enable **Show overshields**. The overlay fills from the right and is clipped to the filled health bar, showing shield coverage that extends beyond full health. Choose **Shields**, **Blizzard Flat**, **Blizzard Raid**, **Default**, **Smooth**, **Lunar**, **Torghast**, **Insanity**, or **Empower**, and adjust opacity from 0–100%. **Shields** uses Blizzard's current tiled artwork so its pattern keeps its detail instead of stretching the legacy shield image. **Blizzard Flat** gives a plain overlay. Three samples show a shield that fits, one that overflows, and one at full health.
+
+**Show Blizzard absorbs and incoming heals** controls the game's `raidFramesDisplayIncomingHeals` setting, shared across profiles. Blizzard groups damage absorbs, healing absorbs, and incoming heals under this setting; turning it off hides all three native displays. BRF overshields remain independent. The checkbox follows changes made in Blizzard's settings, and opening BRF or switching profiles never overwrites it.
+
+**Show normal absorb shields** controls just Blizzard's damage-shield display and its overflow edge glow, with a separate opacity slider. It requires the Blizzard display above to be enabled; turning off this absorb-only option keeps incoming heals and healing absorbs unchanged. This option, its opacity, and the overshield settings belong to the current profile. Existing profiles keep normal absorbs at their original opacity and overshields off. Overshields start with the **Shields** texture at 80% opacity when enabled.
+
+Overshields reuse one status bar, fill texture, and mask per unit frame. Updates follow Blizzard's existing shield refreshes without adding polling or animations. Health and absorb values go directly to native status-bar APIs, including restricted combat values.
 
 **How do I make role icons smaller?**
 

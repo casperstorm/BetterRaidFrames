@@ -19,6 +19,7 @@ local onUpdateHandler
 local framePasses = 0
 local featureUpdates = {
     soloFrame = 0,
+    absorbs = 0,
     frameBorders = 0,
     raidMarker = 0,
     roleIcon = 0,
@@ -55,6 +56,8 @@ end
 local Addon = {
     RefreshSoloFrame = function() featureUpdates.soloFrame = featureUpdates.soloFrame + 1 end,
     HookSoloFrame = function() end,
+    HookAbsorbs = function() end,
+    UpdateAbsorbs = function() featureUpdates.absorbs = featureUpdates.absorbs + 1 end,
     RefreshFrameBorders = function() featureUpdates.frameBorders = featureUpdates.frameBorders + 1 end,
     HookFrameBorders = function() end,
     ForEachFrame = function(_, callback)
@@ -226,12 +229,27 @@ assertEqual(featureUpdates.name, namesBeforeBorders, "role styling does not rewr
 assertEqual(Addon:GetSetting("showSolo"), false, "solo visibility is opt-in")
 local soloBefore, passesBeforeSolo = featureUpdates.soloFrame, framePasses
 local indicatorsBeforeSolo = featureUpdates.indicators
+local absorbsBeforeSolo = featureUpdates.absorbs
 Addon:SetSetting("showSolo", true)
 Addon:SetSetting("showSolo", true)
 onUpdateHandler()
 assertEqual(featureUpdates.soloFrame, soloBefore + 1)
 assertEqual(framePasses, passesBeforeSolo + 1, "solo changes coalesce into one frame pass")
 assertEqual(featureUpdates.indicators, indicatorsBeforeSolo + 1, "newly visible frames receive their indicators")
+assertEqual(featureUpdates.absorbs, absorbsBeforeSolo + 1, "newly visible solo frames receive their absorb styling")
+
+assertEqual(Addon:GetSetting("showAbsorbs"), true, "native absorbs remain enabled by default")
+assertEqual(Addon:GetSetting("showOvershields"), false, "overshields are opt-in")
+local absorbsBefore = featureUpdates.absorbs
+local namesBeforeAbsorbs = featureUpdates.name
+Addon:SetSetting("showOvershields", true)
+Addon:SetSetting("overshieldTexture", "FLAT")
+Addon:SetSetting("overshieldOpacity", 50)
+Addon:SetSetting("absorbOpacity", 70)
+Addon:SetSetting("showAbsorbs", false)
+onUpdateHandler()
+assertEqual(featureUpdates.absorbs, absorbsBefore + 1, "shield settings coalesce into one feature refresh")
+assertEqual(featureUpdates.name, namesBeforeAbsorbs, "shield edits do not rewrite names")
 
 local passesBeforeLayout = framePasses
 assertEqual(Addon:SetSetting("raidFrameAnchor", "BOTTOMRIGHT"), false,
@@ -292,6 +310,8 @@ assertEqual(Addon:GetCurrentProfileName(), "Party", "party context should activa
 assertEqual(Addon:GetSetting("showSolo"), false, "solo visibility belongs to each profile")
 assertEqual(Addon:GetSetting("crispFrameBorders"), false, "pixel alignment belongs to each profile")
 assertEqual(Addon:GetSetting("roleIconStyle"), "BLIZZARD", "tiny roles belong to each profile")
+assertEqual(Addon:GetSetting("showAbsorbs"), true)
+assertEqual(Addon:GetSetting("showOvershields"), false)
 assertEqual(Addon:GetSetting("roleIconSize"), 10)
 assertEqual(Addon:GetSetting("nameAnchor"), "CENTER", "name placement belongs to each profile")
 assertEqual(Addon:GetSetting("threatIndicatorHideForTanks"), false, "tank filtering should belong to each profile")
@@ -316,6 +336,11 @@ assertEqual(Addon:ApplyAutomaticProfile(false), false, "raid context should not 
 assertEqual(Addon:SwitchProfile("Default"), true)
 assertEqual(Addon:GetSetting("showSolo"), true, "returning to the profile restores solo visibility")
 assertEqual(Addon:GetSetting("crispFrameBorders"), true, "switching back restores pixel alignment")
+assertEqual(Addon:GetSetting("showAbsorbs"), false)
+assertEqual(Addon:GetSetting("showOvershields"), true)
+assertEqual(Addon:GetSetting("overshieldTexture"), "FLAT")
+assertEqual(Addon:GetSetting("overshieldOpacity"), 50)
+assertEqual(Addon:GetSetting("absorbOpacity"), 70)
 assertEqual(Addon:GetSetting("roleIconStyle"), "TINY")
 assertEqual(Addon:GetSetting("showRoleIcons"), "TANK_HEALER")
 assertEqual(Addon:GetSetting("roleIconSize"), 8)
