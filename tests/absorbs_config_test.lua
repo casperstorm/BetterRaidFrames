@@ -2,7 +2,10 @@ local env = assert(loadfile("tests/helpers/absorb_env.lua"))()
 local Addon = env.Addon
 local cvarValue, cvarWrites = "1", 0
 C_CVar = {
-    GetCVarBool = function(name) assert(name == "raidFramesDisplayIncomingHeals"); return cvarValue == "1" end,
+    GetCVarBool = function(name)
+        if name == "raidFramesDisplayBuffs" or name == "raidFramesDisplayDebuffs" then return true end
+        assert(name == "raidFramesDisplayIncomingHeals"); return cvarValue == "1"
+    end,
     SetCVar = function(name, value)
         assert(name == "raidFramesDisplayIncomingHeals")
         cvarValue, cvarWrites = value, cvarWrites + 1
@@ -25,6 +28,7 @@ function Addon:BuildDesignerOptions() return function() end end
 function Addon:BuildThreatOptions() return function() end end
 function Addon:BuildRoleIconOptions() return function() end end
 Addon:SwitchProfile("Default")
+local addonEvents = env.find(function(w) return w.events and w.events.CVAR_UPDATE end)
 assert(loadfile("Config.lua"))("BetterRaidFrames", Addon)
 Addon:OpenConfig()
 local config = BetterRaidFramesConfigFrame
@@ -67,7 +71,7 @@ assert(samples["Absorb fits"].totalAbsorb.width == 31.5 and samples["Absorb fits
     "shield texture geometry follows a layout resize")
 CompactPartyFrameMember1 = nil
 assert(normal:GetChecked() and not overflow:GetChecked(), "existing profiles retain native shields without overshields")
-assert(prediction:GetChecked() and cvarWrites == 0, "opening settings respects the actual Blizzard CVar")
+assert(prediction:GetChecked() and cvarWrites == 0, "existing profiles inherit the actual Blizzard CVar")
 for _, sample in pairs(samples) do assert(not sample.BRFOvershield) end
 toggle(overflow, true)
 assert(Addon:GetSetting("showOvershields"))
@@ -76,6 +80,7 @@ assert(math.abs(env.overflowWidth(samples["Absorb overflows"]) - .3) < 1e-7)
 assert(math.abs(env.overflowWidth(samples["Shield at full health"]) - .45) < 1e-7)
 toggle(prediction, false)
 assert(cvarValue == "0" and cvarWrites == 1 and not prediction:GetChecked())
+assert(Addon:GetSetting("blizzardIncomingHeals") == false, "the choice is saved in the profile")
 for _, sample in pairs(samples) do
     assert(not sample.totalAbsorb:IsVisible() and not sample.totalAbsorbOverlay:IsVisible())
     assert(sample.BRFOvershield:IsVisible(), "the CVar hides native previews without hiding BRF overshields")
@@ -85,9 +90,9 @@ toggle(prediction, true)
 assert(cvarValue == "0" and cvarWrites == 1 and not prediction:GetChecked(), "CVar changes respect the combat lock")
 env.combat = false
 cvarValue = "1"
-prediction.scripts.OnEvent(prediction, "CVAR_UPDATE", "RAIDFRAMESDISPLAYINCOMINGHEALS", "1")
+addonEvents.scripts.OnEvent(addonEvents, "CVAR_UPDATE", "RAIDFRAMESDISPLAYINCOMINGHEALS", "1")
 assert(prediction:GetChecked() and samples["Absorb fits"].totalAbsorb:IsVisible(), "external CVar changes refresh previews")
-assert(cvarWrites == 1, "external CVar changes are never overwritten")
+assert(cvarWrites == 1 and Addon:GetSetting("blizzardIncomingHeals"), "external CVar changes are kept by the profile")
 opacity[1]:SetValue(45); opacity[2]:SetValue(30)
 for _, sample in pairs(samples) do
     assert(sample.totalAbsorb.alpha == .45 and sample.BRFOvershield.alpha == .3)
@@ -113,19 +118,20 @@ config.ShowTab("names")
 assert(not next(previewRow.events), "leaving Absorbs unregisters the sizing events")
 local updates = previewUpdates
 cvarValue = "0"
-prediction.scripts.OnEvent(prediction, "CVAR_UPDATE", "raidFramesDisplayIncomingHeals", "0")
+addonEvents.scripts.OnEvent(addonEvents, "CVAR_UPDATE", "raidFramesDisplayIncomingHeals", "0")
 Addon:RefreshConfig()
 assert(previewUpdates == updates, "hidden previews perform no shield updates")
 config.ShowTab("absorbs")
 Addon:CreateProfile("Other"); Addon:SwitchProfile("Other"); Addon:RefreshConfig()
 assert(normal:GetChecked() and not overflow:GetChecked() and opacity[1].value == 100 and opacity[2].value == 80)
+assert(prediction:GetChecked() and cvarValue == "1" and cvarWrites == 2, "new profiles apply their own Blizzard setting")
 for _, sample in pairs(samples) do
     assert(sample.totalAbsorb.alpha == 1 and not sample.BRFOvershield:IsVisible(), "profile changes restore native opacity")
 end
 Addon:SwitchProfile("Default"); Addon:RefreshConfig()
 assert(not normal:GetChecked() and overflow:GetChecked() and opacity[1].value == 45 and opacity[2].value == 30)
 assert(Addon:GetSetting("overshieldTexture") == "EMPOWER")
-assert(not prediction:GetChecked() and cvarWrites == 1, "profile changes preserve the shared Blizzard setting")
+assert(not prediction:GetChecked() and cvarValue == "0" and cvarWrites == 3, "switching back restores that profile's Blizzard setting")
 config:Hide()
 for _, sample in pairs(samples) do assert(not sample.BRFOvershield:IsVisible()) end
 for _, w in ipairs(env.widgets) do

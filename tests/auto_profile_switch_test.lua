@@ -389,4 +389,42 @@ assertEqual(Addon:CreateProfile("Empty Indicators"), true)
 assertEqual(Addon:SwitchProfile("Empty Indicators"), true)
 assertEqual(#Addon:GetIndicatorSet("default").items, 0, "new profiles should have no indicators enabled")
 
+-- Blizzard's buff/debuff CVars are account-wide; each profile owns its choice.
+local cvars, cvarWrites, combat = { raidFramesDisplayBuffs = "0", raidFramesDisplayDebuffs = "1", raidFramesDisplayIncomingHeals = "0" }, 0, false
+C_CVar = {
+    GetCVarBool = function(name) return cvars[name] == "1" end,
+    SetCVar = function(name, value) cvars[name] = value; cvarWrites = cvarWrites + 1 end,
+}
+function InCombatLockdown() return combat end
+BetterRaidFramesDB.profiles.Legacy = { indicators = {} }
+assertEqual(Addon:SwitchProfile("Legacy"), true)
+assertEqual(Addon:GetSetting("blizzardBuffs"), false, "existing profiles inherit the current Blizzard value")
+assertEqual(Addon:GetSetting("blizzardDebuffs"), true)
+assertEqual(cvarWrites, 0, "inheriting the current value writes nothing")
+assertEqual(Addon:CreateProfile("Dungeon Auras"), true)
+assertEqual(Addon:SwitchProfile("Dungeon Auras"), true)
+assertEqual(cvars.raidFramesDisplayBuffs, "1", "new profiles show Blizzard buffs by default")
+assertEqual(cvars.raidFramesDisplayIncomingHeals, "1", "new profiles show Blizzard incoming heals by default")
+Addon:SetSetting("blizzardDebuffs", false)
+Addon:ApplyBlizzardCVars()
+assertEqual(cvars.raidFramesDisplayDebuffs, "0")
+assertEqual(Addon:SwitchProfile("Legacy"), true)
+assertEqual(cvars.raidFramesDisplayBuffs, "0", "switching profiles applies that profile's buff choice")
+assertEqual(cvars.raidFramesDisplayDebuffs, "1", "switching profiles applies that profile's debuff choice")
+assertEqual(cvars.raidFramesDisplayIncomingHeals, "0", "switching profiles applies that profile's incoming heals choice")
+combat = true
+assertEqual(Addon:SwitchProfile("Dungeon Auras"), true)
+assertEqual(cvars.raidFramesDisplayBuffs, "0", "combat defers Blizzard setting changes")
+eventHandler(nil, "CVAR_UPDATE", "raidFramesDisplayBuffs")
+assertEqual(Addon:GetSetting("blizzardBuffs"), true, "a pending switch is not overwritten by the old value")
+combat = false
+eventHandler(nil, "PLAYER_REGEN_ENABLED")
+assertEqual(cvars.raidFramesDisplayBuffs, "1", "deferred profile values apply after combat")
+assertEqual(cvars.raidFramesDisplayDebuffs, "0")
+cvars.raidFramesDisplayDebuffs = "1"
+eventHandler(nil, "CVAR_UPDATE", "RAIDFRAMESDISPLAYDEBUFFS")
+assertEqual(Addon:GetSetting("blizzardDebuffs"), true, "changes in Blizzard's options are kept by the active profile")
+assertEqual(Addon:SwitchProfile("Legacy"), true)
+assertEqual(Addon:GetSetting("blizzardDebuffs"), true)
+
 print("PASS: auto_profile_switch_test")

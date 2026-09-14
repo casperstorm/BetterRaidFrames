@@ -95,24 +95,25 @@ function Addon:BuildDesignerOptions(content, y)
         end
     end
 
-    local function CVarCheckbox(text, cvar, x)
+    local function BlizzardAuraCheckbox(text, key, x)
         local check = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
         check:SetPoint("TOPLEFT", x, y)
         check.Text:SetText(text)
         check.Text:SetFontObject("GameFontHighlightSmall")
-        function check:Refresh() self:SetChecked(C_CVar.GetCVarBool(cvar)) end
+        function check:Refresh() self:SetChecked(Addon:GetSetting(key) ~= false) end
         check:SetScript("OnClick", function(button)
-            if not InCombatLockdown() then C_CVar.SetCVar(cvar, button:GetChecked() and "1" or "0") end
+            if not InCombatLockdown() then
+                Addon:SetSetting(key, button:GetChecked() and true or false)
+                Addon:ApplyBlizzardCVars()
+            end
             button:Refresh()
         end)
-        check:RegisterEvent("CVAR_UPDATE")
-        check:SetScript("OnEvent", check.Refresh)
         return check
     end
-    local blizzardBuffs = CVarCheckbox("Show Blizzard buff icons", "raidFramesDisplayBuffs", 8)
-    local blizzardDebuffs = CVarCheckbox("Show Blizzard debuff icons", "raidFramesDisplayDebuffs", 200)
+    local blizzardBuffs = BlizzardAuraCheckbox("Show Blizzard buff icons", "blizzardBuffs", 8)
+    local blizzardDebuffs = BlizzardAuraCheckbox("Show Blizzard debuff icons", "blizzardDebuffs", 200)
     local function RefreshBlizzardAuras() blizzardBuffs:Refresh(); blizzardDebuffs:Refresh() end
-    local cvarNote = Label(content, "Raid and Raid-Style Party Frames; shared across profiles.", 400, y - 8, 276)
+    local cvarNote = Label(content, "Raid and Raid-Style Party Frames; saved per profile.", 400, y - 8, 276)
     cvarNote:SetTextColor(0.75, 0.75, 0.75)
     y = y - 36
     local profileLabel = Label(content, "", 12, y, 676)

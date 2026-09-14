@@ -1,17 +1,7 @@
 local env = assert(loadfile("tests/helpers/designer_env.lua"))()
 local Addon = env.Addon
-local cvarValue, cvarWrites = "1", 0
-local debuffValue, debuffWrites = "1", 0
-C_CVar = {
-    GetCVarBool = function(name)
-        if name == "raidFramesDisplayDebuffs" then return debuffValue == "1" end
-        assert(name == "raidFramesDisplayBuffs"); return cvarValue == "1"
-    end,
-    SetCVar = function(name, value)
-        if name == "raidFramesDisplayDebuffs" then debuffValue, debuffWrites = value, debuffWrites + 1; return end
-        assert(name == "raidFramesDisplayBuffs"); cvarValue, cvarWrites = value, cvarWrites + 1
-    end,
-}
+local cvarApplies = 0
+function Addon:ApplyBlizzardCVars() cvarApplies = cvarApplies + 1 end
 assert(loadfile("IndicatorEditor.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("IndicatorsConfig.lua"))("BetterRaidFrames", Addon)
 local content = env.frame()
@@ -65,21 +55,15 @@ local function addBuff(anchor, spell)
 end
 local function item(key, id) return Addon:FindDesignerIndicator(key, id) end
 local blizzardBuffs = checkbox("Show Blizzard buff icons")
-assert(blizzardBuffs:GetChecked() and cvarWrites == 0, "opening the designer respects the CVar")
-blizzardBuffs:SetChecked(false); click(blizzardBuffs)
-assert(cvarValue == "0")
-blizzardBuffs:SetChecked(true); click(blizzardBuffs)
-assert(cvarValue == "1")
-cvarValue = "0"
-blizzardBuffs.scripts.OnEvent(blizzardBuffs, "CVAR_UPDATE", "raidFramesDisplayBuffs", "0")
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
 local blizzardDebuffs = checkbox("Show Blizzard debuff icons")
-assert(blizzardDebuffs:GetChecked() and debuffWrites == 0, "opening the designer respects the debuff CVar")
+assert(blizzardBuffs:GetChecked() and blizzardDebuffs:GetChecked() and cvarApplies == 0,
+    "unset profile values show Blizzard's default")
+blizzardBuffs:SetChecked(false); click(blizzardBuffs)
+assert(env.settings.blizzardBuffs == false and env.settings.blizzardDebuffs == nil and cvarApplies == 1)
 blizzardDebuffs:SetChecked(false); click(blizzardDebuffs)
-assert(debuffValue == "0" and cvarValue == "0", "debuff toggle writes only its own CVar")
-debuffValue = "1"
-blizzardDebuffs.scripts.OnEvent(blizzardDebuffs, "CVAR_UPDATE", "raidFramesDisplayDebuffs", "1")
-assert(blizzardDebuffs:GetChecked() and debuffWrites == 1)
+assert(env.settings.blizzardDebuffs == false and env.settings.blizzardBuffs == false and cvarApplies == 2)
+blizzardDebuffs:SetChecked(true); click(blizzardDebuffs)
+assert(env.settings.blizzardDebuffs == true and cvarApplies == 3)
 
 assert(#dropdown("Groups").menu.items == 9)
 local beforeGroup = env.settings.indicators
@@ -214,8 +198,8 @@ blizzardDebuffs:SetChecked(false); click(blizzardDebuffs)
 slider("Size (px)"):SetValue(40)
 choose("Move to group", "TOP")
 assert(item("default", a).glowPulse and item("default", a).size == 26 and item("default", a).anchor == "BOTTOMRIGHT")
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
-assert(blizzardDebuffs:GetChecked() and debuffWrites == 1, "combat blocks debuff CVar writes")
+assert(not blizzardBuffs:GetChecked() and blizzardDebuffs:GetChecked() and cvarApplies == 3,
+    "combat blocks Blizzard aura changes")
 selectGroup("BOTTOMRIGHT")
 choose("Position", "TOP")
 assert(item("default", a).anchor == "BOTTOMRIGHT")
@@ -227,7 +211,7 @@ local oldSettings = env.settings
 env.profile, env.settings = "Another", { indicators = Addon:NormalizeIndicators(nil) }
 refresh()
 assert(#dropdown("Groups").menu.items == 9, "empty draft groups do not leak into another profile")
-assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
+assert(blizzardBuffs:GetChecked() and blizzardDebuffs:GetChecked(), "Blizzard aura checkboxes follow the active profile")
 staleColor.cancelFunc()
 choose("Groups", "BOTTOMRIGHT")
 addBuff("BOTTOMRIGHT", 774)

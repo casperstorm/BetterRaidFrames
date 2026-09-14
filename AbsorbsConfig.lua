@@ -1,5 +1,4 @@
 local _, Addon = ...
-local PREDICTION_CVAR = "raidFramesDisplayIncomingHeals"
 
 local function Label(parent, text, y)
     local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
@@ -20,15 +19,12 @@ function Addon:BuildAbsorbOptions(content, y, ui)
     prediction.Text:SetFontObject("GameFontHighlightSmall")
     prediction:SetScript("OnClick", function(button)
         if not InCombatLockdown() then
-            C_CVar.SetCVar(PREDICTION_CVAR, button:GetChecked() and "1" or "0")
+            Addon:SetSetting("blizzardIncomingHeals", button:GetChecked() and true or false)
+            Addon:ApplyBlizzardCVars()
         end
         Changed()
     end)
-    prediction:RegisterEvent("CVAR_UPDATE")
-    prediction:SetScript("OnEvent", function(_, _, name)
-        if type(name) == "string" and name:lower() == PREDICTION_CVAR:lower() then Changed() end
-    end)
-    Label(content, "Blizzard setting, shared across profiles. Turning it off also hides\nincoming heals and healing-absorb effects. BRF overshields stay independent.", y - 32)
+    Label(content, "Blizzard setting, saved per profile. Turning it off also hides\nincoming heals and healing-absorb effects. BRF overshields stay independent.", y - 32)
     y = y - 88
 
     ui.checkbox(content, "Show normal absorb shields", "showAbsorbs", y, Changed)
@@ -71,7 +67,7 @@ function Addon:BuildAbsorbOptions(content, y, ui)
         sample.totalAbsorbOverlay:SetShown(health[index] < 100)
     end
     Refresh = function()
-        local nativeEnabled = C_CVar.GetCVarBool(PREDICTION_CVAR)
+        local nativeEnabled = Addon:GetSetting("blizzardIncomingHeals") ~= false
         prediction:SetChecked(nativeEnabled)
         if not content:IsVisible() then return end
         previewRow:RefreshSize()

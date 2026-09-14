@@ -8,6 +8,9 @@ local defaults = {
     showOvershields = false,
     overshieldTexture = "SHIELDS",
     overshieldOpacity = 80,
+    blizzardBuffs = true,
+    blizzardDebuffs = true,
+    blizzardIncomingHeals = true,
     indicators = { version = 1, sets = { default = { nextId = 1, items = {}, groups = {} } } },
     showRaidMarkers = false,
     raidMarkerPoint = "TOP",
@@ -274,8 +277,21 @@ local function DeepCopy(value)
     return copy
 end
 
+-- Blizzard stores these per account; profiles keep their own choice and push it
+-- to the CVar whenever they become active.
+local BLIZZARD_CVARS = {
+    blizzardBuffs = "raidFramesDisplayBuffs",
+    blizzardDebuffs = "raidFramesDisplayDebuffs",
+    blizzardIncomingHeals = "raidFramesDisplayIncomingHeals",
+}
+local pendingBlizzardCVars = false
+
 local function NormalizeProfile(profile)
     profile.indicators = Addon:NormalizeIndicators(profile.indicators)
+    for key, cvar in pairs(BLIZZARD_CVARS) do
+        -- Profiles saved before this setting existed inherit the current game value.
+        if profile[key] == nil and C_CVar then profile[key] = C_CVar.GetCVarBool(cvar) and true or false end
+    end
     for oldKey, newKey in pairs(POSITION_SETTING_MIGRATIONS) do
         if profile[newKey] == nil and profile[oldKey] ~= nil then
             profile[newKey] = profile[oldKey]
@@ -596,10 +612,21 @@ function Addon:ApplyAutomaticProfile(forceRefreshConfig)
     return switched
 end
 
+function Addon:ApplyBlizzardCVars()
+    local profile = GetCurrentProfile()
+    if not profile or not C_CVar then return end
+    if InCombatLockdown() then pendingBlizzardCVars = true; return end
+    pendingBlizzardCVars = false
+    for key, cvar in pairs(BLIZZARD_CVARS) do
+        if C_CVar.GetCVarBool(cvar) ~= profile[key] then C_CVar.SetCVar(cvar, profile[key] and "1" or "0") end
+    end
+end
+
 function Addon:SwitchProfile(name)
     if BetterRaidFramesDB.profiles[name] then
         BetterRaidFramesDB.currentProfile = name
         NormalizeProfile(GetCurrentProfile())
+        self:ApplyBlizzardCVars()
         self:UpdateAllFrames()
         return true
     end
@@ -646,6 +673,7 @@ function Addon:DeleteProfile(name)
     BetterRaidFramesDB.profiles[name] = nil
     if BetterRaidFramesDB.currentProfile == name then
         BetterRaidFramesDB.currentProfile = "Default"
+        self:ApplyBlizzardCVars()
         self:UpdateAllFrames()
     end
     return true
@@ -677,6 +705,8 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+frame:RegisterEvent("CVAR_UPDATE")
 
 local function RegisterOptionsPanel()
     local panel = CreateFrame("Frame")
@@ -700,6 +730,21 @@ local function RegisterOptionsPanel()
     Settings.RegisterAddOnCategory(category)
 end
 
+local function SyncBlizzardCVar(name)
+    if type(name) ~= "string" or pendingBlizzardCVars or InCombatLockdown() then return end
+    for key, cvar in pairs(BLIZZARD_CVARS) do
+        -- Keep changes made in Blizzard's options with the active profile.
+        if name:lower() == cvar:lower() then
+            local profile = GetCurrentProfile()
+            local enabled = C_CVar.GetCVarBool(cvar) and true or false
+            if profile and profile[key] ~= enabled then
+                profile[key] = enabled
+                if Addon.RefreshConfig and Addon:IsConfigOpen() then Addon:RefreshConfig() end
+            end
+        end
+    end
+end
+
 frame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         InitializeDB()
@@ -708,8 +753,13 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         RegisterOptionsPanel()
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not Addon:ApplyAutomaticProfile(true) then
+            Addon:ApplyBlizzardCVars()
             Addon:UpdateAllFrames()
         end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if pendingBlizzardCVars then Addon:ApplyBlizzardCVars() end
+    elseif event == "CVAR_UPDATE" then
+        SyncBlizzardCVar(arg1)
     elseif event == "GROUP_ROSTER_UPDATE" then
         if not Addon:ApplyAutomaticProfile(true) then
             Addon:RequestFeatureUpdate("partyLeader")
