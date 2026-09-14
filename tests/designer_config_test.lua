@@ -1,9 +1,16 @@
 local env = assert(loadfile("tests/helpers/designer_env.lua"))()
 local Addon = env.Addon
 local cvarValue, cvarWrites = "1", 0
+local debuffValue, debuffWrites = "1", 0
 C_CVar = {
-    GetCVarBool = function(name) assert(name == "raidFramesDisplayBuffs"); return cvarValue == "1" end,
-    SetCVar = function(name, value) assert(name == "raidFramesDisplayBuffs"); cvarValue, cvarWrites = value, cvarWrites + 1 end,
+    GetCVarBool = function(name)
+        if name == "raidFramesDisplayDebuffs" then return debuffValue == "1" end
+        assert(name == "raidFramesDisplayBuffs"); return cvarValue == "1"
+    end,
+    SetCVar = function(name, value)
+        if name == "raidFramesDisplayDebuffs" then debuffValue, debuffWrites = value, debuffWrites + 1; return end
+        assert(name == "raidFramesDisplayBuffs"); cvarValue, cvarWrites = value, cvarWrites + 1
+    end,
 }
 assert(loadfile("IndicatorEditor.lua"))("BetterRaidFrames", Addon)
 assert(loadfile("IndicatorsConfig.lua"))("BetterRaidFrames", Addon)
@@ -66,6 +73,13 @@ assert(cvarValue == "1")
 cvarValue = "0"
 blizzardBuffs.scripts.OnEvent(blizzardBuffs, "CVAR_UPDATE", "raidFramesDisplayBuffs", "0")
 assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
+local blizzardDebuffs = checkbox("Show Blizzard debuff icons")
+assert(blizzardDebuffs:GetChecked() and debuffWrites == 0, "opening the designer respects the debuff CVar")
+blizzardDebuffs:SetChecked(false); click(blizzardDebuffs)
+assert(debuffValue == "0" and cvarValue == "0", "debuff toggle writes only its own CVar")
+debuffValue = "1"
+blizzardDebuffs.scripts.OnEvent(blizzardDebuffs, "CVAR_UPDATE", "raidFramesDisplayDebuffs", "1")
+assert(blizzardDebuffs:GetChecked() and debuffWrites == 1)
 
 assert(#dropdown("Groups").menu.items == 9)
 local beforeGroup = env.settings.indicators
@@ -196,10 +210,12 @@ selectItem(a)
 env.combat = true
 pulse:SetChecked(false); click(pulse)
 blizzardBuffs:SetChecked(true); click(blizzardBuffs)
+blizzardDebuffs:SetChecked(false); click(blizzardDebuffs)
 slider("Size (px)"):SetValue(40)
 choose("Move to group", "TOP")
 assert(item("default", a).glowPulse and item("default", a).size == 26 and item("default", a).anchor == "BOTTOMRIGHT")
 assert(not blizzardBuffs:GetChecked() and cvarWrites == 2)
+assert(blizzardDebuffs:GetChecked() and debuffWrites == 1, "combat blocks debuff CVar writes")
 selectGroup("BOTTOMRIGHT")
 choose("Position", "TOP")
 assert(item("default", a).anchor == "BOTTOMRIGHT")

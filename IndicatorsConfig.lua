@@ -95,18 +95,24 @@ function Addon:BuildDesignerOptions(content, y)
         end
     end
 
-    local blizzardBuffs = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
-    blizzardBuffs:SetPoint("TOPLEFT", 8, y)
-    blizzardBuffs.Text:SetText("Show Blizzard buff icons")
-    blizzardBuffs.Text:SetFontObject("GameFontHighlightSmall")
-    local function RefreshBlizzardBuffs() blizzardBuffs:SetChecked(C_CVar.GetCVarBool("raidFramesDisplayBuffs")) end
-    blizzardBuffs:SetScript("OnClick", function(button)
-        if not InCombatLockdown() then C_CVar.SetCVar("raidFramesDisplayBuffs", button:GetChecked() and "1" or "0") end
-        RefreshBlizzardBuffs()
-    end)
-    blizzardBuffs:RegisterEvent("CVAR_UPDATE")
-    blizzardBuffs:SetScript("OnEvent", RefreshBlizzardBuffs)
-    local cvarNote = Label(content, "Raid and Raid-Style Party Frames; shared across profiles.", 280, y - 8, 390)
+    local function CVarCheckbox(text, cvar, x)
+        local check = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        check:SetPoint("TOPLEFT", x, y)
+        check.Text:SetText(text)
+        check.Text:SetFontObject("GameFontHighlightSmall")
+        function check:Refresh() self:SetChecked(C_CVar.GetCVarBool(cvar)) end
+        check:SetScript("OnClick", function(button)
+            if not InCombatLockdown() then C_CVar.SetCVar(cvar, button:GetChecked() and "1" or "0") end
+            button:Refresh()
+        end)
+        check:RegisterEvent("CVAR_UPDATE")
+        check:SetScript("OnEvent", check.Refresh)
+        return check
+    end
+    local blizzardBuffs = CVarCheckbox("Show Blizzard buff icons", "raidFramesDisplayBuffs", 8)
+    local blizzardDebuffs = CVarCheckbox("Show Blizzard debuff icons", "raidFramesDisplayDebuffs", 200)
+    local function RefreshBlizzardAuras() blizzardBuffs:Refresh(); blizzardDebuffs:Refresh() end
+    local cvarNote = Label(content, "Raid and Raid-Style Party Frames; shared across profiles.", 400, y - 8, 276)
     cvarNote:SetTextColor(0.75, 0.75, 0.75)
     y = y - 36
     local profileLabel = Label(content, "", 12, y, 676)
@@ -322,7 +328,7 @@ function Addon:BuildDesignerOptions(content, y)
         profileLabel:SetText("Profile: " .. context.profile .. (context.key ~= "default" and not ownSet
             and " — using Default; edits create an override" or ""))
         useDefault:SetEnabled(context.key ~= "default" and ownSet)
-        RefreshBlizzardBuffs(); sets:GenerateMenu(); addGroup:GenerateMenu()
+        RefreshBlizzardAuras(); sets:GenerateMenu(); addGroup:GenerateMenu()
         addGroup:SetEnabled(#context:UnusedAnchors() > 0)
         local offset, rowIndex, selectedOffset = 0, 0, nil
         for _, anchor in ipairs(Addon.IndicatorAnchors) do
