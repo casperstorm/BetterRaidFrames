@@ -196,12 +196,22 @@ function CreateFrame(kind, _, parent, template)
     end
     return w
 end
+-- spells[id] = true is the player's own aura; "other" is another caster's.
 function env.ShowAuras(container, spells)
     local descriptions = {}
     env.internal = true
-    for _, group in ipairs(container.groups) do
+    local ordered, position = {}, {}
+    for i, group in ipairs(container.groups) do ordered[i], position[group] = group, i end
+    table.sort(ordered, function(a, b)
+        local ai, bi = a.layout.layoutIndex or 0, b.layout.layoutIndex or 0
+        if ai ~= bi then return ai < bi end
+        return position[a] < position[b]
+    end)
+    for _, group in ipairs(ordered) do
         local active = false
-        for spell in pairs(group.filters.includeSpellIDs) do if spells[spell] then active = true end end
+        for spell in pairs(group.filters.includeSpellIDs) do
+            if spells[spell] == true or (spells[spell] and not group.filter:find("PLAYER", 1, true)) then active = true end
+        end
         group.frames[1]:SetShown(active)
         descriptions[#descriptions + 1] = { elements = active and { group.frames[1] } or {}, groupSpacing = group.layout.groupSpacing or 0 }
     end

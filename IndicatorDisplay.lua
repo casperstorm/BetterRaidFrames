@@ -244,10 +244,20 @@ local function SetBucketEnabled(bucket, enabled)
     bucket.enabled = enabled
 end
 
+-- "Mine" must use the PLAYER aura filter (as Harrek's engine does). Candidate
+-- filters cannot restrict the caster, and a group's filter is fixed when added,
+-- so each position lazily owns one group per caster filter.
+local function GroupKey(index, mineOnly)
+    return mineOnly and index .. ":mine" or tostring(index)
+end
+
 local function DeactivatePool(bucket, index)
     local pool = bucket.pools[index]
     if not pool.active then return end
-    bucket.container:SetAuraGroupCandidateFilters(tostring(index), { includeSpellIDs = {} })
+    for mineOnly, group in pairs(pool.groups) do
+        bucket.container:SetAuraGroupCandidateFilters(GroupKey(index, mineOnly), { includeSpellIDs = {} })
+        group.styled = nil
+    end
     for _, visual in ipairs(pool.visuals) do
         StopPulse(visual)
         if visual.cooldown then visual.cooldown:Clear() end
@@ -292,11 +302,18 @@ local function ConfigurePool(bucket, index, item, spacing)
     local pool = bucket.pools[index]
     local previous = pool and pool.entry
     local active = pool and pool.active
-    if pool then pool.entry = item end
     if not pool then
-        pool = { entry = item, visuals = {} }
+        pool = { visuals = {}, groups = {} }
         bucket.pools[index] = pool
-        bucket.container:AddAuraGroup(tostring(index), "HELPFUL", {
+    end
+    pool.entry = item
+    local mineOnly = item.mineOnly and true or false
+    local key = GroupKey(index, mineOnly)
+    local group = pool.groups[mineOnly]
+    if not group then
+        group = { visuals = {}, styled = item }
+        pool.groups[mineOnly] = group
+        bucket.container:AddAuraGroup(key, mineOnly and "PLAYER|HELPFUL" or "HELPFUL", {
             maxFrameCount = 1,
             candidateFilters = { includeSpellIDs = {} },
             initializeFrame = function(button)
@@ -305,21 +322,28 @@ local function ConfigurePool(bucket, index, item, spacing)
                 local visual = Addon:CreateDesignerVisual(button)
                 Addon:StyleDesignerVisual(visual, pool.entry)
                 pool.visuals[#pool.visuals + 1] = visual
+                group.visuals[#group.visuals + 1] = visual
             end,
         })
-    elseif not active or not Equal(previous, item) then
-        for _, visual in ipairs(pool.visuals) do Addon:StyleDesignerVisual(visual, item) end
+    elseif not Equal(group.styled, item) then
+        -- Only the group matching the caster filter shows auras; the other is
+        -- restyled if it becomes current again.
+        for _, visual in ipairs(group.visuals) do Addon:StyleDesignerVisual(visual, item) end
+        group.styled = item
     end
-    if pool.spacing ~= spacing then
-        bucket.container:SetAuraGroupLayout(tostring(index), { layoutIndex = index, groupSpacing = spacing })
-        pool.spacing = spacing
+    for groupMine, other in pairs(pool.groups) do
+        if other.spacing ~= spacing then
+            bucket.container:SetAuraGroupLayout(GroupKey(index, groupMine), { layoutIndex = index, groupSpacing = spacing })
+            other.spacing = spacing
+        end
     end
-    if not active or previous.spellID ~= item.spellID or previous.mineOnly ~= item.mineOnly then
-        local filters = { includeSpellIDs = { [item.spellID] = true } }
-        if item.mineOnly then filters.isFromPlayerOrPlayerPet = true end
-        bucket.container:SetAuraGroupCandidateFilters(tostring(index), filters)
+    if not active or previous.spellID ~= item.spellID or (previous.mineOnly and true or false) ~= mineOnly then
+        bucket.container:SetAuraGroupCandidateFilters(key, { includeSpellIDs = { [item.spellID] = true } })
+        if active and pool.groups[not mineOnly] then
+            bucket.container:SetAuraGroupCandidateFilters(GroupKey(index, not mineOnly), { includeSpellIDs = {} })
+        end
     end
-    pool.entry, pool.active = item, true
+    pool.active = true
 end
 
 local function UnitFrameShown(frame) Addon:UpdateDesignerIndicators(frame) end
