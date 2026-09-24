@@ -194,10 +194,13 @@ function Addon:BuildDesignerEditor(parent, context)
     presets:SetupMenu(function(_, root)
         local profile, key, token = context:Capture()
         for _, spec in ipairs(Addon.IndicatorSpecializations) do
-            local category = root:CreateButton(spec.label)
+            -- Clients without a spec's spells (WoW Forever has no Evokers or
+            -- Monks) omit its category instead of showing an empty submenu.
+            local category
             for _, spellID in ipairs(spec.spells) do
                 local spell = C_Spell.GetSpellInfo(spellID)
                 if spell then
+                    category = category or root:CreateButton(spec.label)
                     category:CreateButton(Addon:GetIndicatorSpellLabel(spellID, spell), function()
                         if context:Matches(profile, key, token) then input:SetText(tostring(spellID)) end
                     end)

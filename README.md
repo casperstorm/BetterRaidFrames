@@ -2,6 +2,8 @@
 
 Customize Blizzard's Raid and Raid-Style Party Frames with buff indicators, clearer role icons, threat warnings, and more.
 
+Supports retail (Midnight) and WoW Forever.
+
 ![BetterRaidFrames](asset.png)
 
 ## Features
