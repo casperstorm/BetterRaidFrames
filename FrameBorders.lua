@@ -96,12 +96,18 @@ local function Restore(frame, state)
     if not Accessible(frame) or not Accessible(frame.healthBar) or (state.loss and not Accessible(state.loss))
         or (state.power and not Accessible(frame.powerBar)) then return end
     local currentRight = RightOffset(frame)
-    if not currentRight then return end
     local original = state.health
-    local adjustment = currentRight - state.right
-    frame.healthBar:SetPoint(unpack(original.top))
-    frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", original.bottom[4] + adjustment, original.bottom[5])
-    if state.loss then state.loss:SetShouldAdjustHealthBarAnchor(original.bottom[4], original.bottom[5]) end
+    if state.loss then
+        -- Anything but our own right anchor was written natively from the
+        -- loss bar's untouched base offsets, and is already correct.
+        if currentRight == state.right then SetCorners(frame.healthBar, original)
+        else frame.healthBar:SetPoint(unpack(original.top)) end
+    else
+        if not currentRight then return end
+        local adjustment = currentRight - state.right
+        frame.healthBar:SetPoint(unpack(original.top))
+        frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", original.bottom[4] + adjustment, original.bottom[5])
+    end
     if state.power then SetCorners(frame.powerBar, state.power) end
     states[frame] = nil
 end
@@ -123,13 +129,23 @@ local function Apply(frame)
     local pixels = scale / factor
     if width * pixels <= 4 or height * pixels <= 4 then return end
     local state = states[frame]
-    if state and state.left == left and state.bottom == bottom and state.width == width
-        and state.height == height and state.pixels == pixels then return end
-    state = state or Capture(frame)
-    if not state or (state.loss and not Accessible(state.loss)) or (state.power and not Accessible(frame.powerBar)) then return end
     local currentRight = RightOffset(frame)
     if not currentRight then return end
-    local adjustment = currentRight - (state.right or state.health.bottom[4])
+    if state and state.left == left and state.bottom == bottom and state.width == width
+        and state.height == height and state.pixels == pixels and currentRight == state.right then return end
+    state = state or Capture(frame)
+    if not state or (state.loss and not Accessible(state.loss)) or (state.power and not Accessible(frame.powerBar)) then return end
+    local base = state.right or state.health.bottom[4]
+    local adjustment = 0
+    if state.loss then
+        -- Blizzard re-anchors the right edge from the loss bar's offsets during
+        -- max-health changes. Never write those offsets: addon values there
+        -- taint its secret-value arithmetic. Only align while no reduction is
+        -- applied; Blizzard's native reset is re-aligned on the next pass.
+        if currentRight ~= base and currentRight ~= state.health.bottom[4] then return end
+    else
+        adjustment = currentRight - base
+    end
     local function Round(value) return math.floor(value * pixels + 0.5) / pixels end
     local pixel = 1 / pixels
     -- Round the absolute screen edges, not just the relative offsets. Adjacent
@@ -140,7 +156,6 @@ local function Apply(frame)
     local y2 = Round(bottom + state.health.bottom[5] - 1) + pixel - bottom
     frame.healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", x1, y1)
     frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", x2 + adjustment, y2)
-    if state.loss then state.loss:SetShouldAdjustHealthBarAnchor(x2, y2) end
     if state.power then
         local gap = PixelUtil.GetNearestPixelSize(state.power.top[5], scale)
         frame.powerBar:SetPoint("TOPLEFT", frame.healthBar, "BOTTOMLEFT", 0, gap)

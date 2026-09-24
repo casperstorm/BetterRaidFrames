@@ -50,9 +50,8 @@ function methods:SetScript(name, callback)
     self.scripts[name] = callback
 end
 function methods:RegisterEvent(name) self.events[name] = true end
-function methods:SetShouldAdjustHealthBarAnchor(x, y)
-    writes = writes + 1
-    self.ShouldAdjustHealthBarAnchor, self.xAnchorOffset, self.yAnchorOffset = true, x, y
+function methods:SetShouldAdjustHealthBarAnchor()
+    error("addon writes to loss-bar offsets taint Blizzard's secret max-health arithmetic")
 end
 local function region()
     return setmetatable({ points = {}, scripts = {}, events = {}, visible = true }, { __index = methods })
@@ -78,7 +77,8 @@ function DefaultCompactUnitFrameSetup(frame)
     local power = frame.powerBar.visible
     frame.healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
     frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, power and 9 or 1)
-    frame.TempMaxHealthLoss:SetShouldAdjustHealthBarAnchor(-1, power and 9 or 1)
+    local loss = frame.TempMaxHealthLoss
+    loss.ShouldAdjustHealthBarAnchor, loss.xAnchorOffset, loss.yAnchorOffset = true, -1, power and 9 or 1
     if power then
         frame.powerBar:SetPoint("TOPLEFT", frame.healthBar, "BOTTOMLEFT", 0, frame.powerGap or 0)
         frame.powerBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 1)
@@ -198,9 +198,9 @@ DefaultCompactUnitFrameSetup(frame)
 frames = { frame }
 reduction(frame, .25)
 Addon:RefreshFrameBorders()
-local adjustedRight = frame.TempMaxHealthLoss.xAnchorOffset
-near(point(frame.healthBar, "BOTTOMRIGHT")[4], adjustedRight - frame.width * .25, "existing max-health reduction retained")
+near(point(frame.healthBar, "BOTTOMRIGHT")[4], -1 - frame.width * .25, "existing max-health reduction retained")
 reduction(frame, 0)
+Addon:RefreshFrameBorders()
 pixelEdges(frame); pixelEdges(frame, true)
 local healthLeft, healthBottom = edges(frame)
 local powerLeft, _, _, powerTop = edges(frame, true)
@@ -209,10 +209,14 @@ near(healthBottom - powerTop, 3, "two UI units round to a whole-pixel power-bar 
 
 -- Live max-health updates continue using the corrected base after alignment.
 reduction(frame, .4)
-near(point(frame.healthBar, "BOTTOMRIGHT")[4], adjustedRight - frame.width * .4)
+near(point(frame.healthBar, "BOTTOMRIGHT")[4], -1 - frame.width * .4)
 frame.scale = 1.03
 event("UI_SCALE_CHANGED")
-near(point(frame.healthBar, "BOTTOMRIGHT")[4], frame.TempMaxHealthLoss.xAnchorOffset - frame.width * .4)
+near(point(frame.healthBar, "BOTTOMRIGHT")[4], -1 - frame.width * .4, "active reductions stay under Blizzard's control")
+reduction(frame, 0)
+event("UI_SCALE_CHANGED")
+pixelEdges(frame); pixelEdges(frame, true)
+reduction(frame, .4)
 frame.visible = false
 frames = {} -- e.g. the party/raid context changes while disabling the setting.
 settings.crispFrameBorders = false
@@ -233,7 +237,8 @@ frame.powerBar.visible = false
 CompactUnitFrameUtil.ApplyConfig(frame)
 assert(pending, "native configuration schedules a pass after the layout finishes")
 flush(); pixelEdges(frame)
-near(frame.TempMaxHealthLoss.yAnchorOffset, point(frame.healthBar, "BOTTOMRIGHT")[5])
+near(frame.TempMaxHealthLoss.xAnchorOffset, -1, "loss-bar offsets stay native")
+near(frame.TempMaxHealthLoss.yAnchorOffset, 1, "loss-bar offsets stay native")
 local before = writes
 frame.left = frame.left + .3
 CompactRaidFrameContainer:LayoutFrames()
